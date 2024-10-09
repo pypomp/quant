@@ -1,0 +1,2 @@
+tests/**/*.html filter=lfs diff=lfs merge=lfs -text
+daphnia/report.html filter=lfs diff=lfs merge=lfs -text
