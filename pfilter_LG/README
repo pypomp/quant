@@ -1,0 +1,11 @@
+
+Adapting quant_test_pfilter_LG.ipynb to qmd, starting with
+```
+quarto convert quant_test_pfilter_LG.ipynb
+mv quant_test_pfilter_LG.qmd test.qmd
+quarto render test.qmd --to html
+```
+
+Subsequently, aiming to update the quant test as a role model for future quant tests.
+
+
