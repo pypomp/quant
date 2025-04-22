@@ -8,4 +8,6 @@ quarto render test.qmd --to html
 
 Subsequently, aiming to update the quant test as a role model for future quant tests.
 
+t1.qmd is a fairly immediate adaptation of quant_test_pfilter_LG.ipynb, rewritten with run levels and avoiding hard-coding of results.
+
 
