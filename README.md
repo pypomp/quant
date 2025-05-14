@@ -8,7 +8,7 @@ The quant tests sit in their own repository, since they are not necessarily run 
 Some of them are of an exploratory nature, such as code profiling investigations.
 
 The quant tests also provide additional examples of pypomp, focused on technical issues that extend the
- simpler examples in [pypomp:tutorials]((https://pypomp.github.io/tutorials)
+ simpler examples in [pypomp:tutorials](https://pypomp.github.io/tutorials)
 
 ## Existing tests
 
