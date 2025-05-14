@@ -1,6 +1,6 @@
-default: test
+default: html-docs
 
-html-docs: test.html 
+html-docs: t1.html 
 
 %.html: %.qmd
 	quarto render "$*.qmd" --to html

@@ -1,3 +1,6 @@
+# No need to save level 0 results
+*_0
+
 # For jupyter users
 .ipynb_checkpoints/
 .jupyter/
