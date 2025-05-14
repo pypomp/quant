@@ -7,7 +7,20 @@ Our unit tests, in [pypomp:pypomp/test](https://github.com/pypomp/pypomp/tree/ma
 The quant tests sit in their own repository, since they are not necessarily run often.
 Some of them are of an exploratory nature, such as code profiling investigations.
 
-## Structure of the tests
+The quant tests also provide additional examples of pypomp, focused on technical issues that extend the
+ simpler examples in [pypomp:tutorials]((https://pypomp.github.io/tutorials)
+
+## Existing tests
+
+* [Testing pfilter on a linear Gaussian model](pfilter_LG/t1.html)
+
+* Other quant tests are available in [draft form](https://github.com/pypomp/quant).
+These test timing, memory, and iterated filtering for the linear Gaussian model.
+Also, a Dacca cholera model and a daphnia mesocosm model.
+
+## Proposed structure of the tests
+
+__These are aspirational suggestions rather than requirements. In practice, we post the best available quant tests whether or not they conform to this structure.__
 
 We propose many different short tests, each of which can be run independently.
 Each test produces an html report.
@@ -22,7 +35,7 @@ Each test has its own directory, within which we have a standard file structure.
 
 * results. A directory with saved results from code.py
 
-* report.ipynb. A report presenting and discussing the results pulled in from the results directory
+* report.ipynb or report.qmd. A report presenting and discussing the results pulled in from the results directory. qmd is currently the preferred format, since it plays nicely with git and facilitates cross-testing against [R-pomp](https://kingaa.github.io/pomp/).
 
 * report.html. The rendering of report.ipynb
 

@@ -1,0 +1,8 @@
+
+This is intended to become a test of the daphnia model, developed from examples in quant/quant_pfilter_complete.ipynb and quant/quant_test_simulate.ipynb.
+
+Initial testing revealed some incompatible development between pfilter, pfilter_pf and pfilter_complete.
+It doesn't make much sense for pypomp to have these three, highly similar, highly duplicating, functions.
+
+This quant test can be continued once that is fixed.
+
