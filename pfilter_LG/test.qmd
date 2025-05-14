@@ -6,6 +6,7 @@ jupyter: python3
 
 ```{python}
 #| label: imports
+#| echo: false
 import jax
 import time
 import pypomp
@@ -14,6 +15,7 @@ import tracemalloc
 import jax.numpy as np
 import numpy as onp
 import pandas as pd
+import datetime
 
 from tabulate import tabulate
 
@@ -31,33 +33,39 @@ from pypomp.internal_functions import _pfilter_internal
 from pypomp.internal_functions import _pfilter_internal_mean
 from pypomp.internal_functions import _fit_internal
 from pypomp.internal_functions import _perfilter_internal
+from importlib.metadata import version
 
 ```
+
+
 
 ```{python}
 #| label: run_level
-run_level = 0
+#| echo: false
+run_level = 2
 N = [10, 50, 100][run_level]
 J = [10,1000,10000][run_level]
 N_reps = [3,10,100][run_level]
-N_values = [[10,50],[100,500],[1000,5000]][run_level]
+N_values = [[10,50],[100,500],[100,500]][run_level]
 J_values = [[5,10,20,50],[5,10,100,1000],[10,100,1000,10000]][run_level]
 ```
 
-Model Setup
+Testing pypomp `{python} version('pypomp')` on `{python} datetime.date.today().strftime("%Y-%m-%d")` at run level `{python} run_level` (0 is for debugging, 2 is full-length).
 
-Kalman filter deals with the dynamic system:
+# Model Setup
+
+We consider a linear Gaussian dynamic system:
 \begin{align}
-    x_t &= A x_{t-1} + w_t \\
+    X_n &= A X_{n-1} + W_n \\
     \text{where} \quad
-    x_t &\text{ is the current state vector.} \nonumber \\
+    X_n &\text{ is the current state vector.} \nonumber \\
     A &\text{ is the state transition matrix.} \nonumber \\
-    w_t &\sim \mathcal{N}(0, Q) \text{ is the process noise, normally distributed with mean 0 and covariance } Q. \nonumber \\
-    y_t &= C x_t + v_t \\
+    W_n &\sim \mathcal{N}(0, Q) \text{ is the process noise, normally distributed with mean 0 and covariance } Q. \nonumber \\
+    Y_n &= C X_n + V_n \\
     \text{where} \quad
-    y_t &\text{ is the current observation vector.} \nonumber \\
+    Y_n &\text{ is the current observation vector.} \nonumber \\
     C &\text{ is the observation matrix.} \nonumber \\
-    v_t &\sim \mathcal{N}(0, R) \text{ is the observation noise, normally distributed with mean 0 and covariance} R. \nonumber
+    V_n &\sim \mathcal{N}(0, R) \text{ is the observation noise, normally distributed with mean 0 and covariance} R. \nonumber
 \end{align}
 
 
@@ -65,6 +73,7 @@ Kalman filter deals with the dynamic system:
 
 ```{python}
 #| label: LG-POMP model
+#| code-fold: true
 def get_thetas(theta):
     A = theta[0:4].reshape(2, 2)
     C = theta[4:8].reshape(2, 2)
@@ -133,6 +142,7 @@ dmeasures = jax.vmap(custom_dmeas, (None, 0, 0))
 
 ```{python}
 #| label: parameter transformation
+#| echo: false
 def logmeanexp(x):
    x_array = np.array(x)
    x_max = np.max(x_array)
@@ -209,14 +219,7 @@ for i, subkey in enumerate(subkeys):
     loglike_pf.append(pfilter_val)
 
 
-#loglike_pf = np.array(loglike_pf)
-#print("Logmeanexp of Particle Filtering =", logmeanexp(loglike))
-#print("difference between Kalman-Filtering and logmeanexp of Particle Filtering =", kf.loglikelihood(ys) - (logmeanexp(loglike)))
-
-#print("\n")
-
 alpha_table=tabulate(results, tablefmt="grid", headers=("alpha","pf","kalman-pf"))
-#alpha_table=tabulate(results, tablefmt="grid")
 print(alpha_table)
 ```
 
@@ -280,73 +283,50 @@ table=tabulate(NJresults, tablefmt="grid", headers="keys")
 print(table)
 ```
 
-## Result (To Be Continued):
+
+### Log Likelihood vs. Particle Number for Particle Filter and MOP
 
 ```{python}
-J_values = [10, 100, 1000, 10000, 100000]
-pf_loglik_1000 = [-4059.384, -3766.4568, -3747.1902, -3724.4568, -3797.8877]
-mop_loglik_1000 = [-4044.6467, -3776.5305, -3744.5942, -3724.7112, -3797.6775]
-time_pf_1000 = [0.00262911, 0.03207133, 0.3003823, 2.2342062, 17.238829]
-time_mop_1000 = [0.01157162, 0.0302381, 0.4241002, 3.1925905, 16.385502]
+#| code-fold: true
+df = pd.DataFrame(NJresults)
+unique_N = df['N'].unique()
+num_panels = len(unique_N)
 
-time_pf_5000 = [0.02121412, 0.09896883, 1.323793, 10.692378]
-time_mop_5000 = [0.02167264, 0.10377918, 1.9390032, 15.778171]
-J_values_5000 = [10, 100, 1000, 10000] 
-pf_loglik_5000 = [-20326.46, -18856.922, -18803.223, -18672.562]
-mop_loglik_5000 = [-20303.664, -18853.13, -18808.762, -18672.344]
-```
+# Set up the subplots
+fig, axes = plt.subplots(nrows=1, ncols=num_panels, figsize=(5 * num_panels, 5), sharey=False)
 
-```{python}
-J_values = [10, 100, 1000, 10000, 100000]
-pf_loglik_1000 = [-4097.617, -3777.1707, -3750.4946, -3724.9521, -3797.8877]
-mop_loglik_1000 = [-4129.0166, -3770.096, -3747.1416, -3725.1648, -3797.6775]
-time_pf_1000 = [0.00325535, 0.02117351, 0.27665812, 2.4753604, 17.238829]
-time_mop_1000 = [0.00307242, 0.02399091, 0.40396369, 3.5858035, 16.385502]
+if num_panels == 1:
+    axes = [axes]  # Ensure axes is iterable if there's only one panel
 
-J_values_5000 = [10, 100, 1000, 10000]
-pf_loglik_5000 = [-20440.643, -18821.348, -18762.62, -18670.256]
-mop_loglik_5000 = [-20328.13, -18819.787, -18768.303, -18668.377]
-time_pf_5000 = [0.02104483, 0.09821754, 1.4604919, 12.61476]
-time_mop_5000 = [0.02136297, 0.10306332, 2.129003, 18.95642]
-```
+for ax, N_val in zip(axes, unique_N):
+    sub_df = df[df['N'] == N_val]
+    sub_df = sub_df.sort_values('J')  # Ensure lines connect in correct order
 
-### Log Likelihood vs. Particle Number for Particle Filter and MOP (N=1000,5000)
+    ax.plot(sub_df['J'], sub_df['pf_loglik'], label='pf_loglik', marker='o')
+    ax.plot(sub_df['J'], sub_df['mop_loglik'], label='mop_loglik', marker='s')
 
-```{python}
-plt.figure(figsize=(8, 6))
-plt.plot(J_values, pf_loglik_1000, label='Particle Filter (N=1000)', marker='o')
-plt.plot(J_values, mop_loglik_1000, label='MOP (N=1000)', marker='x')
-plt.xscale('log')
-plt.xlabel('Number of Particles (J)', fontsize=12)
-plt.ylabel('Log Likelihood', fontsize=12)
-plt.title('Log Likelihood vs Particle Number (N=1000)', fontsize=14)
-plt.legend(fontsize=10)
-plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    ax.set_title(f'N = {N_val}')
+    ax.set_xlabel('J')
+    ax.set_ylabel('Log-likelihood')
+    ax.legend()
+    ax.grid(True)
+
+plt.tight_layout()
 plt.show()
 ```
 
-```{python}
-plt.figure(figsize=(8, 6))
-plt.plot(J_values_5000, pf_loglik_5000, label='Particle Filter (N=5000)', marker='o')
-plt.plot(J_values_5000, mop_loglik_5000, label='MOP (N=5000)', marker='x')
-plt.xscale('log')
-plt.xlabel('Number of Particles (J)', fontsize=12)
-plt.ylabel('Log Likelihood', fontsize=12)
-plt.title('Log Likelihood vs Particle Number (N=5000)', fontsize=14)
-plt.legend(fontsize=10)
-plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-plt.show()
-```
 
-### Runtime vs. Particle Number J for Particle Filter and MOP (N=1000, 5000)
+### Runtime vs. Particle Number J for Particle Filter and MOP
 
 ```{python}
+#| code-fold: true
 
 plt.figure(figsize=(8, 6))
-plt.plot(J_values, time_pf_1000, label='Particle Filter (N=1000)', marker='o')
-plt.plot(J_values, time_mop_1000, label='MOP (N=1000)', marker='x')
-plt.plot(J_values_5000, time_pf_5000, label='Particle Filter (N=5000)', marker='o', linestyle='--')
-plt.plot(J_values_5000, time_mop_5000, label='MOP (N=5000)', marker='x', linestyle='--')
+for N_val in unique_N:
+    sub_df = df[df['N'] == N_val]
+    plt.plot(sub_df['J'], sub_df['time_pfilter'], label=f'Particle Filter (N={N_val})', marker='o')
+    plt.plot(sub_df['J'], sub_df['time_mop'], label=f'MOP (N={N_val})', marker='x')
+
 plt.xscale('log')
 plt.yscale('log')
 plt.xlabel('Number of Particles (J)', fontsize=12)
