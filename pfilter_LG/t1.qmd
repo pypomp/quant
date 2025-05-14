@@ -1,6 +1,7 @@
 ---
 title: 'Test the Linear Gaussian Model: A comparison with Kalman-filtering algorithm'
 jupyter: python3
+embed-resources: true
 ---
 
 
@@ -17,14 +18,17 @@ import numpy as onp
 import pandas as pd
 import datetime
 
-from tabulate import tabulate
+# for saving partial results
+import os
+import pickle
 
+from tabulate import tabulate
 import pykalman
 import seaborn as sns
 import matplotlib.pyplot as plt
 import jax.scipy.special
 
-from tqdm import tqdm
+# from tqdm import tqdm
 from pypomp.mop import mop
 from pypomp.pfilter import pfilter
 from pypomp.fit import fit
@@ -35,6 +39,7 @@ from pypomp.internal_functions import _fit_internal
 from pypomp.internal_functions import _perfilter_internal
 from importlib.metadata import version
 
+    
 ```
 
 
@@ -42,7 +47,12 @@ from importlib.metadata import version
 ```{python}
 #| label: run_level
 #| echo: false
-run_level = 2
+run_level = 0
+out_dir="results_" + str(run_level)
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
+
+
 N = [10, 50, 100][run_level]
 J = [10,1000,10000][run_level]
 N_reps = [3,10,100][run_level]
@@ -54,19 +64,16 @@ Testing pypomp `{python} version('pypomp')` on `{python} datetime.date.today().s
 
 # Model Setup
 
-We consider a linear Gaussian dynamic system:
+We consider a linear Gaussian dynamic system,
 \begin{align}
-    X_n &= A X_{n-1} + W_n \\
-    \text{where} \quad
-    X_n &\text{ is the current state vector.} \nonumber \\
-    A &\text{ is the state transition matrix.} \nonumber \\
-    W_n &\sim \mathcal{N}(0, Q) \text{ is the process noise, normally distributed with mean 0 and covariance } Q. \nonumber \\
-    Y_n &= C X_n + V_n \\
-    \text{where} \quad
-    Y_n &\text{ is the current observation vector.} \nonumber \\
-    C &\text{ is the observation matrix.} \nonumber \\
-    V_n &\sim \mathcal{N}(0, R) \text{ is the observation noise, normally distributed with mean 0 and covariance} R. \nonumber
+    X_n &= A X_{n-1} + W_n
 \end{align}
+where $X_n$ is the current state vector, $A$ is the state transition matrix, and $W_n \sim \mathcal{N}(0, Q)$ is the process noise, normally distributed with mean $0$ and covariance $Q$.
+The measurement model is
+\begin{align}
+    Y_n &= C X_n + V_n,
+\end{align}
+where $Y_n$ is the observation vector at time $n$, $C$ is the observation matrix, and $V_n \sim \mathcal{N}(0, R)$ is the observation noise, normally distributed with mean $0$ and covariance $R$.
 
 
 (1) Set N (length of time series) to be `{python} N` and generate linear Gaussian states and observations:
@@ -103,7 +110,7 @@ def generate_data(N, key):
     xs = []
     ys = []
     x = np.ones(2)
-    for i in tqdm(range(N)):
+    for i in range(N):
         key, subkey = jax.random.split(key)
         x = jax.random.multivariate_normal(key=subkey, mean=A @ x, cov=Q)
         key, subkey = jax.random.split(key)
@@ -188,12 +195,13 @@ Next, we test the ouput of the MOP algorithm. The pypomp MOP algorithm is set to
 #| label: test MOP at different alphas
 #| output: asis
 alphas = [0, 0.1, 0.3, 0.6, 0.9, 1]
-results = []
+
 
 
 key = jax.random.PRNGKey(0)  # Use a fixed seed for reproducibility
 subkeys = jax.random.split(key, 100)  # Pre-generate 100 keys
 
+results = []
 for alpha in alphas:
     loglike_mop = []
     for i, subkey in enumerate(subkeys):  
@@ -233,47 +241,56 @@ The Logmeanexp under $\alpha = 0$ and $\alpha = 1$ are closer to the Kalman-Filt
 ```{python}
 #| label: N-J-test
 
-NJresults = []
-key = jax.random.PRNGKey(112)
 
-for N_val in N_values:
-    for J_val in J_values:
-        print(f"Running with N={N_val}, J={J_val}...")
-        
-        xs, ys, key = generate_data(N_val, key)
-        pf_loglik_arr = []
-        mop_loglik_arr = []
-        elapsed_time1_arr = []
-        elapsed_time2_arr = []
-        
-        for i in range(N_reps):  
-            start_time = time.time()
-            pf_val = -pfilter(J = J_val,
-	        rinit = rinit, rprocess = rprocess, dmeasure = dmeasure,
-		theta = theta, ys = ys, thresh = 0, key = key)
-            pf_loglik_arr.append(pf_val)
-            elapsed_time1_arr.append(time.time() - start_time)
+pickle_file = out_dir + "/N-J-test.pkl"
+if (os.path.exists(pickle_file)):
+    NJresults = pickle.load(open(pickle_file,'rb'))
+else:   
+    NJresults = []
+    key = jax.random.PRNGKey(112)
+    for N_val in N_values:
+        for J_val in J_values:
+            print(f"Running with N={N_val}, J={J_val}...")
+            
+            xs, ys, key = generate_data(N_val, key)
+            pf_loglik_arr = []
+            mop_loglik_arr = []
+            elapsed_time1_arr = []
+            elapsed_time2_arr = []
+            
+            for i in range(N_reps):  
+                start_time = time.time()
+                pf_val = -pfilter(J = J_val,
+                rinit = rinit, rprocess = rprocess, dmeasure = dmeasure,
+            theta = theta, ys = ys, thresh = 0, key = key)
+                pf_loglik_arr.append(pf_val)
+                elapsed_time1_arr.append(time.time() - start_time)
 
-            start_time2 = time.time()
-            mop_val = -mop(J = J_val,
-	        rinit = rinit, rprocess = rprocess, dmeasure = dmeasure,
-		theta = theta, ys = ys, alpha = 0.9, key = key)
-            mop_loglik_arr.append(mop_val)
-            elapsed_time2_arr.append(time.time() - start_time2)
-        
-        pf_loglik_arr = np.array(pf_loglik_arr)
-        mop_loglik_arr = np.array(mop_loglik_arr)
-        elapsed_time1_arr = np.array(elapsed_time1_arr)
-        elapsed_time2_arr = np.array(elapsed_time2_arr)
+                start_time2 = time.time()
+                mop_val = -mop(J = J_val,
+                rinit = rinit, rprocess = rprocess, dmeasure = dmeasure,
+            theta = theta, ys = ys, alpha = 0.9, key = key)
+                mop_loglik_arr.append(mop_val)
+                elapsed_time2_arr.append(time.time() - start_time2)
+            
+            pf_loglik_arr = np.array(pf_loglik_arr)
+            mop_loglik_arr = np.array(mop_loglik_arr)
+            elapsed_time1_arr = np.array(elapsed_time1_arr)
+            elapsed_time2_arr = np.array(elapsed_time2_arr)
 
-        NJresults.append({
-            'N': N_val, 
-            'J': J_val, 
-            'pf_loglik': logmeanexp(pf_loglik_arr), 
-            'time_pfilter': np.mean(elapsed_time1_arr), 
-            'mop_loglik': logmeanexp(mop_loglik_arr), 
-            'time_mop': np.mean(elapsed_time2_arr), 
-        })
+            NJresults.append({
+                'N': N_val, 
+                'J': J_val, 
+                'pf_loglik': logmeanexp(pf_loglik_arr), 
+                'time_pfilter': np.mean(elapsed_time1_arr), 
+                'mop_loglik': logmeanexp(mop_loglik_arr), 
+                'time_mop': np.mean(elapsed_time2_arr), 
+            })
+    pickle.dump(NJresults,open(pickle_file,'wb'))
+
+
+
+ 
 ```
 
 ```{python}
