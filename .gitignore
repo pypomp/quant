@@ -3,7 +3,8 @@
 .jupyter/
 
 # For quarto users
-*_files
+# *_files # these are needed for the html if we choose not
+# use format: html: embed-resources: true
 *_quarto_ipynb
 
 # For emacs users
