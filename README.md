@@ -12,7 +12,7 @@ The quant tests also provide additional examples of pypomp, focused on technical
 
 ## Existing tests
 
-* [Testing pfilter on a linear Gaussian model](pfilter_LG/t1.html)
+* [Testing log-likelihood calculations on a linear Gaussian model](pfilter_LG/report.html). This is a test of correctness of pfilter and MOP(alpha) against a Kalman filter.
 
 * Other quant tests are available in [draft form](https://github.com/pypomp/quant).
 These test timing, memory, and iterated filtering for the linear Gaussian model.
