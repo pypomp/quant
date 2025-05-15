@@ -2,6 +2,10 @@
 title: 'Test the Linear Gaussian Model: A comparison with Kalman-filtering algorithm'
 jupyter: python3
 embed-resources: true
+format: 
+  html:
+    page-layout: full
+
 ---
 
 
@@ -21,6 +25,7 @@ import datetime
 # for saving partial results
 import os
 import pickle
+import shutil
 
 from tabulate import tabulate
 import pykalman
@@ -28,7 +33,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import jax.scipy.special
 
-# from tqdm import tqdm
 from pypomp.mop import mop
 from pypomp.pfilter import pfilter
 from pypomp.fit import fit
@@ -49,6 +53,11 @@ from importlib.metadata import version
 #| echo: false
 run_level = 2
 out_dir="results_" + str(run_level)
+
+# clean the cached results automatically at run level 0
+if run_level == 0 and os.path.exists(out_dir):
+    shutil.rmtree(out_dir)
+
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
@@ -76,11 +85,18 @@ The measurement model is
 where $Y_n$ is the observation vector at time $n$, $C$ is the observation matrix, and $V_n \sim \mathcal{N}(0, R)$ is the observation noise, normally distributed with mean $0$ and covariance $R$.
 
 
-(1) Set N (length of time series) to be `{python} N` and generate linear Gaussian states and observations:
+Here, we build the linear Gaussian POMP model explicitly rather than using `pypomp.LG`. 
+That is in part because the full functionality is not yet in place. 
+For example, we cannot simulate data from a POMP until the class has an `rmeasure`, which is not needed for filtering so has not been fully incorporated.
+
+Set N (length of time series) to be `{python} N` and generate linear Gaussian states and observations:
 
 ```{python}
 #| label: LG-POMP model
 #| code-fold: true
+
+# po = pypomp.LG(T=10)
+
 def get_thetas(theta):
     A = theta[0:4].reshape(2, 2)
     C = theta[4:8].reshape(2, 2)
