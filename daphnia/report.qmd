@@ -1,8 +1,17 @@
 ---
+title: "A four-species ecological mesocosm experiment and a test of pfilter_complete"
 jupyter: python3
+embed-resources: true
+format: 
+  html:
+    page-layout: full
+
 ---
 
+
 ```{python}
+#| label: imports
+#| echo: false
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
@@ -16,11 +25,24 @@ from jax.scipy.stats import nbinom
 
 from tqdm import tqdm 
 from pypomp.pfilter_complete import _pfilter_internal_complete
+
+import datetime
+from importlib.metadata import version
+
 ```
 
-LG model for testing pfilter_complete
+Using pypomp `{python} version('pypomp')` on `{python} datetime.date.today().strftime("%Y-%m-%d")`.
+Full code is in the quarto source file, [report.qmd](report.qmd).
+
+This report develops a daphnia mesocosm model and uses it to test pfilter_complete.
+It is currently an experimental document which could be taken further.
+IFAD, and a potential extension to panel data, may assist ongoing scientific investigation of this ecological system.
+
+The model could be constructed in a separate module, but here it is done explicitly:
 
 ```{python}
+#| label: model
+#| code-fold: true
 mesocosm_data = pd.read_excel("./data/Mesocosmdata.xls", sheet_name=0)
 
 key = jax.random.PRNGKey(2468)  
@@ -33,11 +55,11 @@ dentNoPara = dentNoPara.iloc[::-1].reset_index(drop=True)
 
 data = []
 dentadult = []
-trails = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+trials = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
 
-for trail in trails:
-    subset_data = dentNoPara[dentNoPara['rep'] == trail][['day', 'dent.adult']]
-    subset_dentadult = dentNoPara[dentNoPara['rep'] == trail][['dent.adult']]
+for trial in trials:
+    subset_data = dentNoPara[dentNoPara['rep'] == trial][['day', 'dent.adult']]
+    subset_dentadult = dentNoPara[dentNoPara['rep'] == trial][['dent.adult']]
     data.append(subset_data)
     dentadult.append(subset_dentadult)
 
@@ -244,6 +266,8 @@ print("particles:")
 print(particles)
 ```
 
+In principle, quarto could be used to integrate the R code reproducibly, but that has not yet been done.
+
 R result filter_mean(pfilter(pomplist_rm[[1]],Np=100, filter.mean=TRUE)):
 
 $$
@@ -273,7 +297,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn         0.000
 
 2
-
   Sn          10.4689787
   Jn          12.7693270
   error_count  0.0000000
@@ -281,7 +304,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn        10.4689787
 
 3
-
   Sn          10.1057278
   Jn           9.8360732
   error_count  0.0000000
@@ -289,7 +311,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn        10.1057278
 
 4
-
   Sn          9.3149447
   Jn          9.0771377
   error_count 0.0000000
@@ -297,7 +318,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn        9.3149447
 
 5
-
   Sn          8.6855567
   Jn          8.7603146
   error_count 0.0000000
@@ -305,7 +325,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn        8.6855567
 
 6
-
   Sn          8.2369538
   Jn          8.5663294
   error_count 0.0000000
@@ -313,7 +332,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn        8.2369538
 
 7
-
   Sn          7.9219585
   Jn          8.4310137
   error_count 0.0000000
@@ -321,7 +339,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn        7.9219585
 
 8
-
   Sn          7.7003044
   Jn          8.3339900
   error_count 0.0000000
@@ -329,7 +346,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn        7.7003044
 
 9
-
   Sn          7.5436637
   Jn          8.2641687
   error_count 0.0000000
@@ -337,7 +353,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn        7.5436637
 
 10
-
   Sn          7.432562
   Jn          8.213954
   error_count 0.000000
@@ -345,7 +360,6 @@ R result: filter_traj(pfilter(pomplist_rm[[1]],Np=100, filter.traj=TRUE)):
   T_Sn        7.432562
 
 11
-
   Sn          7.3535427
   Jn          8.1778783
   error_count 0.0000000
