@@ -13,7 +13,7 @@ import time
 import pypomp
 import unittest
 import tracemalloc
-import jax.numpy as np
+import jax.numpy as jnp
 import numpy as onp
 import pandas as pd
 import datetime
@@ -47,7 +47,7 @@ from importlib.metadata import version
 ```{python}
 #| label: run_level
 #| echo: false
-run_level = 0
+run_level = 2
 out_dir="results_" + str(run_level)
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
@@ -89,19 +89,19 @@ def get_thetas(theta):
     return A, C, Q, R
 
 def transform_thetas(A, C, Q, R):
-    return np.concatenate([A.flatten(), C.flatten(), Q.flatten(), R.flatten()])
+    return jnp.concatenate([A.flatten(), C.flatten(), Q.flatten(), R.flatten()])
 
 
 fixed = False
 key = jax.random.PRNGKey(111)
 angle = 0.2
 angle2 = angle if fixed else -0.5
-A = np.array([[np.cos(angle2), -np.sin(angle)],
-             [np.sin(angle), np.cos(angle2)]])
-C = np.eye(2)
-Q = np.array([[1, 1e-4],
+A = jnp.array([[jnp.cos(angle2), -jnp.sin(angle)],
+             [jnp.sin(angle), jnp.cos(angle2)]])
+C = jnp.eye(2)
+Q = jnp.array([[1, 1e-4],
              [1e-4, 1]]) # 100
-R = np.array([[1, .1],
+R = jnp.array([[1, .1],
             [.1, 1]]) #/ 10
      
 theta = transform_thetas(A, C, Q, R)
@@ -109,7 +109,7 @@ theta = transform_thetas(A, C, Q, R)
 def generate_data(N, key):
     xs = []
     ys = []
-    x = np.ones(2)
+    x = jnp.zeros(2)
     for i in range(N):
         key, subkey = jax.random.split(key)
         x = jax.random.multivariate_normal(key=subkey, mean=A @ x, cov=Q)
@@ -117,13 +117,13 @@ def generate_data(N, key):
         y = jax.random.multivariate_normal(key=subkey, mean=C @ x, cov=R)
         xs.append(x)
         ys.append(y)
-    xs = np.array(xs)
-    ys = np.array(ys)
+    xs = jnp.array(xs)
+    ys = jnp.array(ys)
     return xs, ys, key
 
 
 def custom_rinit(theta, J, covars=None):
-    return np.ones((J, 2))
+    return jnp.zeros((J, 2))
 
 
 def custom_rproc(state, theta, key, covars=None):
@@ -151,11 +151,20 @@ dmeasures = jax.vmap(custom_dmeas, (None, 0, 0))
 #| label: parameter transformation
 #| echo: false
 def logmeanexp(x):
-   x_array = np.array(x)
-   x_max = np.max(x_array)
-   log_mean_exp = np.log(np.mean(np.exp(x_array - x_max))) + x_max
+   x_array = jnp.array(x)
+   x_max = jnp.max(x_array)
+   log_mean_exp = jnp.log(jnp.mean(jnp.exp(x_array - x_max))) + x_max
    return log_mean_exp
+
+
+def logmeanexp_se(x):
+   jack = jnp.zeros(len(x))
+   for i in range(len(x)):
+       jack=jack.at[i].set(logmeanexp(jnp.delete(x,i)))
+   se = (len(jack)-1)*jnp.std(jack)/jnp.sqrt(len(jack))
+   return se
    
+
 ```
 
 Set J=`{python} J` particles and compare the estimated log-likelihood between Kalman filtering and the log-mean-exponential computed over `{python} N_reps` replications for various methods, including classical particle filtering and MOP, etc.
@@ -165,34 +174,41 @@ Set J=`{python} J` particles and compare the estimated log-likelihood between Ka
 xs, ys, key = generate_data(N, key)
 kf = pykalman.KalmanFilter(
     transition_matrices=A, observation_matrices=C, 
-    transition_covariance=Q, observation_covariance=R)
+    transition_covariance=Q, observation_covariance=R,
+    initial_state_covariance=Q)
 print("kf loglik =", kf.loglikelihood(ys))
 ```
 
 ```{python}
-#| label: pfilter test
-loglike = []
-for i in range(N_reps):  
-    key, subkey = jax.random.split(key)
-    pfilter_val = -_pfilter_internal(
-        theta, ys, J = J, rinit = rinit,
-	rprocess = rprocess, dmeasure = dmeasure,
-	covars = None, key= subkey, thresh = -1)
-    loglike.append(pfilter_val)
+#| label: pfilter-test
+pickle_file = out_dir + "/pfilter-test.pkl"
+if (os.path.exists(pickle_file)):
+    loglike = pickle.load(open(pickle_file,'rb'))
+else:   
+    loglike = []
+    for i in range(N_reps):  
+        key, subkey = jax.random.split(key)
+        pfilter_val = -_pfilter_internal(
+            theta, ys, J = J, rinit = rinit,
+            rprocess = rprocess, dmeasure = dmeasure,
+            covars = None, key= subkey, thresh = -1)
+        loglike.append(pfilter_val)
+    pickle.dump(loglike,open(pickle_file,'wb'))
 
-loglike_ = np.array(loglike)
+loglike_ = jnp.array(loglike)
 
 print("Logmeanexp of Particle Filtering =", logmeanexp(loglike))
+print("SE on logmeanexp  =", logmeanexp_se(loglike_))
 print("difference between Kalman-Filtering and logmeanexp of Particle Filtering =",
     kf.loglikelihood(ys) - (logmeanexp(loglike)))
 ```
 
-By calculating the difference between Kalman-filtering and Paticle Filtering algorithm, we discovered that the value of difference can be less than 0.1, indicating that we get a reasonable inference result from the pfilter algorithm.
+We check that the difference between the Kalman filter log-likelihood and the particle filter log-likelihood is comparable to the Monte Carlo error, and that the Monte Carlo error is small as a result of many particles and many replications.
 
 Next, we test the ouput of the MOP algorithm. The pypomp MOP algorithm is set to be $\phi = \theta$. Under this case, the MOP algorithm should be equivalent with the particle filter algorithm, and have the same output values when setting the same random seeds.
 
 ```{python}
-#| label: test MOP at different alphas
+#| label: test-MOP-at-different-alpha
 #| output: asis
 alphas = [0, 0.1, 0.3, 0.6, 0.9, 1]
 
@@ -201,30 +217,35 @@ alphas = [0, 0.1, 0.3, 0.6, 0.9, 1]
 key = jax.random.PRNGKey(0)  # Use a fixed seed for reproducibility
 subkeys = jax.random.split(key, 100)  # Pre-generate 100 keys
 
-results = []
-for alpha in alphas:
-    loglike_mop = []
+pickle_file = out_dir + "/test-alpha.pkl"
+if (os.path.exists(pickle_file)):
+    file=open(pickle_file,'rb')
+    results = pickle.load(file)
+    loglike_pf = pickle.load(file)
+else:   
+    results = []
+    for alpha in alphas:
+        loglike_mop = []
+        for i, subkey in enumerate(subkeys):  
+            mop_val = -_mop_internal(theta, ys, J=J, rinit=rinit,
+                rprocess=rprocess, dmeasure=dmeasure,
+                covars=None, key=subkey, alpha=alpha)
+            loglike_mop.append(mop_val)
+        loglike_mop = jnp.array(loglike_mop)
+        logmeanexp_val = logmeanexp(loglike_mop)
+        difference = kf.loglikelihood(ys) - logmeanexp_val
+        results.append((alpha, logmeanexp_val, difference))
+    # Use the same random key to test the particle filter output
+    loglike_pf = []
     for i, subkey in enumerate(subkeys):  
-        mop_val = -_mop_internal(theta, ys, J=J, rinit=rinit,
-	    rprocess=rprocess, dmeasure=dmeasure,
-	    covars=None, key=subkey, alpha=alpha)
-        loglike_mop.append(mop_val)
-    loglike_mop = np.array(loglike_mop)
-    logmeanexp_val = logmeanexp(loglike_mop)
-    difference = kf.loglikelihood(ys) - logmeanexp_val
-    
-    results.append((alpha, logmeanexp_val, difference))
-#    print(f"Alpha: {alpha}, Logmeanexp: {logmeanexp_val}, Difference: {difference}")
-
-
-# Use the same random key to test the particle filter output
-loglike_pf = []
-for i, subkey in enumerate(subkeys):  
-    pfilter_val = -_pfilter_internal(
-        theta, ys, J = J, rinit = rinit,
-	rprocess = rprocess, dmeasure = dmeasure,
-	covars = None, key= subkey, thresh = -1)
-    loglike_pf.append(pfilter_val)
+        pfilter_val = -_pfilter_internal(
+            theta, ys, J = J, rinit = rinit,
+            rprocess = rprocess, dmeasure = dmeasure,
+            covars = None, key= subkey, thresh = -1)
+        loglike_pf.append(pfilter_val)
+    file = open(pickle_file,'wb')
+    pickle.dump(results,file)
+    pickle.dump(loglike_pf,file)
 
 
 alpha_table=tabulate(results, tablefmt="grid", headers=("alpha","pf","kalman-pf"))
@@ -273,18 +294,18 @@ else:
                 mop_loglik_arr.append(mop_val)
                 elapsed_time2_arr.append(time.time() - start_time2)
             
-            pf_loglik_arr = np.array(pf_loglik_arr)
-            mop_loglik_arr = np.array(mop_loglik_arr)
-            elapsed_time1_arr = np.array(elapsed_time1_arr)
-            elapsed_time2_arr = np.array(elapsed_time2_arr)
+            pf_loglik_arr = jnp.array(pf_loglik_arr)
+            mop_loglik_arr = jnp.array(mop_loglik_arr)
+            elapsed_time1_arr = jnp.array(elapsed_time1_arr)
+            elapsed_time2_arr = jnp.array(elapsed_time2_arr)
 
             NJresults.append({
                 'N': N_val, 
                 'J': J_val, 
                 'pf_loglik': logmeanexp(pf_loglik_arr), 
-                'time_pfilter': np.mean(elapsed_time1_arr), 
+                'time_pfilter': jnp.mean(elapsed_time1_arr), 
                 'mop_loglik': logmeanexp(mop_loglik_arr), 
-                'time_mop': np.mean(elapsed_time2_arr), 
+                'time_mop': jnp.mean(elapsed_time2_arr), 
             })
     pickle.dump(NJresults,open(pickle_file,'wb'))
 
