@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#SBATCH --job-name=gpu-pypomp-test
+#SBATCH --mail-user=ionides@umich.edu
+#SBATCH --mail-type=BEGIN,END,FAIL
+ 
+#SBATCH --account=ionides0
+#SBATCH --partition=gpu
+
+#SBATCH --gpus=v100:1
+#SBATCH --cpus-per-gpu=1
+
+## Used 2.6GB on 24-09-24
+#SBATCH --mem=4GB
+
+## Used: 4.5 min on 24-09-24 
+## wall time hours:minutes:seconds
+#SBATCH --time=00:10:00
+
+###   Load software modules
+
+module load python/3.12.1
+module list
+
+####  Commands your job should run follow this line
+
+echo "Running on $SLURM_JOB_NODELIST"
+echo "Running in $(pwd)"
+
+source ~/opt/py3.12/bin/activate
+pytest ~/pypomp/test
+
