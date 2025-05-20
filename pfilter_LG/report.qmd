@@ -173,11 +173,18 @@ def logmeanexp(x):
    return log_mean_exp
 
 
+#def logmeanexp_se(x):
+#   jack = jnp.zeros(len(x))
+#   for i in range(len(x)):
+#       jack=jack.at[i].set(logmeanexp(jnp.delete(x,i)))
+#   se = (len(jack)-1)*jnp.std(jack)/jnp.sqrt(len(jack))
+#   return se
+
 def logmeanexp_se(x):
-   jack = jnp.zeros(len(x))
+   jack = np.zeros(len(x))
    for i in range(len(x)):
-       jack=jack.at[i].set(logmeanexp(jnp.delete(x,i)))
-   se = (len(jack)-1)*jnp.std(jack)/jnp.sqrt(len(jack))
+       jack[k] = logmeanexp(np.delete(x,i))
+   se = (len(jack)-1)*np.std(jack)/np.sqrt(len(jack))
    return se
    
 
