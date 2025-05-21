@@ -29,5 +29,9 @@
 # For Mac users
 .DS_Store
 
+# To avoid temporary files
+bak
+tmp
+
 
 

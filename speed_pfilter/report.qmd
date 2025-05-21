@@ -1,0 +1,83 @@
+---
+title: 'Speed test for pypomp on cpu and gpu'
+jupyter: python3
+embed-resources: true
+format: 
+    html:
+        page-layout: full
+
+---
+
+```{python}
+#| label: run_level
+#| echo: false
+import os
+import datetime
+import shutil
+from importlib.metadata import version
+
+run_level = 2
+
+out_dir="results_" + str(run_level)
+
+cpu_out_dir = "cpu/" + out_dir 
+
+if not os.path.exists(cpu_out_dir):
+    exit("no results for cpu")
+
+```
+
+
+Testing pypomp `{python} version('pypomp')` on `{python} datetime.date.today().strftime("%Y-%m-%d")` at run level `{python} run_level` (0 is for debugging, 2 is full-length).
+
+```{python}
+#| label: imports
+#| echo: false
+import jax
+import time
+import pypomp as pp
+import unittest
+import tracemalloc
+import jax.numpy as jnp
+import numpy as np
+import pandas as pd
+
+# for saving partial results
+import pickle
+
+# import pykalman
+import seaborn as sns
+import matplotlib.pyplot as plt
+import jax.scipy.special
+from jax.scipy.special import logit, expit
+
+from tqdm import tqdm
+
+jax.config.update("jax_platform_name", "cpu")
+```
+
+```{python}
+#| label: read-cpu-mif-results
+#| echo: true
+pickle_file = cpu_out_dir + "/mif-test.pkl"
+file = open(pickle_file,'rb')
+[elapsed1,loglik1,elapsed2,loglik2] = pickle.load(file)
+```
+
+Time taken for `mif` on cpu: first call `{python} round(elapsed1,6)`s, second call  `{python} round(elapsed2,6)`s.
+
+Check that first log-likelihood evaluation, `{python} str(round(loglik1,6))`, matches second evaluation,  `{python} str(round(loglik2,6))`. 
+Note that this is not currently working, for some reason
+
+```{python}
+#| label: read-cpu-pfilter-results
+#| echo: true
+pickle_file = cpu_out_dir + "/pfilter-test.pkl"
+file = open(pickle_file,'rb')
+[elapsed3,loglik3,elapsed4,loglik4] = pickle.load(file)
+```
+
+Time taken: first call `{python} round(elapsed3,6)`s, second call  `{python} round(elapsed4,6)`s.
+
+Check that first log-likelihood evaluation, `{python} str(round(loglik3,6))`, matches second evaluation,  `{python} str(round(loglik4,6))`. 
+

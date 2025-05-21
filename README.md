@@ -29,13 +29,15 @@ At a later date, some of these tests could be selected for a tutorial or a softw
 
 Each test has its own directory, within which we have a standard file structure. We don't have to follow this exactly. For example, it may be helpful to include R code (to compare against R-pomp), or it may make sense to have various py code files, some of which get run on greatlakes and others on a laptop.
 
+* report.qmd. A report presenting and discussing the results pulled in from the results directory. qmd is currently the preferred format, since it plays nicely with git and facilitates cross-testing against [R-pomp](https://kingaa.github.io/pomp/). report.ipynb is also acceptable.
+
+* There may be other qmd or ipynb files, for exploratory or supplementary analysis, but `report.qmd` should be the main one. Supplementary analysis may be less frequently updated for new pypomp versions.
+
 * code.py. The test code, which can be run on greatlakes, or wherever
 
 * code.sbat. A slurm batch file for running code.py on greatlakes
 
 * results. A directory with saved results from code.py
-
-* report.ipynb or report.qmd. A report presenting and discussing the results pulled in from the results directory. qmd is currently the preferred format, since it plays nicely with git and facilitates cross-testing against [R-pomp](https://kingaa.github.io/pomp/).
 
 * report.html. The rendering of report.ipynb
 
