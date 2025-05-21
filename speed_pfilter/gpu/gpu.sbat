@@ -28,5 +28,7 @@ echo "Running on $SLURM_JOB_NODELIST"
 echo "Running in $(pwd)"
 
 source ~/opt/py3.12/bin/activate
-pytest ~/pypomp/test
+python -m report
+
+
 
