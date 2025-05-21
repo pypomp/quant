@@ -1,0 +1,135 @@
+---
+title: 'Speed test for pypomp on cpu'
+jupyter: python3
+embed-resources: true
+format: 
+    html:
+        page-layout: full
+
+---
+
+```{python}
+#| label: run_level
+#| echo: false
+import os
+import datetime
+import shutil
+from importlib.metadata import version
+
+run_level = 0
+out_dir="results_" + str(run_level)
+
+# clean the cached results automatically at run level 0
+if run_level == 0 and os.path.exists(out_dir):
+    shutil.rmtree(out_dir)
+
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
+
+
+# N = [10, 50, 100][run_level]
+J = [10,100,1000][run_level]
+```
+
+Testing pypomp `{python} version('pypomp')` on `{python} datetime.date.today().strftime("%Y-%m-%d")` at run level `{python} run_level` (0 is for debugging, 2 is full-length).
+
+```{python}
+#| label: imports
+#| echo: false
+import jax
+import time
+import pypomp as pp
+import unittest
+import tracemalloc
+import jax.numpy as jnp
+import numpy as np
+import pandas as pd
+
+# for saving partial results
+import pickle
+
+# import pykalman
+import seaborn as sns
+import matplotlib.pyplot as plt
+import jax.scipy.special
+from jax.scipy.special import logit, expit
+
+from tqdm import tqdm
+
+```
+
+```{python}
+jax.config.update("jax_platform_name", "cpu")
+```
+
+```{python}
+#| label: oo-test
+#| echo: true
+d = pp.dacca()
+loglik1, params1 = d.mif(
+    sigmas=0.02, sigmas_init=0.1, J=J, thresh=-1, key=jax.random.key(111), M=1
+    )
+```
+
+```{python}
+#| label: functional-test
+#| echo: true
+#| eval: true
+import pypomp.pfilter
+pypomp.pfilter(theta=d.theta,
+    ys =d.ys, J = J, rinit = d.rinit, rproc = d.rproc,
+    dmeas = d.dmeas, covars = d.covars, thresh = -1,key=jax.random.key(111))
+#pp.mop(J = J, rinit = d.rinit.struct_pf, rprocess = d.rprocess.struct_pf, dmeasure = d.dmeasure, theta = d.theta, ys = d.ys, covars = d.covars, alpha = 0.9)
+
+
+```
+
+```{python}
+#| label: memory
+#| eval: false
+def run_pfilter_with_memory(J, rinit, rprocess, dmeasure, theta, ys, covars, thresh):
+    tracemalloc.start()  
+    try:
+        result = pfilter(J=J, rinit=rinit, rprocess=rprocess, dmeasure=dmeasure, 
+                         theta=theta, ys=ys, covars=covars, thresh=thresh)
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.reset_peak()
+    finally:
+        tracemalloc.stop()  
+    return result, peak / 1024 /1024
+
+# 100, 500, 1000, 5000, 100000 on GL try LG first (compilation? laptop???)
+J_values = [51, 101, 151, 300, 500]  
+results = []
+memory_usages = []
+
+for J in J_values:
+    result, mem_usage = run_pfilter_with_memory(
+        J, rinit_dacca, rprocess_dacca, dmeasure_dacca, theta, ys, covars, thresh=-1
+    )
+    results.append(result)
+    memory_usages.append(mem_usage)
+```
+
+```{python}
+#| label: plots
+#| eval: false
+plt.figure(figsize=(12, 5))
+plt.subplot(1, 2, 1)
+plt.plot(J_values, results, marker='o')
+plt.xlabel("J")
+plt.ylabel("Log-Likelihood")
+plt.title("Log-Likelihood vs. J")
+plt.grid()
+
+plt.subplot(1, 2, 2)
+plt.plot(J_values, memory_usages, marker='o', color='red')
+plt.xlabel("J")
+plt.ylabel("Memory Usage (MB)")
+plt.title("Memory Usage vs. J")
+plt.grid()
+
+plt.tight_layout()
+plt.show()
+```
+

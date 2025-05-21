@@ -1,6 +1,6 @@
 default: html-docs
 
-html-docs: report.html 
+html-docs: short.html 
 
 %.html: %.qmd
 	quarto render "$*.qmd" --to html
