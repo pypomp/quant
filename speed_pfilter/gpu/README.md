@@ -4,11 +4,21 @@
 
 * Using one of the 52 Nvidia Tesla V100 GPUs.
 
-The test is run with
+* report.qmd is essentially the same as `../cpu/report.qmd`.
+
+* The code is run on greatlakes on a .py
+```
+quarto convert report.qmd    # makes report.ipynb
+jupyter nbconvert --to python report.ipynb # makes report.py
+rm report.ipynb # tidying up
+python -m report
+```
+
+The test is run on greatlakes gpu with 
 ```
 sbatch gpu.sbat
 ```
-which produces a file `results/gpu.pkl` that is read by the report generated at gpu.html. These results also get incorporated into combined reports in the upstream directory.
+which produces files in `results_2`, e.g., `results_2/mif-test.pkl`, that are read by the report generated at gpu.html. These results also get incorporated into combined reports in the upstream directory.
 
 ## Notes to help setup/test/debug the code.
 

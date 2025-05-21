@@ -1,6 +1,9 @@
 # No need to save level 0 results
 *_0
 
+# For python users
+__pycache__
+
 # For jupyter users
 .ipynb_checkpoints/
 .jupyter/
@@ -32,6 +35,8 @@
 # To avoid temporary files
 bak
 tmp
+tmp*
+
 
 
 
