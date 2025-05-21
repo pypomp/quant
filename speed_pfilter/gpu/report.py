@@ -65,7 +65,7 @@ from jax.scipy.special import logit, expit
 
 from tqdm import tqdm
 
-jax.config.update("jax_platform_name", "cpu")
+# jax.config.update("jax_platform_name", "cpu")
 
 
 # In[ ]:
