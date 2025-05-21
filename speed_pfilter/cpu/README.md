@@ -2,9 +2,9 @@
 
 ## Testing on cpus; the greatlakes cpu partition or a Mac
 
-The basic benchmark test is run with
+The basic cpu benchmark test is run with
 ```
-make short.html
+make report.html
 ```
 which produces a file `results/cpu.pkl` that is read by the report generated at cpu.html.
 These results also get incorporated into combined reports in the upstream directory.
