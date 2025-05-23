@@ -1,0 +1,35 @@
+
+====  25-05-23 ==== mac ====
+
+2025-05-23 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.0.11 for dacca with J = 1000 
+mif: with jit 8.583893 s,  pre-jitted 0.002077 s 
+pfilter: with jit 8.657528 s,  pre-jitted 0.001038 s 
+
+
+
+==== 25-05-23 ==== greatlakes gpu ====
+
+salloc --account=ionides1 --partition=gpu --gpus=v100:1 --cpus-per-gpu=2 --mem=16000
+module load python
+module load cuda/12.3.0
+# use python environment set up with
+# python -m venv ~/opt/py3.12
+source ~/opt/py3.12/bin/activate
+pip install ~/git/pypomp
+
+then ran report.py from the Python prompt:
+import report
+
+# >>> report.elapsed1
+# 66.37775782682002
+# >>> report.elapsed2
+# 0.25251244008541107
+# >>> report.elapsed3
+# 66.6533479783684
+# >>> report.elapsed4
+# 0.2569975256919861
+
+This is far too slow.
+
+==== ==== ====

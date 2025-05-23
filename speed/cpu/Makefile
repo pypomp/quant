@@ -5,6 +5,12 @@ html-docs: report.html
 %.html: %.qmd
 	quarto render "$*.qmd" --to html
 
+
+%.py: %.qmd
+	quarto convert "$*.qmd"
+	jupyter nbconvert --to python "$*.ipynb"
+	rm "$*.ipynb"
+
 %.html: %.md
 	Rscript --vanilla -e "rmarkdown::render(\"$*.md\",output_format=\"html_document\")"
 

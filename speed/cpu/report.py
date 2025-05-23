@@ -65,6 +65,8 @@ from jax.scipy.special import logit, expit
 
 from tqdm import tqdm
 
+# we could explicitly as for a cpu test, but this is usually not necessary
+# instead, we record what jax is using, via print(jax.devices())
 # jax.config.update("jax_platform_name", "cpu")
 
 
@@ -75,27 +77,28 @@ from tqdm import tqdm
 #| echo: true
 d = pp.dacca()
 start = time.perf_counter()
-loglik1, params1 = d.mif(
-    sigmas=0.02, sigmas_init=0.1, J=J, thresh=-1, key=jax.random.key(111), M=1
-    )
+#loglik1,params1 = d.mif(
+mif_out1 = d.mif(
+    sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0, monitor=False
+)
 end = time.perf_counter()
 elapsed1 = end - start
+loglik1 = mif_out1['logLik'][-1]
+
 start = time.perf_counter()
-loglik2, params2 = d.mif(
-    sigmas=0.02, sigmas_init=0.1, J=J, thresh=-1, key=jax.random.key(111), M=1
-    )
+#loglik2,params2 = d.mif(
+mif_out2 = d.mif(
+    sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0, monitor=False
+)
 end = time.perf_counter()
 elapsed2 = end - start
+loglik2 = mif_out2['logLik'][-1]
+
 pickle_file = out_dir + "/mif-test.pkl"
 pickle_data = [elapsed1,loglik1,elapsed2,loglik2]
 file=open(pickle_file,'wb')
 pickle.dump(pickle_data,file)
 
-
-# Time taken: first call `{python} round(elapsed1,6)`s, second call  `{python} round(elapsed2,6)`s.
-# 
-# Check that first log-likelihood evaluation, `{python} str(round(loglik1,6))`, matches second evaluation,  `{python} str(round(loglik2,6))`. 
-# Note that this is not currently working, for some reason
 
 # In[ ]:
 
@@ -122,8 +125,25 @@ pickle_data = [elapsed3,loglik3,elapsed4,loglik4]
 file=open(pickle_file,'wb')
 pickle.dump(pickle_data,file)
 
+#pp.mop(J = J, rinit = d.rinit.struct_pf, rprocess = d.rprocess.struct_pf, dmeasure = d.dmeasure, theta = d.theta, ys = d.ys, covars = d.covars, alpha = 0.9)
+
 
 # Time taken: first call `{python} round(elapsed3,6)`s, second call  `{python} round(elapsed4,6)`s.
 # 
 # Check that first log-likelihood evaluation, `{python} str(round(loglik3,6))`, matches second evaluation,  `{python} str(round(loglik4,6))`. 
-# 
+
+# In[ ]:
+
+
+#| label: terminal-output
+#| echo: false
+#| eval: true
+print(
+    datetime.date.today().strftime("%Y-%m-%d"), "pypomp speed test using",jax.devices(), 
+    "\npypomp", version('pypomp'), "for dacca with J =", J, 
+    "\nmif: with jit", round(elapsed1,6), "s, ",
+        "pre-jitted", round(elapsed2,6), "s",
+    "\npfilter: with jit", round(elapsed3,6), "s, ",
+        "pre-jitted", round(elapsed4,6), "s \n"
+)
+
