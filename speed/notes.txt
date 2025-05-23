@@ -1,4 +1,11 @@
 
+==== 25-05-23 ==== greatlakes cpu ====
+
+2025-05-23 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.0.9 for dacca with J = 1000 
+mif: with jit 28.267137 s,  pre-jitted 0.002305 s 
+pfilter: with jit 55.952986 s,  pre-jitted 0.001007 s 
+
 ====  25-05-23 ==== mac ====
 
 2025-05-23 pypomp speed test using [CpuDevice(id=0)] 
