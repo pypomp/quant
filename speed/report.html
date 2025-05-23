@@ -2210,6 +2210,23 @@ vertical-align: -.125em;
 </div>
 <p>Time taken: first call 7.833785s, second call 0.000296s.</p>
 <p>Check that first log-likelihood evaluation, 3752.8093, matches second evaluation, 3752.8093.</p>
+<section id="move-on-to-the-gpu-experiment" class="level2">
+<h2 class="anchored" data-anchor-id="move-on-to-the-gpu-experiment">Move on to the GPU experiment</h2>
+<div id="read-gpu-mif-results" class="cell" data-execution_count="5">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>pickle_file <span class="op">=</span> gpu_out_dir <span class="op">+</span> <span class="st">&quot;/mif-test.pkl&quot;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span> <span class="op">=</span> <span class="bu">open</span>(pickle_file,<span class="st">&#39;rb&#39;</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>[elapsed1,loglik1,elapsed2,loglik2] <span class="op">=</span> pickle.load(<span class="bu">file</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Time taken for <code>mif</code> on gpu: first call 65.098349s, second call 0.281261s.</p>
+<p>Check that first log-likelihood evaluation, [], matches second evaluation, []. Note that this is not currently working, for some reason</p>
+<div id="read-gpu-pfilter-results" class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>pickle_file <span class="op">=</span> gpu_out_dir <span class="op">+</span> <span class="st">&quot;/pfilter-test.pkl&quot;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span> <span class="op">=</span> <span class="bu">open</span>(pickle_file,<span class="st">&#39;rb&#39;</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>[elapsed3,loglik3,elapsed4,loglik4] <span class="op">=</span> pickle.load(<span class="bu">file</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Time taken: first call 65.310525s, second call 0.254322s.</p>
+<p>Check that first log-likelihood evaluation, 3747.7598, matches second evaluation, 3747.7598.</p>
+</section>
 
 </main>
 <!-- /main column -->

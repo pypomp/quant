@@ -21,6 +21,7 @@ run_level = 2
 out_dir="results_" + str(run_level)
 
 cpu_out_dir = "cpu/" + out_dir 
+gpu_out_dir = "gpu/" + out_dir 
 
 if not os.path.exists(cpu_out_dir):
     exit("no results for cpu")
@@ -52,8 +53,6 @@ import jax.scipy.special
 from jax.scipy.special import logit, expit
 
 from tqdm import tqdm
-
-jax.config.update("jax_platform_name", "cpu")
 ```
 
 ```{python}
@@ -73,6 +72,35 @@ Note that this is not currently working, for some reason
 #| label: read-cpu-pfilter-results
 #| echo: true
 pickle_file = cpu_out_dir + "/pfilter-test.pkl"
+file = open(pickle_file,'rb')
+[elapsed3,loglik3,elapsed4,loglik4] = pickle.load(file)
+```
+
+Time taken: first call `{python} round(elapsed3,6)`s, second call  `{python} round(elapsed4,6)`s.
+
+Check that first log-likelihood evaluation, `{python} str(round(loglik3,6))`, matches second evaluation,  `{python} str(round(loglik4,6))`. 
+
+
+
+## Move on to the GPU experiment
+
+```{python}
+#| label: read-gpu-mif-results
+#| echo: true
+pickle_file = gpu_out_dir + "/mif-test.pkl"
+file = open(pickle_file,'rb')
+[elapsed1,loglik1,elapsed2,loglik2] = pickle.load(file)
+```
+
+Time taken for `mif` on gpu: first call `{python} round(elapsed1,6)`s, second call  `{python} round(elapsed2,6)`s.
+
+Check that first log-likelihood evaluation, `{python} str(round(loglik1,6))`, matches second evaluation,  `{python} str(round(loglik2,6))`. 
+Note that this is not currently working, for some reason
+
+```{python}
+#| label: read-gpu-pfilter-results
+#| echo: true
+pickle_file = gpu_out_dir + "/pfilter-test.pkl"
 file = open(pickle_file,'rb')
 [elapsed3,loglik3,elapsed4,loglik4] = pickle.load(file)
 ```

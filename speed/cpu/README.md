@@ -14,6 +14,13 @@ make long.html
 ```
 and this provides additional diagnostics.
 
+Additionally, we can extract the code into a .py file and run at the command line:
+```
+make report.py 
+python -m report
+```
+
+The text output from this can be added, with comments, to `speed/notes.txt`.
 
 ## Notes to help setup/test/debug the code.
 

@@ -58,7 +58,10 @@ from jax.scipy.special import logit, expit
 
 from tqdm import tqdm
 
-jax.config.update("jax_platform_name", "cpu")
+# we could explicitly as for a cpu test, but this is usually not necessary
+# instead, we record what jax is using, via print(jax.devices())
+# jax.config.update("jax_platform_name", "cpu")
+
 ```
 
 ```{python}
@@ -66,27 +69,28 @@ jax.config.update("jax_platform_name", "cpu")
 #| echo: true
 d = pp.dacca()
 start = time.perf_counter()
-loglik1, params1 = d.mif(
-    sigmas=0.02, sigmas_init=0.1, J=J, thresh=-1, key=jax.random.key(111), M=1
-    )
+#loglik1,params1 = d.mif(
+mif_out1 = d.mif(
+    sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0, monitor=False
+)
 end = time.perf_counter()
 elapsed1 = end - start
+loglik1 = mif_out1['logLik'][-1]
+
 start = time.perf_counter()
-loglik2, params2 = d.mif(
-    sigmas=0.02, sigmas_init=0.1, J=J, thresh=-1, key=jax.random.key(111), M=1
-    )
+#loglik2,params2 = d.mif(
+mif_out2 = d.mif(
+    sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0, monitor=False
+)
 end = time.perf_counter()
 elapsed2 = end - start
+loglik2 = mif_out2['logLik'][-1]
+
 pickle_file = out_dir + "/mif-test.pkl"
 pickle_data = [elapsed1,loglik1,elapsed2,loglik2]
 file=open(pickle_file,'wb')
 pickle.dump(pickle_data,file)
 ```
-
-Time taken: first call `{python} round(elapsed1,6)`s, second call  `{python} round(elapsed2,6)`s.
-
-Check that first log-likelihood evaluation, `{python} str(round(loglik1,6))`, matches second evaluation,  `{python} str(round(loglik2,6))`. 
-Note that this is not currently working, for some reason
 
 ```{python}
 #| label: functional-test
@@ -121,53 +125,17 @@ Time taken: first call `{python} round(elapsed3,6)`s, second call  `{python} rou
 Check that first log-likelihood evaluation, `{python} str(round(loglik3,6))`, matches second evaluation,  `{python} str(round(loglik4,6))`. 
 
 ```{python}
-#| label: memory
-#| eval: false
+#| label: terminal-output
 #| echo: false
-def run_pfilter_with_memory(J, rinit, rprocess, dmeasure, theta, ys, covars, thresh):
-    tracemalloc.start()  
-    try:
-        result = pfilter(J=J, rinit=rinit, rprocess=rprocess, dmeasure=dmeasure, 
-                         theta=theta, ys=ys, covars=covars, thresh=thresh)
-        current, peak = tracemalloc.get_traced_memory()
-        tracemalloc.reset_peak()
-    finally:
-        tracemalloc.stop()  
-    return result, peak / 1024 /1024
+#| eval: true
+print(
+    datetime.date.today().strftime("%Y-%m-%d"), "pypomp speed test using",jax.devices(), 
+    "\npypomp", version('pypomp'), "for dacca with J =", J, 
+    "\nmif: with jit", round(elapsed1,6), "s, ",
+        "pre-jitted", round(elapsed2,6), "s",
+    "\npfilter: with jit", round(elapsed3,6), "s, ",
+        "pre-jitted", round(elapsed4,6), "s \n"
+)
 
-# 100, 500, 1000, 5000, 100000 on GL try LG first (compilation? laptop???)
-J_values = [51, 101, 151, 300, 500]  
-results = []
-memory_usages = []
 
-for J in J_values:
-    result, mem_usage = run_pfilter_with_memory(
-        J, rinit_dacca, rprocess_dacca, dmeasure_dacca, theta, ys, covars, thresh=-1
-    )
-    results.append(result)
-    memory_usages.append(mem_usage)
 ```
-
-```{python}
-#| label: plots
-#| eval: false
-#| echo: false
-plt.figure(figsize=(12, 5))
-plt.subplot(1, 2, 1)
-plt.plot(J_values, results, marker='o')
-plt.xlabel("J")
-plt.ylabel("Log-Likelihood")
-plt.title("Log-Likelihood vs. J")
-plt.grid()
-
-plt.subplot(1, 2, 2)
-plt.plot(J_values, memory_usages, marker='o', color='red')
-plt.xlabel("J")
-plt.ylabel("Memory Usage (MB)")
-plt.title("Memory Usage vs. J")
-plt.grid()
-
-plt.tight_layout()
-plt.show()
-```
-
