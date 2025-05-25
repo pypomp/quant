@@ -1,4 +1,8 @@
 
+==== 25-05-24 ==== bo's gpu ====
+
+For windows system: JAX does not support NVIDIA GPU under Windows framework. 2. For the Linux system on my desktop: the elapsed1 was around 23s and elapsed2 was around 0.36s with CUDA version 12.3.0.
+
 ==== 25-05-23 ==== greatlakes cpu ====
 
 2025-05-23 pypomp speed test using [CpuDevice(id=0)] 
@@ -38,5 +42,16 @@ import report
 # 0.2569975256919861
 
 This is far too slow.
+
+==== 25-05-22 ==== kevin's gpu ====
+
+>>> elapsed1
+7.07886975700967
+>>> elapsed2
+0.0008318440231960267
+>>> elapsed3
+6.5981464450014755
+>>> elapsed4
+0.0002133459784090519
 
 ==== ==== ====
