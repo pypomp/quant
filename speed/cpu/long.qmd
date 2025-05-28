@@ -8,6 +8,8 @@ format:
 
 ---
 
+# NOTE: THIS DOCUMENT IS NOT YET DEVELOPED. IT IS INTENDED AS A PLACE TO PUT EXTENSIONS TO REPORT.QMD
+
 ```{python}
 import jax
 import time

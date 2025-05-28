@@ -1,4 +1,20 @@
 
+==== 25-05-28 ==== ed's mac studio ====
+
+2025-05-28 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.0.13 for dacca with J = 1000 
+Python 3.12.9 , jax 0.5.3 , jaxlib 0.5.3 
+mif: with jit 1.246296 s,  pre-jitted 0.00158 s 
+pfilter: with jit 0.915628 s,  pre-jitted 0.876334 s 
+
+and, after upgrading jax,
+
+2025-05-28 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.0.13 for dacca with J = 1000 
+Python 3.12.9 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 1.304215 s,  pre-jitted 0.001539 s 
+pfilter: with jit 1.005107 s,  pre-jitted 0.8244
+
 ==== 25-05-24 ==== bo's gpu ====
 
 For windows system: JAX does not support NVIDIA GPU under Windows framework. 2. For the Linux system on my desktop: the elapsed1 was around 23s and elapsed2 was around 0.36s with CUDA version 12.3.0.

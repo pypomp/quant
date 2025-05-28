@@ -18,11 +18,10 @@ If results are disappointing, or we want to look for ways to further improve spe
 (vi) evaluate on greatlakes cpu and gpu. Avoid laptops for speed tests because it is hard to make sure the CPUs are idle. Jun got erratic behavior on her laptop. Also, the laptop might run out of memory. 
 
 speed/cpu:
-    long.qmd, short.qmd
+    report.qmd, report.py
     Makefile, results/out.pkl
 speed/gpu:
-    long.qmd, long.sbat,
-    short.qud, short.sbat,  
+    report.qmd, report.py, report.sbat,  
     Makefile, results/out.pkl
 
 speed/report.qmd : collates results from cpu and gpu, and writes report
