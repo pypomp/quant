@@ -2,7 +2,12 @@
 
 ## Testing on cpus; the greatlakes cpu partition or a Mac
 
-The basic cpu benchmark test is run with
+We can extract the code into a .py file and run the basic speed test at the command line:
+```
+make report.py 
+python -m report
+```
+A version that includes an html report is 
 ```
 make report.html
 ```
@@ -13,12 +18,6 @@ The longer version is run with
 make long.html
 ```
 and this provides additional diagnostics.
-
-Additionally, we can extract the code into a .py file and run at the command line:
-```
-make report.py 
-python -m report
-```
 
 The text output from this can be added, with comments, to `speed/notes.txt`.
 

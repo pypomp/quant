@@ -8,6 +8,23 @@ format:
 
 ---
 
+## This is somewhat deprecated.
+
+* More recently, the code in `cpu/report.py` and `gpu/report.py` has been run directly, e.g., via
+```
+python -m report
+```
+and output copied into `notes.txt`. 
+
+* `cpu/report.py` and `gpu/report.py` are currently identical, produced by
+```
+make report.py
+```
+in the `cpu` directory, which in turn is extracted from `cpu/report.qmd`
+
+
+## CPU experiment
+
 ```{python}
 #| label: run_level
 #| echo: false
@@ -60,25 +77,26 @@ from tqdm import tqdm
 #| echo: true
 pickle_file = cpu_out_dir + "/mif-test.pkl"
 file = open(pickle_file,'rb')
-[elapsed1,loglik1,elapsed2,loglik2] = pickle.load(file)
+#[elapsed1,loglik1,elapsed2,loglik2] = pickle.load(file)
+[elapsed1,elapsed2] = pickle.load(file)
+# Check that first log-likelihood evaluation, `{python} str(round(loglik1,6))`, matches second evaluation,  `{python} str(round(loglik2,6))`. 
 ```
 
 Time taken for `mif` on cpu: first call `{python} round(elapsed1,6)`s, second call  `{python} round(elapsed2,6)`s.
-
-Check that first log-likelihood evaluation, `{python} str(round(loglik1,6))`, matches second evaluation,  `{python} str(round(loglik2,6))`. 
-Note that this is not currently working, for some reason
 
 ```{python}
 #| label: read-cpu-pfilter-results
 #| echo: true
 pickle_file = cpu_out_dir + "/pfilter-test.pkl"
 file = open(pickle_file,'rb')
-[elapsed3,loglik3,elapsed4,loglik4] = pickle.load(file)
+# [elapsed3,loglik3,elapsed4,loglik4] = pickle.load(file)
+[elapsed3,elapsed4] = pickle.load(file)
+# Check that first log-likelihood evaluation, `{python} str(round(loglik3,6))`, matches second evaluation,  `{python} str(round(loglik4,6))`. 
 ```
 
 Time taken: first call `{python} round(elapsed3,6)`s, second call  `{python} round(elapsed4,6)`s.
 
-Check that first log-likelihood evaluation, `{python} str(round(loglik3,6))`, matches second evaluation,  `{python} str(round(loglik4,6))`. 
+
 
 
 
@@ -90,19 +108,20 @@ Check that first log-likelihood evaluation, `{python} str(round(loglik3,6))`, ma
 pickle_file = gpu_out_dir + "/mif-test.pkl"
 file = open(pickle_file,'rb')
 [elapsed1,loglik1,elapsed2,loglik2] = pickle.load(file)
+#[elapsed1,elapsed2] = pickle.load(file)
+#Check that first log-likelihood evaluation, `{python} str(round(loglik1,6))`, matches second evaluation,  `{python} str(round(loglik2,6))`. 
 ```
 
 Time taken for `mif` on gpu: first call `{python} round(elapsed1,6)`s, second call  `{python} round(elapsed2,6)`s.
-
-Check that first log-likelihood evaluation, `{python} str(round(loglik1,6))`, matches second evaluation,  `{python} str(round(loglik2,6))`. 
-Note that this is not currently working, for some reason
 
 ```{python}
 #| label: read-gpu-pfilter-results
 #| echo: true
 pickle_file = gpu_out_dir + "/pfilter-test.pkl"
 file = open(pickle_file,'rb')
+#[elapsed3,elapsed4] = pickle.load(file)
 [elapsed3,loglik3,elapsed4,loglik4] = pickle.load(file)
+
 ```
 
 Time taken: first call `{python} round(elapsed3,6)`s, second call  `{python} round(elapsed4,6)`s.
