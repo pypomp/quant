@@ -1,3 +1,34 @@
+==== 25-05-29 ==== kunyang's gpu ====
+
+2025-05-29 pypomp speed test using [CpuDevice(id=0)]
+pypomp 0.0.13 for dacca with J = 1000
+Python 3.12.4 , jax 0.6.1 , jaxlib 0.6.1
+mif: with jit 1.621762 s, pre-jitted 0.006476 s
+pfilter: with jit 1.464777 s, pre-jitted 0.06918 s
+
+2025-05-29 pypomp speed test using [CpuDevice(id=0)]
+pypomp 0.0.13 for dacca with J = 10000
+Python 3.12.4 , jax 0.6.1 , jaxlib 0.6.1
+mif: with jit 7.624655 s, pre-jitted 0.007149 s
+pfilter: with jit 8.559116 s, pre-jitted 2.798513 s
+
+2025-05-29 pypomp speed test using [CudaDevice(id=0)] 
+pypomp 0.0.13 for dacca with J = 1000 
+Python 3.10.12 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 3.549827 s,  pre-jitted 0.524411 s 
+pfilter: with jit 2.71455 s,  pre-jitted 0.564133 s
+
+2025-05-29 pypomp speed test using [CudaDevice(id=0)] 
+pypomp 0.0.13 for dacca with J = 10000 
+Python 3.10.12 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 10.191088 s,  pre-jitted 0.565054 s 
+pfilter: with jit 9.706278 s,  pre-jitted 0.541375 s 
+
+2025-05-29 pypomp speed test using [CudaDevice(id=0)] 
+pypomp 0.0.13 for dacca with J = 50000 
+Python 3.10.12 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 40.501598 s,  pre-jitted 0.673799 s 
+pfilter: with jit 39.661828 s,  pre-jitted 0.558186 s
 
 ==== 25-05-28 ==== ed's mac studio ====
 
