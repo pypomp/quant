@@ -28,3 +28,42 @@ speed/report.qmd : collates results from cpu and gpu, and writes report
 
 we can add additional detailed reports that we may run less often, in long.qmd.
 
+## test set-up
+
+First, set up venv in the quant directory
+
+```
+python3.12 -m pip install --upgrade pip
+python3.12 -m pip install virtualenv
+
+cd ~/git/quant
+rm -rf .venv
+python3.12 -m venv .venv
+source ~/git/quant/.venv/bin/activate
+
+# pip freeze
+# This should show nothing, since we have a new environment.
+# If things show up, the path has additional python versions
+# and these should be removed.
+# which python
+# which pip
+pip install --upgrade pip==25.1.1
+pip install ~/git/pypomp
+# install jax without cuda support
+pip install -U jax
+# asking for cuda support on a mac leads to download of an ancient
+# jax version
+# pip install -U "jax[cuda12]"
+
+# for pypomp
+pip install tqdm xarray pandas pytest
+
+# for report
+pip install seaborn
+
+# check pypomp installation
+# pytest ~/git/pypomp
+
+cd ~/git/quant/speed
+python -m test
+```
