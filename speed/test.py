@@ -3,8 +3,8 @@
 # set up python via the quant env:
 # source ~/git/quant/.venv/bin/activate
 
-run_level = 2
-J = [10,100,1000][run_level]
+run_level = 3
+J = [10,100,1000,10000][run_level]
 
 import os
 import platform
@@ -17,26 +17,28 @@ import pypomp as pp
 
 d = pp.dacca()
 start = time.perf_counter()
-mif_out1 = d.mif(
-    sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0, monitor=False
-)
+d.mif(sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0,n_monitors=0)
+print(d.results[-1]["thetas_out"][1,1,])
 end = time.perf_counter()
 elapsed1 = end - start
 
 start = time.perf_counter()
-mif_out2 = d.mif(
-    sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0, monitor=False
-)
+d.mif(sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0,n_monitors=0)
+print(d.results[-1]["thetas_out"][1,1,])
 end = time.perf_counter()
 elapsed2 = end - start
 
+jax.clear_caches()        
+
 import pypomp.pfilter
 start = time.perf_counter()
-loglik3 = d.pfilter(J=J, thresh=0, key=jax.random.key(111))
+jax.block_until_ready(d.pfilter(J=J, thresh=0, key=jax.random.key(111)))
+print(d.results[2]["logLik"])
 end = time.perf_counter()
 elapsed3 = end - start
 start = time.perf_counter()
-loglik4 = d.pfilter(J=J, thresh=0, key=jax.random.key(111))
+jax.block_until_ready(d.pfilter(J=J, thresh=0, key=jax.random.key(222)))
+print(d.results[-1]["logLik"])
 end = time.perf_counter()
 elapsed4 = end - start
 

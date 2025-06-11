@@ -1,3 +1,35 @@
+==== 25-06-11 ==== ed's mac studio ====
+
+Note: previous results suffered from an asynchronous dispatch issue.
+To get proper timing, we need to 
+use jax.block_until_ready() or make sure that a result
+is printed, or written to file, to ensure the object is
+fully evaluated before the timer is ended. The latter was
+experimentally more reliable, and that is
+what is now done in test.py
+
+2025-06-11 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.1.1 for dacca with J = 10000 
+Python 3.12.9 , jax 0.6.1 , jaxlib 0.6.1 
+pfilter: with jit 6.859637 s,  pre-jitted 1.782041 s 
+
+Comare with R-pomp pfilter
+         J dacca_time
+[1,]   500      0.525
+[2,]  1000      0.991
+[3,]  2000      1.957
+[4,]  5000      4.896
+[5,] 10000      9.753
+
+Here, pypomp is run on 10 processors, and has a roughly factor of 5 improvement. i.e., there is a factor of 2 cost to parallelization. 
+
+Given that R-pomp is quite efficient, this is arguably a reasonable result.
+
+The real advantage is ability to accelerate on GPUs.
+
+
+
+
 ==== 25-05-29 ==== kunyang's gpu ====
 
 2025-05-29 pypomp speed test using [CpuDevice(id=0)]
