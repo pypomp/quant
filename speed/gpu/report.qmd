@@ -66,57 +66,49 @@ from tqdm import tqdm
 ```
 
 ```{python}
-#| label: oo-test
+#| label: mif-test
 #| echo: true
 d = pp.dacca()
 start = time.perf_counter()
-#loglik1,params1 = d.mif(
-mif_out1 = d.mif(
-    sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0, monitor=False
-)
+d.mif(sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0,n_monitors=0)
+print(d.results[-1]["thetas_out"][1,1,])
 end = time.perf_counter()
 elapsed1 = end - start
 
-# We could check that the loglik values match
-# loglik1 = mif_out1['logLik'][-1]
-
 start = time.perf_counter()
-#loglik2,params2 = d.mif(
-mif_out2 = d.mif(
-    sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0, monitor=False
-)
+d.mif(sigmas=0.02, sigmas_init=0.1, M=1, a=0.9, J=J, key=jax.random.key(111), thresh=0,n_monitors=0)
+print(d.results[-1]["thetas_out"][1,1,])
 end = time.perf_counter()
 elapsed2 = end - start
 
-# loglik2 = mif_out2['logLik'][-1]
-
 pickle_file = out_dir + "/mif-test.pkl"
-#pickle_data = [elapsed1,loglik1,elapsed2,loglik2]
 pickle_data = [elapsed1,elapsed2]
 file=open(pickle_file,'wb')
 pickle.dump(pickle_data,file)
+
+jax.clear_caches()        
+
 ```
 
+Time taken: first call `{python} round(elapsed1,6)`s, second call  `{python} round(elapsed2,6)`s.
+
+
 ```{python}
-#| label: functional-test
+#| label: pfilter-test
 #| echo: true
 #| eval: true
 
-import pypomp.pfilter
 start = time.perf_counter()
-loglik3 = pypomp.pfilter(theta=d.theta,
-    ys =d.ys, J = J, rinit = d.rinit, rproc = d.rproc,
-    dmeas = d.dmeas, covars = d.covars, thresh = -1,key=jax.random.key(111))
+d.pfilter(J=J, thresh=0, key=jax.random.key(111))
+print(d.results[-1]["logLik"])
 end = time.perf_counter()
 elapsed3 = end - start
 start = time.perf_counter()
-loglik4 = pypomp.pfilter(theta=d.theta,
-    ys =d.ys, J = J, rinit = d.rinit, rproc = d.rproc,
-    dmeas = d.dmeas, covars = d.covars, thresh = -1,key=jax.random.key(111))
+d.pfilter(J=J, thresh=0, key=jax.random.key(111))
+print(d.results[-1]["logLik"])
 end = time.perf_counter()
 elapsed4 = end - start
 pickle_file = out_dir + "/pfilter-test.pkl"
-#pickle_data = [elapsed3,loglik3,elapsed4,loglik4]
 pickle_data = [elapsed3,elapsed4]
 file=open(pickle_file,'wb')
 pickle.dump(pickle_data,file)

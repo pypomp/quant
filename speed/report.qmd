@@ -10,17 +10,17 @@ format:
 
 ## This is somewhat deprecated.
 
-* More recently, the code in `cpu/report.py` and `gpu/report.py` has been run directly, e.g., via
+* More recently, the code in `speed/cpu/report.py` and `speed/gpu/report.py` has been run directly, e.g., via
 ```
 python -m report
 ```
-and output copied into `notes.txt`. 
+and output copied into `notes.txt`. Additionally, `test.py` has been developed as a simpler piece of code for experimentation.
 
-* `cpu/report.py` and `gpu/report.py` are currently identical, produced by
+* `speed/cpu/report.py` and `speed/gpu/report.py` are currently identical, produced by
 ```
 make report.py
 ```
-in the `cpu` directory, which in turn is extracted from `cpu/report.qmd`
+in the `speed/cpu` directory, which in turn is extracted from `speed/cpu/report.qmd`
 
 
 ## CPU experiment
