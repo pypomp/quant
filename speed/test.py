@@ -4,12 +4,10 @@
 # source ~/git/quant/.venv/bin/activate
 
 run_level = 3
-J = [10,100,1000,10000][run_level]
+J = [10,100,1000,2000,10000][run_level]
 
-import os
 import platform
 import datetime
-import shutil
 from importlib.metadata import version
 import jax
 import time
@@ -30,7 +28,6 @@ elapsed2 = end - start
 
 jax.clear_caches()        
 
-import pypomp.pfilter
 start = time.perf_counter()
 jax.block_until_ready(d.pfilter(J=J, thresh=0, key=jax.random.key(111)))
 print(d.results[2]["logLik"])

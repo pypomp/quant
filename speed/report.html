@@ -2198,19 +2198,19 @@ vertical-align: -.125em;
 <section id="this-is-somewhat-deprecated." class="level2">
 <h2 class="anchored" data-anchor-id="this-is-somewhat-deprecated.">This is somewhat deprecated.</h2>
 <ul>
-<li>More recently, the code in <code>cpu/report.py</code> and <code>gpu/report.py</code> has been run directly, e.g., via</li>
+<li>More recently, the code in <code>speed/cpu/report.py</code> and <code>speed/gpu/report.py</code> has been run directly, e.g., via</li>
 </ul>
 <pre><code>python -m report</code></pre>
-<p>and output copied into <code>notes.txt</code>.</p>
+<p>and output copied into <code>notes.txt</code>. Additionally, <code>test.py</code> has been developed as a simpler piece of code for experimentation.</p>
 <ul>
-<li><code>cpu/report.py</code> and <code>gpu/report.py</code> are currently identical, produced by</li>
+<li><code>speed/cpu/report.py</code> and <code>speed/gpu/report.py</code> are currently identical, produced by</li>
 </ul>
 <pre><code>make report.py</code></pre>
-<p>in the <code>cpu</code> directory, which in turn is extracted from <code>cpu/report.qmd</code></p>
+<p>in the <code>speed/cpu</code> directory, which in turn is extracted from <code>speed/cpu/report.qmd</code></p>
 </section>
 <section id="cpu-experiment" class="level2">
 <h2 class="anchored" data-anchor-id="cpu-experiment">CPU experiment</h2>
-<p>Testing pypomp 0.0.13 on 2025-05-28 at run level 2 (0 is for debugging, 2 is full-length).</p>
+<p>Testing pypomp 0.1.1 on 2025-06-12 at run level 2 (0 is for debugging, 2 is full-length).</p>
 <div id="read-cpu-mif-results" class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>pickle_file <span class="op">=</span> cpu_out_dir <span class="op">+</span> <span class="st">&quot;/mif-test.pkl&quot;</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span> <span class="op">=</span> <span class="bu">open</span>(pickle_file,<span class="st">&#39;rb&#39;</span>)</span>
@@ -2218,7 +2218,7 @@ vertical-align: -.125em;
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>[elapsed1,elapsed2] <span class="op">=</span> pickle.load(<span class="bu">file</span>)</span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Check that first log-likelihood evaluation, `{python} str(round(loglik1,6))`, matches second evaluation,  `{python} str(round(loglik2,6))`. </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Time taken for <code>mif</code> on cpu: first call 1.304215s, second call 0.001539s.</p>
+<p>Time taken for <code>mif</code> on cpu: first call 2.419415s, second call 0.933748s.</p>
 <div id="read-cpu-pfilter-results" class="cell" data-execution_count="4">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>pickle_file <span class="op">=</span> cpu_out_dir <span class="op">+</span> <span class="st">&quot;/pfilter-test.pkl&quot;</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span> <span class="op">=</span> <span class="bu">open</span>(pickle_file,<span class="st">&#39;rb&#39;</span>)</span>
@@ -2226,7 +2226,7 @@ vertical-align: -.125em;
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>[elapsed3,elapsed4] <span class="op">=</span> pickle.load(<span class="bu">file</span>)</span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Check that first log-likelihood evaluation, `{python} str(round(loglik3,6))`, matches second evaluation,  `{python} str(round(loglik4,6))`. </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Time taken: first call 1.005107s, second call 0.824443s.</p>
+<p>Time taken: first call 1.327832s, second call 0.254324s.</p>
 </section>
 <section id="move-on-to-the-gpu-experiment" class="level2">
 <h2 class="anchored" data-anchor-id="move-on-to-the-gpu-experiment">Move on to the GPU experiment</h2>

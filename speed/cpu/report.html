@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Speed test for pypomp on cpu</title>
+<title>Speed test for pypomp</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -2178,7 +2178,7 @@ vertical-align: -.125em;
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Speed test for pypomp on cpu</h1>
+<h1 class="title">Speed test for pypomp</h1>
 </div>
 
 
@@ -2195,55 +2195,97 @@ vertical-align: -.125em;
 </header>
 
 
-<p>Testing pypomp 0.0.7 on 2025-05-21 at run level 2 (0 is for debugging, 2 is full-length).</p>
+<p>Testing pypomp 0.1.1 on 2025-06-12 at run level 2 (0 is for debugging, 2 is full-length).</p>
 <div id="oo-test" class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> pp.dacca()</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>loglik1, params1 <span class="op">=</span> d.mif(</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    sigmas<span class="op">=</span><span class="fl">0.02</span>, sigmas_init<span class="op">=</span><span class="fl">0.1</span>, J<span class="op">=</span>J, thresh<span class="op">=-</span><span class="dv">1</span>, key<span class="op">=</span>jax.random.key(<span class="dv">111</span>), M<span class="op">=</span><span class="dv">1</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>end <span class="op">=</span> time.perf_counter()</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>elapsed1 <span class="op">=</span> end <span class="op">-</span> start</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>d.mif(sigmas<span class="op">=</span><span class="fl">0.02</span>, sigmas_init<span class="op">=</span><span class="fl">0.1</span>, M<span class="op">=</span><span class="dv">1</span>, a<span class="op">=</span><span class="fl">0.9</span>, J<span class="op">=</span>J, key<span class="op">=</span>jax.random.key(<span class="dv">111</span>), thresh<span class="op">=</span><span class="dv">0</span>,n_monitors<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(d.results[<span class="op">-</span><span class="dv">1</span>][<span class="st">&quot;thetas_out&quot;</span>][<span class="dv">1</span>,<span class="dv">1</span>,])</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>end <span class="op">=</span> time.perf_counter()</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>elapsed1 <span class="op">=</span> end <span class="op">-</span> start</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>loglik2, params2 <span class="op">=</span> d.mif(</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    sigmas<span class="op">=</span><span class="fl">0.02</span>, sigmas_init<span class="op">=</span><span class="fl">0.1</span>, J<span class="op">=</span>J, thresh<span class="op">=-</span><span class="dv">1</span>, key<span class="op">=</span>jax.random.key(<span class="dv">111</span>), M<span class="op">=</span><span class="dv">1</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>end <span class="op">=</span> time.perf_counter()</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>elapsed2 <span class="op">=</span> end <span class="op">-</span> start</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>d.mif(sigmas<span class="op">=</span><span class="fl">0.02</span>, sigmas_init<span class="op">=</span><span class="fl">0.1</span>, M<span class="op">=</span><span class="dv">1</span>, a<span class="op">=</span><span class="fl">0.9</span>, J<span class="op">=</span>J, key<span class="op">=</span>jax.random.key(<span class="dv">111</span>), thresh<span class="op">=</span><span class="dv">0</span>,n_monitors<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(d.results[<span class="op">-</span><span class="dv">1</span>][<span class="st">&quot;thetas_out&quot;</span>][<span class="dv">1</span>,<span class="dv">1</span>,])</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>end <span class="op">=</span> time.perf_counter()</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>elapsed2 <span class="op">=</span> end <span class="op">-</span> start</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>pickle_file <span class="op">=</span> out_dir <span class="op">+</span> <span class="st">&quot;/mif-test.pkl&quot;</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>pickle_data <span class="op">=</span> [elapsed1,loglik1,elapsed2,loglik2]</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>pickle_data <span class="op">=</span> [elapsed1,elapsed2]</span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span><span class="op">=</span><span class="bu">open</span>(pickle_file,<span class="st">&#39;wb&#39;</span>)</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>pickle.dump(pickle_data,<span class="bu">file</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>pickle.dump(pickle_data,<span class="bu">file</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>jax.clear_caches()        </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
-<pre><code>  0%|          | 0/1 [00:00&lt;?, ?it/s]100%|██████████| 1/1 [00:08&lt;00:00,  8.29s/it]100%|██████████| 1/1 [00:08&lt;00:00,  8.29s/it]
-  0%|          | 0/1 [00:00&lt;?, ?it/s]100%|██████████| 1/1 [00:00&lt;00:00, 976.78it/s]</code></pre>
+<pre><code>  0%|          | 0/1 [00:00&lt;?, ?it/s]100%|██████████| 1/1 [00:01&lt;00:00,  1.26s/it]100%|██████████| 1/1 [00:01&lt;00:00,  1.26s/it]</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;xarray.DataArray (theta: 21)&gt; Size: 84B
+Array([ 3.3675432 , -2.9058893 ,        -inf,  2.8237705 , -3.983291  ,
+               inf, -0.55568784, -0.01094033, -1.2835027 ,  0.84529144,
+        6.337904  , -3.1753209 ,  4.1089425 ,  3.8666263 ,  4.4811044 ,
+       -1.9817581 , -2.9999819 , -2.6787348 , -3.595271  , -8.69374   ,
+       -3.5684948 ], dtype=float32)
+Coordinates:
+    iteration  int64 8B 1
+    particle   int64 8B 2
+  * theta      (theta) &lt;U10 840B &#39;gamma&#39; &#39;m&#39; &#39;rho&#39; ... &#39;omega5&#39; &#39;omega6&#39;</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>  0%|          | 0/1 [00:00&lt;?, ?it/s]100%|██████████| 1/1 [00:00&lt;00:00, 1062.66it/s]</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;xarray.DataArray (theta: 21)&gt; Size: 84B
+Array([ 3.043039  , -3.0671322 ,        -inf,  2.905046  , -3.4811718 ,
+               inf, -0.4121391 , -0.31989947, -0.9831394 ,  1.194217  ,
+        6.601317  , -4.369853  ,  4.2279735 ,  2.991208  ,  4.298118  ,
+       -1.8298768 , -2.4185283 , -2.7681644 , -3.9924269 , -8.810494  ,
+       -2.507767  ], dtype=float32)
+Coordinates:
+    iteration  int64 8B 1
+    particle   int64 8B 2
+  * theta      (theta) &lt;U10 840B &#39;gamma&#39; &#39;m&#39; &#39;rho&#39; ... &#39;omega5&#39; &#39;omega6&#39;</code></pre>
 </div>
 </div>
-<p>Time taken: first call 8.39852s, second call 0.003092s.</p>
-<p>Check that first log-likelihood evaluation, [], matches second evaluation, []. Note that this is not currently working, for some reason</p>
 <div id="functional-test" class="cell" data-execution_count="4">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pypomp.pfilter</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>loglik3 <span class="op">=</span> pypomp.pfilter(theta<span class="op">=</span>d.theta,</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    ys <span class="op">=</span>d.ys, J <span class="op">=</span> J, rinit <span class="op">=</span> d.rinit, rproc <span class="op">=</span> d.rproc,</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    dmeas <span class="op">=</span> d.dmeas, covars <span class="op">=</span> d.covars, thresh <span class="op">=</span> <span class="op">-</span><span class="dv">1</span>,key<span class="op">=</span>jax.random.key(<span class="dv">111</span>))</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>end <span class="op">=</span> time.perf_counter()</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>elapsed3 <span class="op">=</span> end <span class="op">-</span> start</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>loglik4 <span class="op">=</span> pypomp.pfilter(theta<span class="op">=</span>d.theta,</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    ys <span class="op">=</span>d.ys, J <span class="op">=</span> J, rinit <span class="op">=</span> d.rinit, rproc <span class="op">=</span> d.rproc,</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    dmeas <span class="op">=</span> d.dmeas, covars <span class="op">=</span> d.covars, thresh <span class="op">=</span> <span class="op">-</span><span class="dv">1</span>,key<span class="op">=</span>jax.random.key(<span class="dv">111</span>))</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>end <span class="op">=</span> time.perf_counter()</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>elapsed4 <span class="op">=</span> end <span class="op">-</span> start</span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>pickle_file <span class="op">=</span> out_dir <span class="op">+</span> <span class="st">&quot;/pfilter-test.pkl&quot;</span></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>pickle_data <span class="op">=</span> [elapsed3,loglik3,elapsed4,loglik4]</span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span><span class="op">=</span><span class="bu">open</span>(pickle_file,<span class="st">&#39;wb&#39;</span>)</span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>pickle.dump(pickle_data,<span class="bu">file</span>)</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co">#pp.mop(J = J, rinit = d.rinit.struct_pf, rprocess = d.rprocess.struct_pf, dmeasure = d.dmeasure, theta = d.theta, ys = d.ys, covars = d.covars, alpha = 0.9)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>d.pfilter(J<span class="op">=</span>J, thresh<span class="op">=</span><span class="dv">0</span>, key<span class="op">=</span>jax.random.key(<span class="dv">111</span>))</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(d.results[<span class="op">-</span><span class="dv">1</span>][<span class="st">&quot;logLik&quot;</span>])</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>end <span class="op">=</span> time.perf_counter()</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>elapsed3 <span class="op">=</span> end <span class="op">-</span> start</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.perf_counter()</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>d.pfilter(J<span class="op">=</span>J, thresh<span class="op">=</span><span class="dv">0</span>, key<span class="op">=</span>jax.random.key(<span class="dv">111</span>))</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(d.results[<span class="op">-</span><span class="dv">1</span>][<span class="st">&quot;logLik&quot;</span>])</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>end <span class="op">=</span> time.perf_counter()</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>elapsed4 <span class="op">=</span> end <span class="op">-</span> start</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>pickle_file <span class="op">=</span> out_dir <span class="op">+</span> <span class="st">&quot;/pfilter-test.pkl&quot;</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>pickle_data <span class="op">=</span> [elapsed3,elapsed4]</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="bu">file</span><span class="op">=</span><span class="bu">open</span>(pickle_file,<span class="st">&#39;wb&#39;</span>)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>pickle.dump(pickle_data,<span class="bu">file</span>)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co">#pp.mop(J = J, rinit = d.rinit.struct_pf, rprocess = d.rprocess.struct_pf, dmeasure = d.dmeasure, theta = d.theta, ys = d.ys, covars = d.covars, alpha = 0.9)</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a><span class="co"># We could check that first log-likelihood evaluation, `{python} str(round(loglik3,6))`, matches second evaluation,  `{python} str(round(loglik4,6))`. </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;xarray.DataArray (replicate: 1)&gt; Size: 4B
+Array([-3805.8694], dtype=float32)
+Dimensions without coordinates: replicate
+&lt;xarray.DataArray (replicate: 1)&gt; Size: 4B
+Array([-3805.8694], dtype=float32)
+Dimensions without coordinates: replicate</code></pre>
 </div>
-<p>Time taken: first call 7.833785s, second call 0.000296s.</p>
-<p>Check that first log-likelihood evaluation, 3752.8093, matches second evaluation, 3752.8093.</p>
+</div>
+<p>Time taken: first call 1.405682s, second call 0.24495s.</p>
+<div id="terminal-output" class="cell" data-execution_count="5">
+<div class="cell-output cell-output-stdout">
+<pre><code>2025-06-12 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.1.1 for dacca with J = 1000 
+Python 3.12.9 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 2.432773 s,  pre-jitted 0.926602 s 
+pfilter: with jit 1.405682 s,  pre-jitted 0.24495 s 
+</code></pre>
+</div>
+</div>
 
 </main>
 <!-- /main column -->
