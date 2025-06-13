@@ -1,0 +1,5 @@
+jupyter>=1.1.1
+seaborn>=0.13.2
+matplotlib>=3.10.3
+jupyterlab>=4.4.3
+
