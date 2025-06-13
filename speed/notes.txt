@@ -1,3 +1,50 @@
+==== 25-06-13 ==== greatlakes ====
+
+2025-06-13 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.1.1 for dacca with J = 1000 
+Python 3.12.8 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 4.3813 s,  pre-jitted 1.7389 s (sd 0.006 ) 
+pfilter: with jit 2.6672 s,  pre-jitted 0.5723 s (sd 0.0104 )
+
+2025-06-13 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.1.1 for dacca with J = 2000 
+Python 3.12.8 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 6.7759 s,  pre-jitted 3.2031 s (sd 0.0094 ) 
+pfilter: with jit 4.2028 s,  pre-jitted 1.1293 s (sd 0.0103 )
+
+2025-06-13 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.1.1 for dacca with J = 5000 
+Python 3.12.8 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 12.5301 s,  pre-jitted 5.6641 s (sd 0.0159 ) 
+pfilter: with jit 8.6885 s,  pre-jitted 2.5563 s (sd 0.0083 )
+
+2025-06-13 pypomp speed test using [CpuDevice(id=0)] 
+pypomp 0.1.1 for dacca with J = 10000 
+Python 3.12.8 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 22.0822 s,  pre-jitted 9.0664 s (sd 0.0576 ) 
+pfilter: with jit 15.2367 s,  pre-jitted 3.7352 s (sd 0.0386 )
+
+  == and on gpu == the timing here seems implausible ==
+
+2025-06-13 pypomp speed test using [CudaDevice(id=0)] 
+pypomp 0.1.1 for dacca with J = 1000 
+Python 3.12.8 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 8.6543 s,  pre-jitted 2.5784 s (sd 0.1092 ) 
+pfilter: with jit 6.9134 s,  pre-jitted 2.628 s (sd 0.065 )
+
+2025-06-13 pypomp speed test using [CudaDevice(id=0)] 
+pypomp 0.1.1 for dacca with J = 5000 
+Python 3.12.8 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 13.6569 s,  pre-jitted 2.7427 s (sd 0.1006 ) 
+pfilter: with jit 11.7993 s,  pre-jitted 2.6526 s (sd 0.0947 )
+
+2025-06-13 pypomp speed test using [CudaDevice(id=0)] 
+pypomp 0.1.1 for dacca with J = 20000 
+Python 3.12.8 , jax 0.6.1 , jaxlib 0.6.1 
+mif: with jit 34.0724 s,  pre-jitted 2.8121 s (sd 0.0969 ) 
+pfilter: with jit 31.474 s,  pre-jitted 2.6498 s (sd 0.0647 )
+
+
 ==== 25-06-11 ==== ed's mac studio ====
 
 Note: previous results suffered from an asynchronous dispatch issue.
