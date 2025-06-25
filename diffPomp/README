@@ -8,8 +8,37 @@ The purpose of putting it in the pypomp quant tests is to get benchmarking estim
 
 Set up a new venv, since this old code may need different package versions
 
+Using a python3.10 version. It is not yet clear if this helps; this should be retested when everything else is in working order.
+
 ```
-python3.11 -m pip install virtualenv
+deactivate
+cd ~/git/quant/diffPomp
+rm -rf .diffPomp
+python3.10 -m venv .diffPomp
+source ~/git/quant/diffPomp/.diffPomp/bin/activate
+
+pip install --upgrade pip 
+pip install -U jax
+pip install matplotlib==3.8
+pip install seaborn==0.11.0 ## for ptitprince compatibility
+pip install ptitprince
+
+pip install tqdm
+pip install jupyter
+pip install toolz
+pip install tensorflow_probability
+pip install pyreadr
+
+export QUARTO_PYTHON=".diffPomp/bin/python"
+make -B cholera.html
+
+```
+
+
+At some point, one could try python3.11, e.g.,
+
+```
+deactivate
 cd ~/git/quant/diffPomp
 rm -rf .diffPomp
 python3.11 -m venv .diffPomp
@@ -22,30 +51,6 @@ pip install seaborn==0.11.0 ## for ptitprince compatibility
 pip install tqdm
 pip install jupyter
 pip install ptitprince
-pip install toolz
-pip install tensorflow_probability
-pip install pyreadr
-
-```
-
-Try a python3.10 version. It is not yet clear if this helps; this should be retested when everything else is in working order.
-
-```
-deactivate
-# python3.10 -m pip install virtualenv
-cd ~/git/quant/diffPomp
-rm -rf .diffPomp
-python3.10 -m venv .diffPomp3-10
-source ~/git/quant/diffPomp/.diffPomp3-10/bin/activate
-
-# pip install --upgrade pip # try with an older pip
-pip install -U jax
-pip install matplotlib==3.6 
-pip install seaborn==0.11.0 ## for ptitprince compatibility
-pip install ptitprince
-
-pip install tqdm
-pip install jupyter
 pip install toolz
 pip install tensorflow_probability
 pip install pyreadr
