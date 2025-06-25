@@ -13,7 +13,7 @@ using quarto convert cholera.ipynb
 ```{python}
 #| label: scaling
 J = 20 # number of particles, KT used 10^4
-TRIALS = 5 # number of replicates, KT used 10^2
+TRIALS = 20 # number of replicates, KT used 10^2
 IF2_ITS = 5 # IF2 iterations, KT used 60
 SGD_ITS = 5 # SGD steps, KT used 100
 PF_REPS = 5 # replications of PF, KT used 30
@@ -613,37 +613,4 @@ pd.DataFrame({'Best Log-Likelihood': data.max(0).sort_values(ascending=False).as
             'imgs/095/table.tex', index=True, float_format="{:.1f}".format)
 ```
 
-# IF2 0.95
-plt.figure(figsize=(5,4))
-ax = sns.boxplot(data,
-                showfliers = False)
-sns.stripplot(data,
-             alpha=0.2, color='black')
-plt.axhline(-3748.5, linestyle='dotted', color='r', alpha=0.5)
-plt.ylim(-6900,-3745)
-plt.xticks(rotation=45)
-plt.ylabel('Log-Likelihood')
-#plt.title('Boxplot Comparison of Performance, All Methods')
-plt.tight_layout()
-plt.savefig('imgs/095/boxplotall.png', bbox_inches='tight')
-plt.show()
-
-#IF2 0.95
-import pyreadr
-from scipy.special import logsumexp
-import seaborn as sns
-# plt.style.use('matplotlibrc')
-plt.figure(figsize=(5,4))
-result = pyreadr.read_r('data/dacca/cholera-mif1-mif2.rda')
-ax = sns.boxplot(data.rolling(10).max().iloc[9:, :][::10],
-                showfliers = False)
-sns.stripplot(data.rolling(10).max().iloc[9:, :][::10],
-             alpha=0.2, color='black')
-plt.axhline(-3748.5, linestyle='dotted', color='r', alpha=0.5)
-plt.ylabel('Log-Likelihood')
-plt.xticks(rotation=45)
-#plt.title('Boxplot Comparison of Performance, Best of 10 Runs')
-plt.tight_layout()
-plt.savefig('imgs/095/boxplot.png', bbox_inches='tight')
-plt.show()
 

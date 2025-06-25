@@ -8,7 +8,7 @@ The purpose of putting it in the pypomp quant tests is to get benchmarking estim
 
 Set up a new venv, since this old code may need different package versions
 
-Using a python3.10 version. It is not yet clear if this helps; this should be retested when everything else is in working order.
+Using Python 3.10. This ran successfully, but later experimentation could test with recent versions. New JAX versions are discontinuing Python 3.10 support from July 2025.
 
 ```
 deactivate
