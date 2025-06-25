@@ -4,6 +4,7 @@
 # For python users
 __pycache__
 .venv
+.diffPomp*
 
 # For jupyter users
 .ipynb_checkpoints/
