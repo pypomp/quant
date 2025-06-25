@@ -1,0 +1,53 @@
+
+This is a version of the code used for the original IFAD arXiv paper:
+https://arxiv.org/abs/2407.03085v1
+
+It amounts to a very stripped down version of pypomp.
+
+The purpose of putting it in the pypomp quant tests is to get benchmarking estimates of the overhead due to the package strucure, such as the object-oriented framework of classes and methods.
+
+Set up a new venv, since this old code may need different package versions
+
+```
+python3.11 -m pip install virtualenv
+cd ~/git/quant/diffPomp
+rm -rf .diffPomp
+python3.11 -m venv .diffPomp
+source ~/git/quant/diffPomp/.diffPomp/bin/activate
+pip install --upgrade pip
+pip install -U jax
+
+pip install matplotlib==3.9
+pip install seaborn==0.11.0 ## for ptitprince compatibility
+pip install tqdm
+pip install jupyter
+pip install ptitprince
+pip install toolz
+pip install tensorflow_probability
+pip install pyreadr
+
+```
+
+Try a python3.10 version. It is not yet clear if this helps; this should be retested when everything else is in working order.
+
+```
+deactivate
+# python3.10 -m pip install virtualenv
+cd ~/git/quant/diffPomp
+rm -rf .diffPomp
+python3.10 -m venv .diffPomp3-10
+source ~/git/quant/diffPomp/.diffPomp3-10/bin/activate
+
+# pip install --upgrade pip # try with an older pip
+pip install -U jax
+pip install matplotlib==3.6 
+pip install seaborn==0.11.0 ## for ptitprince compatibility
+pip install ptitprince
+
+pip install tqdm
+pip install jupyter
+pip install toolz
+pip install tensorflow_probability
+pip install pyreadr
+
+```
