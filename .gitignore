@@ -4,7 +4,6 @@
 # For python users
 __pycache__
 .venv
-.diffPomp*
 
 # For jupyter users
 .ipynb_checkpoints/
@@ -13,7 +12,7 @@ __pycache__
 # For quarto users
 # *_files # these are needed for the html if we choose not
 # use format: html: embed-resources: true
-*_quarto_ipynb
+*quarto_ipynb
 
 # For emacs users
 *~
