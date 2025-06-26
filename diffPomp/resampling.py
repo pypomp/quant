@@ -15,10 +15,10 @@ from itertools import chain
 from functools import partial
 
 from tqdm import tqdm
-from tensorflow_probability.substrates import jax as tfp
-tfd = tfp.distributions
-tfb = tfp.bijectors
-tfpk = tfp.math.psd_kernels
+# from tensorflow_probability.substrates import jax as tfp
+# tfd = tfp.distributions
+# tfb = tfp.bijectors
+# tfpk = tfp.math.psd_kernels
 
 
 
