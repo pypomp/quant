@@ -4,6 +4,8 @@
 # For python users
 __pycache__
 .venv
+venv*
+.venv*
 
 # For jupyter users
 .ipynb_checkpoints/

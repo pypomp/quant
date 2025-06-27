@@ -1,0 +1,25 @@
+module load python/3.11.5
+deactivate
+cd ~/git/quant/diffPomp
+rm -rf venv-test-gpu
+python -m venv venv-test-gpu
+source ~/git/quant/diffPomp/venv-test-gpu/bin/activate
+
+pip install --upgrade pip 
+pip install -U "jax[cuda12]"
+pip install ipywidgets
+pip install pandas
+## plotting packages not needed for the speed test
+#pip install matplotlib==3.8
+#pip install seaborn==0.11.0 ## for ptitprince compatibility
+#pip install ptitprince
+
+pip install tqdm
+# pip install jupyter
+pip install toolz
+pip install tensorflow_probability
+# pip install pyreadr
+
+# export QUARTO_PYTHON=".diffPomp/bin/python"
+# make -B cholera.html
+
