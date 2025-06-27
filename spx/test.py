@@ -1,13 +1,8 @@
 import os
-
-# Must be done before importing jax
-# os.environ["XLA_FLAGS"] = (
-#     "--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads=8 "
-# )
 import time
 import jax
+import pickle
 
-# jax.config.update("jax_num_cpu_devices", 8)
 import jax.numpy as jnp
 import pypomp as pp
 import pypomp.spx as pps
@@ -35,13 +30,13 @@ MAIN_SEED = 631409
 key = jax.random.key(MAIN_SEED)
 np.random.seed(MAIN_SEED)
 
-RUN_LEVEL = 2
+RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "2"))
 
-NP_FITR = (2, 1000, 1000)[RUN_LEVEL - 1]
-NFITR = (2, 20, 200)[RUN_LEVEL - 1]
-NREPS_FITR = (2, 3, 120)[RUN_LEVEL - 1]
-NP_EVAL = (2, 1000, 1000)[RUN_LEVEL - 1]
-NREPS_EVAL = (2, 5, 24)[RUN_LEVEL - 1]
+NP_FITR = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
+NFITR = (2, 20, 200, 200)[RUN_LEVEL - 1]
+NREPS_FITR = (2, 3, 20, 120)[RUN_LEVEL - 1]
+NP_EVAL = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
+NREPS_EVAL = (2, 5, 24, 24)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
 
 RW_SD = jnp.array([0.02, 0.02, 0.02, 0.02, 0.02, 0])
@@ -86,12 +81,12 @@ for params in transformed_params_list:
         )
     )
 
-spx = pps.spx()
+spx_obj = pps.spx()
 
 print("Starting IF2")
 key, subkey = jax.random.split(key)
 start_time = time.time()
-spx.mif(
+spx_obj.mif(
     theta=transformed_params_list,
     sigmas=RW_SD,
     sigmas_init=RW_SD_INIT,
@@ -99,13 +94,14 @@ spx.mif(
     a=COOLING_RATE,
     J=NP_FITR,
     key=subkey,
-    n_monitors=0,
 )
-print(spx.results[-1]["logLiks"][0].mean())
+print(spx_obj.results[-1]["logLiks"][0].mean())
 print(f"mif time taken: {time.time() - start_time} seconds")
 
 start_time = time.time()
-spx.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
-print(spx.results[-1]["logLiks"][0].mean())
+spx_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
+print(spx_obj.results[-1]["logLiks"][0].mean())
 print(f"pfilter time taken: {time.time() - start_time} seconds")
-pass
+
+with open("spx_results.pkl", "wb") as f:
+    pickle.dump(spx_obj, f)
