@@ -5,6 +5,10 @@ On greatlakes GPU, start by setting up the virtual environment venv-test-gpu fol
 
 salloc --account=ionides1 --partition=gpu --gpus=v100:1 --cpus-per-gpu=10 --mem=45G
 
+or, for the a100,
+
+salloc --account=ionides1 --partition=gpu_mig40 --gres=gpu:1 --cpus-per-gpu=4 --mem=100G
+
 nvidia-smi
 
 cd ~/git/quant/diffPomp
@@ -12,8 +16,16 @@ source venv-test-gpu/bin/activate
 python test.py
 
 
-==== 25-06-27 ==== greatlakes gpu ====
+==== 25-06-30 ==== greatlakes a100 gpu ====
+
+(venv-test-gpu) [ionides@gl1250 diffPomp]$ python test.py
+[55.847444656072184, 0.2600559680722654, 0.25917448406107724, 0.25924226315692067, 0.25959636410698295, 0.2609761848580092, 0.2608895539306104, 0.261968509061262, 0.2611149239819497, 0.26054263301193714]
+[Array(3748.3035, dtype=float32), Array(3747.7961, dtype=float32), Array(3748.6155, dtype=float32), Array(3749.9429, dtype=float32), Array(3748.2607, dtype=float32), Array(3748.4714, dtype=float32), Array(3748.4414, dtype=float32), Array(3749.2031, dtype=float32), Array(3748.0974, dtype=float32), Array(3748.6782, dtype=float32)]
+
+
+==== 25-06-27 ==== greatlakes v100 gpu ====
 
 [69.73900926997885, 0.398414510069415, 0.39348985510878265, 0.3938914730679244, 0.39351382618770003, 0.3931709879543632, 0.39376939297653735, 0.39407467911951244, 0.3938242238946259, 0.3936828919686377]
 [Array(3749.0742, dtype=float32), Array(3747.748, dtype=float32), Array(3749.0073, dtype=float32), Array(3748.5437, dtype=float32), Array(3747.519, dtype=float32), Array(3748.3418, dtype=float32), Array(3749.2717, dtype=float32), Array(3748.592, dtype=float32), Array(3748.215, dtype=float32), Array(3748.6514, dtype=float32)]
+
 

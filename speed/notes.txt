@@ -1,5 +1,16 @@
 
-==== 25-06-27 ==== diffPomp gpu ====
+==== 25-06-30 ==== diffPomp gpu a100 ====
+
+salloc --account=ionides1 --partition=gpu_mig40 --gres=gpu:1 --cpus-per-gpu=4 --mem=100G
+
+cd ~/git/quant/diffPomp
+source venv-test-gpu/bin/activate
+python test.py
+
+takes 260 ms for pfilter on dacca with 10^4 particles
+55s for first evaluation
+
+==== 25-06-27 ==== diffPomp gpu vt100 ====
 
 quant/diffPomp/test.py has a basic speed test of pfilter from Kevin's original code.
 
