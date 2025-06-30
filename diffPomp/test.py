@@ -1,21 +1,24 @@
 
+run_level = 4 
+J = [20,1000,2000,5000,10000,20000][run_level]
+Nfilt = [4,10,10,10,10,10][run_level]
+
 import os
 #os.environ['XLA_PYTHON_CLIENT_PREALLOCATE']='false'
 
 import jax
 import itertools
 import numpy as onp
-import ptitprince as pt
 
 import jax.numpy as np
-import ipywidgets as widgets
+# import ipywidgets as widgets
 import pandas as pd
 
 from jax.numpy.linalg import inv, pinv
 from jax.scipy.optimize import minimize
 from scipy.linalg import solve_discrete_are as dare
 from jax import jit, grad
-from IPython import display
+# from IPython import display
 from toolz.dicttoolz import valmap, itemmap
 from itertools import chain
 from functools import partial
@@ -27,9 +30,6 @@ from resampling import *
 from filtering import *
 from optim import *
 
-
-import matplotlib.pyplot as plt
-plt.style.use('matplotlibrc')
 onp.set_printoptions(suppress=True)
 
 
@@ -64,9 +64,9 @@ theta = transform_thetas(gamma, m, rho, epsilon, omega, c, beta_trend, sigma, ta
 import time
 elapses2 = []
 logliks = []
-for i in range(10):
+for i in range(Nfilt):
     start = time.perf_counter()
-    logliks.append(pfilter(theta, ys, 10000, covars, thresh=-1, key=jax.random.PRNGKey(42+i)))
+    logliks.append(pfilter(theta, ys, J, covars, thresh=-1, key=jax.random.PRNGKey(42+i)))
     end = time.perf_counter()
     elapses2.append(end - start)
 
