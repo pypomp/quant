@@ -24,8 +24,8 @@ endif
 
 # GPU job
 gpu:
-	cd gpu && RUN_LEVEL=$(RUN_LEVEL) sbatch --time=$(WALL_TIME) job_gpu.sbat
+	cd gpu && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=$(WALL_TIME) job_gpu.sbat
 
 # CPU job  
 cpu:
-	cd cpu && RUN_LEVEL=$(RUN_LEVEL) sbatch --time=$(WALL_TIME) job_cpu.sbat
+	cd cpu && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=$(WALL_TIME) job_cpu.sbat

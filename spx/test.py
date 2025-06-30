@@ -1,8 +1,12 @@
 import os
 import time
+
+# Set JAX platform before importing JAX
+if os.environ.get("USE_CPU", "false").lower() == "true":
+    os.environ["JAX_PLATFORMS"] = "cpu"
+
 import jax
 import pickle
-
 import jax.numpy as jnp
 import pypomp as pp
 import pypomp.spx as pps
