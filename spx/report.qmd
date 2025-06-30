@@ -1,0 +1,307 @@
+---
+title: "SPX Report"
+format:
+  html:
+    toc: true
+    embed-resources: true
+engine: knitr
+---
+
+```{r Load R libraries}
+library(reticulate)
+library(tidyverse)
+library(pomp)
+setwd(paste0(here::here(), "/spx"))
+sessionInfo()
+
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{python Import python modules}
+import os
+import pickle
+import numpy as np
+import pandas as pd
+import pypomp as pp
+from pypomp.spx import spx
+import jax
+```
+
+```{python Load data in python}
+PKL_PATH = "cpu/spx_results.pkl"
+pkl_in = pickle.load(open(PKL_PATH, "rb"))
+```
+
+
+```{python Make basic frame}
+LL_frame = (
+    pd.DataFrame(
+        {
+            "LL": [float(x.mean()) for x in pkl_in.results[-1]["logLiks"]],
+            "sd": [float(x.std()) for x in pkl_in.results[-1]["logLiks"]],
+        }
+    )
+    .sort_values(by="LL", ascending=False)
+    .reset_index(drop=True)
+)
+traces = pkl_in.traces()
+```
+
+# Python results
+
+## Process results
+
+```{r Make traces frame in R}
+traces <- py$traces
+LL_frame <- py$LL_frame
+best_rep <- LL_frame$index[[1]]
+traces <- traces |>
+    rename(rep = replication, iter = iteration, logLik = loglik) |>
+    pivot_longer(
+        cols = c(-rep, -iter, -logLik, -method),
+        names_to = "quantity",
+        values_to = "param_value"
+    )
+```
+
+## Plot traces
+
+```{r Set best_rep}
+# Set best_rep to the rep with the largest logLik on the last iteration
+last_iter <- max(traces$iter)
+best_rep <- traces |>
+    filter(iter == last_iter, method == "pfilter") |>
+    group_by(rep) |>
+    summarise(final_logLik = logLik[1]) |>
+    arrange(desc(final_logLik)) |>
+    slice(1) |>
+    pull(rep)
+```
+
+```{r Plot traces}
+ggplot(
+    filter(traces, quantity != "logLik"),
+    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+) +
+    geom_line(show.legend = FALSE) +
+    facet_wrap(vars(quantity), scales = "free")
+```
+
+```{r Plot LL traces, eval = FALSE}
+ggplot(
+    filter(traces, quantity == "logLik"),
+    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+) +
+    geom_line() +
+    facet_wrap(vars(quantity), scales = "free") +
+    coord_cartesian(ylim = c(11000, 11850))
+```
+
+#  Compare python and R traces
+
+```{r Load R estimates}
+load("R/1d_global_search.rda")
+LL_df_R <- as.data.frame(L.box)
+traces_long <- lapply(seq_along(if.box), function(x) {
+    tr <- traces(if.box[[x]])
+    tr_long <- tr |>
+        as.data.frame() |>
+        mutate(iter = 1:nrow(tr), rep = x) |>
+        pivot_longer(
+            names_to = "quantity", values_to = "param_value", cols = c(-iter, -rep)
+        )
+}) |>
+    bind_rows() |>
+    mutate(language = "R") |>
+    mutate(value_T = case_when(
+        quantity == "logLik" ~ param_value,
+        quantity == "mu" ~ log(param_value),
+        quantity == "kappa" ~ log(param_value),
+        quantity == "theta" ~ log(param_value),
+        quantity == "xi" ~ log(param_value),
+        quantity == "rho" ~ log((1 + param_value) / (1 - param_value)),
+        quantity == "V_0" ~ log(param_value)
+    ))
+
+traces_pyr <- bind_rows(
+    traces |> mutate(language = "python", value_T = param_value),
+    traces_long
+)
+```
+
+```{r Compare python and R traces}
+traces_pyr |>
+    filter(quantity != "logLik") |>
+    filter(value_T >= -12, value_T <= 12) |>
+    ggplot(
+        mapping = aes(
+            x = iter, y = value_T, group = interaction(rep, language),
+            color = as.factor(language)
+        )
+    ) +
+    geom_line(alpha = 0.2) +
+    facet_wrap(vars(quantity), scales = "free") +
+    ggtitle("Comparison of Python and R Parameter Traces")
+```
+
+```{r Compare python and R traces quantiles}
+traces_pyr |>
+    filter(quantity != "logLik") |>
+    filter(value_T >= -12, value_T <= 12) |>
+    group_by(iter, quantity, language) |>
+    summarise(
+        ymin = quantile(value_T, 0.1, na.rm = TRUE),
+        ymax = quantile(value_T, 0.9, na.rm = TRUE),
+        .groups = "drop"
+    ) |>
+    ggplot(
+        mapping = aes(x = iter, ymin = ymin, ymax = ymax, fill = language)
+    ) +
+    geom_ribbon(alpha = 0.5) +
+    facet_wrap(vars(quantity), scales = "free") +
+    ggtitle("Comparison of Python and R Parameter Trace Quantiles")
+```
+
+## Compare python and R estimates
+
+```{r Compare python and R estimates}
+traces_pyr |>
+    group_by(language, quantity) |>
+    filter(iter == max(iter)) |>
+    summarise(
+        p10 = quantile(value_T, 0.1, na.rm = TRUE),
+        p90 = quantile(value_T, 0.9, na.rm = TRUE),
+        .groups = "drop"
+    ) |>
+    right_join(
+        traces_pyr |>
+            group_by(language) |>
+            filter(iter == max(iter)),
+        by = c("language", "quantity")
+    ) |>
+    filter(value_T >= -10, value_T <= 10) |>
+    ggplot(mapping = aes(x = language, y = value_T, color = language), alpha = 0.2) +
+    geom_jitter() +
+    facet_wrap(vars(quantity), scales = "free") +
+    labs(
+        title = "Comparison of Final Iteration Values for Each Parameter (Zoomed)",
+        x = "Parameter",
+        y = "Transformed Value",
+        fill = "Language"
+    )
+```
+
+```{r Compare python and R estimates (boxplot)}
+traces_pyr |>
+    filter(quantity != "logLik", quantity != "loglik") |>
+    group_by(language, quantity) |>
+    filter(iter == min(iter)) |>
+    ggplot(mapping = aes(x = language, y = value_T, color = language), alpha = 0.2) +
+    geom_boxplot() +
+    facet_wrap(vars(quantity), scales = "free") +
+    labs(
+        title = "Comparison of Starting Parameter Values for Each Parameter (Zoomed)",
+        x = "Parameter",
+        y = "Transformed Value",
+    )
+```
+
+## LL comparison
+
+### Python LL summary:
+```{r}
+print(summary(py$LL_frame$LL))
+head(arrange(py$LL_frame, desc(LL)), 10)
+```
+
+### R LL summary:
+```{r}
+print(summary(LL_df_R$est))
+head(arrange(LL_df_R, desc(est)), 10)
+```
+
+### Density plot comparison
+
+```{r}
+data.frame(
+    python = py$LL_frame$LL,
+    R = LL_df_R$est
+) |>
+    filter(python > 11000, R > 11000) |>
+    pivot_longer(names_to = "language", values_to = "LL", cols = c(python, R)) |>
+    ggplot(aes(x = LL, fill = language)) +
+    geom_density(alpha = 0.5) +
+    labs(
+        title = "Comparison of Python and R LL Estimates (Zoomed)",
+        x = "LL",
+        fill = "Language"
+    )
+```
+
+# Weizhe's estimates
+
+This table compares the parameter estimates reported by Weizhe in his thesis to our best python parameter estimates.
+
+```{r Weizhe estimates}
+rho_transform <- function(x) {
+    out <- log((1 + x) / (1 - x))
+    return(out)
+}
+
+# Weizhe values
+data <- list(
+    Parameter = c("mu", "kappa", "theta", "xi", "rho", "V_0"),
+    Value = c(
+        log(3.68e-4),
+        log(3.14e-2),
+        log(1.12e-4),
+        log(2.27e-3),
+        rho_transform(-7.38e-1),
+        log(7.66e-3^2)
+    )
+)
+df <- as.data.frame(data)
+
+# Compare Weizhe's estimates to the best python fit
+traces |>
+    filter(iter == last_iter, rep == best_rep, method == "pfilter") |>
+    select(quantity, param_value) |>
+    left_join(df, by = c("quantity" = "Parameter")) |>
+    mutate(difference = param_value - Value) |>
+    rename(Weizhe_value = Value, python_value = param_value) |>
+    print()
+```
+
+Here we check that, when running the particle filter at the values reported by Weizhe in his thesis, we obtain a LL estimate similar to the reported value and similar to what we obtained from running the particle filter in R.
+
+```{python} 
+def rho_transform(x):
+    return np.log((1 + x) / (1 - x))
+
+
+key = jax.random.key(1)
+spx_obj = spx()
+
+key, subkey = jax.random.split(key)
+spx_obj.pfilter(
+    J=1000,
+    key=subkey,
+    theta={
+        "mu": np.log(3.68e-4),
+        "kappa": np.log(3.14e-2),
+        "theta": np.log(1.12e-4),
+        "xi": np.log(2.27e-3),
+        "rho": rho_transform(-7.38e-1),
+        "V_0": np.log(7.66e-3**2),
+    },
+    reps=72,
+)
+
+float(spx_obj.results[-1]["logLiks"][0].mean())
+float(spx_obj.results[-1]["logLiks"][0].std())
+```
+
+Weizhe obtained an LL estimate of 11847.12 from profiling according to his thesis
+
+Evaluating the Weizhe model with the Weizhe parameter estimates under Honor_Thesis/output/1d_global/weizhe_eval yielded LL 11849.65, sd 1.1217372.
+
