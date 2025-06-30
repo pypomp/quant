@@ -1,3 +1,11 @@
+
+==== 25-06-27 ==== diffPomp gpu ====
+
+quant/diffPomp/test.py has a basic speed test of pfilter from Kevin's original code.
+
+For J=10^4, it ran in 400ms on greatlakes gpu and 200ms on Kevin's gpu.
+
+
 ==== 25-06-13 ==== greatlakes ====
 
 2025-06-13 pypomp speed test using [CpuDevice(id=0)] 

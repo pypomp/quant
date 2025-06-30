@@ -1,0 +1,19 @@
+
+This details the workflow for a speed test using the code for the original IFAD arXiv paper: https://arxiv.org/abs/2407.03085v1, which  amounts to a very stripped down version of pypomp.
+
+On greatlakes GPU, start by setting up the virtual environment venv-test-gpu following the code at setup-venv-test-gpu. If this is alread set up, simply
+
+salloc --account=ionides1 --partition=gpu --gpus=v100:1 --cpus-per-gpu=10 --mem=45G
+
+nvidia-smi
+
+cd ~/git/quant/diffPomp
+source venv-test-gpu/bin/activate
+python test.py
+
+
+==== 25-06-27 ==== greatlakes gpu ====
+
+[69.73900926997885, 0.398414510069415, 0.39348985510878265, 0.3938914730679244, 0.39351382618770003, 0.3931709879543632, 0.39376939297653735, 0.39407467911951244, 0.3938242238946259, 0.3936828919686377]
+[Array(3749.0742, dtype=float32), Array(3747.748, dtype=float32), Array(3749.0073, dtype=float32), Array(3748.5437, dtype=float32), Array(3747.519, dtype=float32), Array(3748.3418, dtype=float32), Array(3749.2717, dtype=float32), Array(3748.592, dtype=float32), Array(3748.215, dtype=float32), Array(3748.6514, dtype=float32)]
+
