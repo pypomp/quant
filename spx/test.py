@@ -59,8 +59,8 @@ sp500_box = {
     "kappa": [1e-8, 0.1],
     "theta": [0.000075, 0.0002],
     "xi": [1e-8, 1e-2],
-    "rho": [-0.9, 0.9],
-    "V_0": [1e-6, 1e-4],
+    "rho": [1e-8, 1],
+    "V_0": [1e-10, 1e-4],
 }
 
 key, subkey = jax.random.split(key)
@@ -79,9 +79,11 @@ for params in initial_params_list:
 # implement Feller's condition
 for params in transformed_params_list:
     params["xi"] = float(
-        np.random.uniform(
-            low=0,
-            high=np.log(np.sqrt(np.exp(params["kappa"]) * np.exp(params["theta"]) * 2)),
+        np.log(
+            np.random.uniform(
+                low=0,
+                high=np.sqrt(np.exp(params["kappa"]) * np.exp(params["theta"]) * 2),
+            )
         )
     )
 
