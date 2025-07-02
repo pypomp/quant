@@ -7,7 +7,7 @@ format:
 engine: knitr
 ---
 
-```{r Load R libraries}
+```{r Load R libraries, echo = FALSE}
 library(reticulate)
 library(tidyverse)
 library(pomp)
@@ -23,27 +23,27 @@ import pickle
 import numpy as np
 import pandas as pd
 import pypomp as pp
-from pypomp.spx import spx
 import jax
 ```
 
 ```{python Load data in python}
-PKL_PATH = "cpu/spx_results.pkl"
+PKL_PATH = "gpu/v2/spx_results.pkl"
 pkl_in = pickle.load(open(PKL_PATH, "rb"))
 ```
 
-
 ```{python Make basic frame}
+LL_frame = pkl_in.results()
 LL_frame = (
     pd.DataFrame(
         {
-            "LL": [float(x.mean()) for x in pkl_in.results[-1]["logLiks"]],
-            "sd": [float(x.std()) for x in pkl_in.results[-1]["logLiks"]],
+            "LL": LL_frame["logLik"],
+            "sd": LL_frame["se"],
         }
     )
     .sort_values(by="LL", ascending=False)
     .reset_index(drop=True)
 )
+
 traces = pkl_in.traces()
 ```
 
@@ -280,7 +280,7 @@ def rho_transform(x):
 
 
 key = jax.random.key(1)
-spx_obj = spx()
+spx_obj = pp.spx()
 
 key, subkey = jax.random.split(key)
 spx_obj.pfilter(
@@ -297,8 +297,7 @@ spx_obj.pfilter(
     reps=72,
 )
 
-float(spx_obj.results[-1]["logLiks"][0].mean())
-float(spx_obj.results[-1]["logLiks"][0].std())
+spx_obj.results()
 ```
 
 Weizhe obtained an LL estimate of 11847.12 from profiling according to his thesis
