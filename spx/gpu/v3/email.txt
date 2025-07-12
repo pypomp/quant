@@ -1,0 +1,27 @@
+Job 28220487 Ended
+Created Thu, 10 Jul 2025 11:02:37 EDT
+
+------------------------------
+Job Name         : SPX test
+Job ID           : 28220487
+User             : aaronabk
+Partition        : gpu
+Nodes Used       : gl1001
+Cores            : 1
+Job state        : COMPLETED
+Exit Code        : 0
+Submit           : 2025-07-10T10:50:17
+Start            : 2025-07-10T10:56:30
+End              : 2025-07-10T11:02:37
+Res. Walltime    : 12:00:00
+Used Walltime    : 00:06:07
+Used CPU time    : 05:57.632
+% User (Comp)    : 77.14%
+% System (I/O)   : 22.86%
+Memory Requested : 6.0 GiB
+Max Memory Used  : 1.5 GiB
+Max Disk Write   : 1.6 MiB
+Max Disk Read    : 79 MiB
+------------------------------
+- TIP: Please consider lowering the amount of requested memory in the future, your job has consumed less than half of the requested memory.
+- TIP: Your job was submitted with a walltime of 12:00:00 and finished in less half of the time, consider reducing the walltime
