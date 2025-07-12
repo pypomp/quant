@@ -24,6 +24,8 @@ venv*
 *.Renviron
 *.Rout
 *.Rhistory
+renv
+.renvignore
 
 # For Latex users
 *.bbl

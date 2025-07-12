@@ -9,7 +9,6 @@ import jax
 import pickle
 import jax.numpy as jnp
 import pypomp as pp
-import pypomp.spx as pps
 import numpy as np
 import psutil
 import threading
@@ -28,6 +27,7 @@ def monitor_cpu(interval=1.0):
 
 # monitor_cpu()
 # time.sleep(10)
+# monitor_vram()
 print(jax.devices())
 
 MAIN_SEED = 631409
@@ -38,7 +38,7 @@ RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "2"))
 
 NP_FITR = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NFITR = (2, 20, 200, 200)[RUN_LEVEL - 1]
-NREPS_FITR = (2, 3, 20, 120)[RUN_LEVEL - 1]
+NREPS_FITR = (2, 3, 20, 120*3)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 24)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
@@ -87,7 +87,7 @@ for params in transformed_params_list:
         )
     )
 
-spx_obj = pps.spx()
+spx_obj = pp.spx()
 
 print("Starting IF2")
 key, subkey = jax.random.split(key)
@@ -101,12 +101,10 @@ spx_obj.mif(
     J=NP_FITR,
     key=subkey,
 )
-print(spx_obj.results[-1]["logLiks"][0].mean())
 print(f"mif time taken: {time.time() - start_time} seconds")
 
 start_time = time.time()
 spx_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
-print(spx_obj.results[-1]["logLiks"][0].mean())
 print(f"pfilter time taken: {time.time() - start_time} seconds")
 
 with open("spx_results.pkl", "wb") as f:

@@ -24,8 +24,16 @@ endif
 
 # GPU job
 gpu:
-	cd gpu && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=$(WALL_TIME) job_gpu.sbat
+	cd gpu && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:40:00 job_gpu.sbat
 
 # CPU job  
 cpu:
 	cd cpu && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=$(WALL_TIME) job_cpu.sbat
+
+# Eval pfilter with pypomp
+py_eval:
+	cd pfilter_check && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:02:00 eval_py.sbat
+
+# Eval pfilter with pomp (runs from root for renv)
+R_eval:
+	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=00:20:00 spx/pfilter_check/eval_R.sbat
