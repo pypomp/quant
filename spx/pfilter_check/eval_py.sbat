@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # The name of the job:
-#SBATCH --job-name="SPX test"
+#SBATCH --job-name="SPX pfilter check"
 
 # Send yourself an email when the job:
 # aborts abnormally (fails)
@@ -12,15 +12,16 @@
 # Use this email address:
 #SBATCH --mail-user=aaronabk@umich.edu
 
-# CPU settings
-#SBATCH --partition=standard
-#SBATCH --cpus-per-task=36
+# GPU settings
+#SBATCH --partition=gpu
+#SBATCH --gpus=v100:1
+#SBATCH --cpus-per-gpu=1
 
 # Total memory
 #SBATCH --mem=6GB
 
 # The maximum running time of the job in days-hours:mins:sec
-# --time=0-0:4:00
+# --time=0-0:04:00
 
 # The account which this job should run under:
 #SBATCH --account="ionides1"
@@ -30,8 +31,7 @@
 # The job command(s):
 echo "Running on $SLURM_JOB_NODELIST"
 echo "Running in $(pwd)"
-echo "Running with $SLURM_CPUS_PER_TASK CPUs"
-
+ 
 ## Important variables ##
 # out_dir must end with /
 # export out_dir="output/1d_global/search_09/"
@@ -43,5 +43,6 @@ echo "Running with $SLURM_CPUS_PER_TASK CPUs"
 # echo "Copying .sbat file to $out_dir"
 # cp $this_file $out_dir$this_file
 # Activate venv
+
 source ../../.venv/bin/activate
-python ../test.py
+python eval.py
