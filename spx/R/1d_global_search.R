@@ -6,7 +6,7 @@ library(doRNG)
 library(tidyverse)
 
 cores <- as.numeric(Sys.getenv("SLURM_NTASKS_PER_NODE", unset = NA))
-run_level <- as.numeric(Sys.getenv("run_level", unset = NA))
+run_level <- as.numeric(Sys.getenv("RUN_LEVEL", unset = NA))
 
 if (is.na(cores)) cores <- detectCores()
 registerDoParallel(cores)
@@ -15,7 +15,7 @@ registerDoRNG(34118892)
 
 # Data Manipulation -------------------------------------------------------
 
-sp500_raw <- read.csv("SPX.csv")
+sp500_raw <- read.csv("data/SPX.csv")
 sp500 <- sp500_raw %>%
   mutate(date = as.Date(Date)) %>%
   mutate(diff_days = difftime(date, min(date), units = "day")) %>%
@@ -128,12 +128,7 @@ sp500_rw.sd <- rw_sd(
   V_0 = ivp(sp500_rw.sd_ivp)
 )
 
-sp500_Np <- switch(run_level,
-  100,
-  200,
-  500,
-  1000
-)
+sp500_Np <- switch(run_level, 100, 200, 500, 1000)
 sp500_Nmif <- switch(run_level,
   10,
   25,
@@ -156,7 +151,7 @@ sp500_Nreps_global <- switch(run_level,
   10,
   15,
   20,
-  120
+  120*3
 )
 
 sp500_box <- rbind(
@@ -181,31 +176,44 @@ global_starts$xi <- runif(
   max = sqrt(global_starts$kappa * global_starts$theta * 2)
 ) # kappa<2*xi*theta
 
-stew(file = sprintf("1d_global_search/1d_global_search.rds"), {
-  t.box <- system.time({
-    if.box <- foreach(
-      i = 1:sp500_Nreps_global, .packages = "pomp",
-      .combine = c,
-      .options.multicore = list(set.seed = TRUE)
-    ) %dopar% {
-      mif2(
-        sp500.filt,
-        Nmif = sp500_Nmif,
-        rw.sd = sp500_rw.sd,
-        cooling.fraction.50 = sp500_cooling.fraction50,
-        Np = sp500_Np,
-        params = unlist(global_starts[i, ])
-      )
-    } # if.box contains all estimates of parameters (list of mif objects)
-    L.box <- foreach(
-      i = 1:sp500_Nreps_global, .packages = "pomp",
-      .combine = rbind,
-      .options.multicore = list(set.seed = TRUE)
-    ) %dopar% {
-      replicate(
-        sp500_Nreps_eval,
-        logLik(pfilter(sp500.filt, params = coef(if.box[[i]]), Np = sp500_Np))
-      ) |> logmeanexp(se = TRUE)
-    } # matrix containing logLik and SE for each time
-  })
+stew(file = sprintf("spx/R/1d_global_search360.rda"), {
+    t.box <- system.time({
+        t.if.box <- system.time({
+            if.box <- foreach(
+                i = 1:sp500_Nreps_global,
+                .packages = 'pomp',
+                .combine = c,
+                .options.multicore = list(set.seed = TRUE)
+            ) %dopar%
+                {
+                    mif2(
+                        sp500.filt,
+                        Nmif = sp500_Nmif,
+                        rw.sd = sp500_rw.sd,
+                        cooling.fraction.50 = sp500_cooling.fraction50,
+                        Np = sp500_Np,
+                        params = unlist(global_starts[i, ])
+                    )
+                } # if.box contains all estimates of parameters (list of mif objects)
+        })
+        t.L.box <- system.time({
+            L.box <- foreach(
+                i = 1:sp500_Nreps_global,
+                .packages = 'pomp',
+                .combine = rbind,
+                .options.multicore = list(set.seed = TRUE)
+            ) %dopar%
+                {
+                    replicate(
+                        sp500_Nreps_eval,
+                        logLik(pfilter(
+                            sp500.filt,
+                            params = coef(if.box[[i]]),
+                            Np = sp500_Np
+                        ))
+                    ) |>
+                        logmeanexp(se = TRUE)
+                } # matrix containing logLik and SE for each time
+        })
+    })
 })

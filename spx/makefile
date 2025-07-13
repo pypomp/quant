@@ -30,6 +30,9 @@ gpu:
 cpu:
 	cd cpu && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=$(WALL_TIME) job_cpu.sbat
 
+R_search:
+	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=03:20:00 spx/R/1d_global_search.sbat
+
 # Eval pfilter with pypomp
 py_eval:
 	cd pfilter_check && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:02:00 eval_py.sbat
