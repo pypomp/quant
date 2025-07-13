@@ -1,0 +1,25 @@
+Job 28343598 Ended
+Created Sat, 12 Jul 2025 20:07:23 EDT
+
+------------------------------
+Job Name         : 1d global search
+Job ID           : 28343598
+User             : aaronabk
+Partition        : standard
+Nodes Used       : gl3051
+Cores            : 36
+Job state        : COMPLETED
+Exit Code        : 0
+Submit           : 2025-07-12T18:07:03
+Start            : 2025-07-12T18:07:32
+End              : 2025-07-12T20:07:23
+Res. Walltime    : 03:20:00
+Used Walltime    : 01:59:51
+Used CPU time    : 2-22:34:51
+% User (Comp)    : 99.83%
+% System (I/O)   :  0.17%
+Memory Requested : 72 GiB
+Max Memory Used  : 10 GiB
+Max Disk Write   : 142 MiB
+Max Disk Read    : 638 MiB
+------------------------------

@@ -17,7 +17,7 @@
 # Maximum number of tasks/CPU cores used by the job:
 #SBATCH --nodes=1
 # ntasks is the important one
-# --ntasks-per-node=36
+#SBATCH --ntasks-per-node=36
 #SBATCH --cpus-per-task=1
 
 # Total memory allocated for the job:
@@ -31,7 +31,7 @@
 # --time=1-4:00:00
 
 # The account which this job should run under:
-#SBATCH --account="ionides0"
+#SBATCH --account="ionides1"
 
 # Partition for the job:
 #SBATCH -p standard
@@ -49,7 +49,7 @@ echo "Running in $(pwd)"
 echo "Using run level $run_level"
  
 ### R commands ###
-echo "Running 1d_global_search/$R_file..."
+#echo "Running 1d_global_search/$R_file..."
 R CMD BATCH --no-restore --no-save \
-  1d_global_search/$R_file 1d_global_search/$R_file"out"
+  spx/R/$R_file spx/R/$R_file"out"
 

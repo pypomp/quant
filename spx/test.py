@@ -38,7 +38,7 @@ RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "2"))
 
 NP_FITR = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NFITR = (2, 20, 200, 200)[RUN_LEVEL - 1]
-NREPS_FITR = (2, 3, 20, 120*3)[RUN_LEVEL - 1]
+NREPS_FITR = (2, 3, 20, 120)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 24)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
