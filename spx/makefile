@@ -40,3 +40,6 @@ py_eval:
 # Eval pfilter with pomp (runs from root for renv)
 R_eval:
 	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=00:20:00 spx/pfilter_check/eval_R.sbat
+
+report:
+	cd .. && quarto render spx/report.qmd

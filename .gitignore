@@ -26,6 +26,8 @@ venv*
 *.Rhistory
 renv
 .renvignore
+.Rprofile
+renv.lock
 
 # For Latex users
 *.bbl

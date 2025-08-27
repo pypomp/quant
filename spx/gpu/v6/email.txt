@@ -1,0 +1,25 @@
+Job 31267646 Ended
+Created Tue, 26 Aug 2025 17:33:26 EDT
+
+------------------------------
+Job Name         : SPX test
+Job ID           : 31267646
+User             : aaronabk
+Partition        : spgpu
+Nodes Used       : gl1510
+Cores            : 1
+Job state        : COMPLETED
+Exit Code        : 0
+Submit           : 2025-08-26T17:24:59
+Start            : 2025-08-26T17:25:00
+End              : 2025-08-26T17:33:25
+Res. Walltime    : 00:40:00
+Used Walltime    : 00:08:25
+Used CPU time    : 08:17.692
+% User (Comp)    : 99.18%
+% System (I/O)   :  0.82%
+Memory Requested : 6.0 GiB
+Max Memory Used  : 2.2 GiB
+Max Disk Write   : 2.4 MiB
+Max Disk Read    : 87 MiB
+------------------------------
