@@ -1,0 +1,7 @@
+Running on gl1510
+Running in /home/aaronabk/research/quant/spx/gpu
+[CudaDevice(id=0)]
+Running at level 4
+Starting IF2
+mif time taken: 442.7882573604584 seconds
+pfilter time taken: 47.35303735733032 seconds

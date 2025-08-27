@@ -17,6 +17,10 @@ sessionInfo()
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
+```{r}
+print(Sys.time())
+```
+
 ```{python Import python modules}
 import os
 import pickle
@@ -27,7 +31,7 @@ import jax
 ```
 
 ```{python Load data in python}
-PKL_PATH = "gpu/v2/spx_results.pkl"
+PKL_PATH = "gpu/spx_results.pkl"
 pkl_in = pickle.load(open(PKL_PATH, "rb"))
 ```
 
@@ -100,7 +104,7 @@ ggplot(
 #  Compare python and R traces
 
 ```{r Load R estimates}
-load("R/1d_global_search.rda")
+load("R/search360/1d_global_search360.rda")
 LL_df_R <- as.data.frame(L.box)
 traces_long <- lapply(seq_along(if.box), function(x) {
     tr <- traces(if.box[[x]])
@@ -162,7 +166,7 @@ traces_pyr |>
     ggtitle("Comparison of Python and R Parameter Trace Quantiles")
 ```
 
-## Compare python and R estimates
+# Compare python and R estimates
 
 ```{r Compare python and R estimates}
 traces_pyr |>
@@ -238,6 +242,36 @@ data.frame(
     )
 ```
 
+# Compare python and R LL estimates at Weizhe's estimates
+
+```{python Load rep3600 eval results}
+EVAL_PKL_PATH = "pfilter_check/rep3600/spx_results_eval.pkl"
+pkl_eval = pickle.load(open(EVAL_PKL_PATH, "rb"))
+LL_rep3600 = pkl_eval.results_history[0]["logLiks"][0].values.tolist()
+```
+
+```{r Load rep3600 R eval and plot combined density}
+load("pfilter_check/rep3600/eval.rda")
+
+# Extract numeric log-likelihoods from L.box regardless of shape
+LL_rep3600_R <- as.numeric(L.box)
+
+data.frame(
+    LL = c(unlist(py$LL_rep3600), LL_rep3600_R),
+    source = c(
+        rep("python", length(py$LL_rep3600)),
+        rep("R", length(LL_rep3600_R))
+    )
+) |>
+    ggplot(aes(x = LL, fill = source)) +
+    geom_density(alpha = 0.5) +
+    labs(
+        title = "rep3600 Log-Likelihood Density: Python vs R",
+        x = "Log-Likelihood",
+        fill = "Source"
+    )
+```
+
 # Weizhe's estimates
 
 This table compares the parameter estimates reported by Weizhe in his thesis to our best python parameter estimates.
@@ -271,36 +305,3 @@ traces |>
     rename(Weizhe_value = Value, python_value = param_value) |>
     print()
 ```
-
-Here we check that, when running the particle filter at the values reported by Weizhe in his thesis, we obtain a LL estimate similar to the reported value and similar to what we obtained from running the particle filter in R.
-
-```{python} 
-def rho_transform(x):
-    return np.log((1 + x) / (1 - x))
-
-
-key = jax.random.key(1)
-spx_obj = pp.spx()
-
-key, subkey = jax.random.split(key)
-spx_obj.pfilter(
-    J=1000,
-    key=subkey,
-    theta={
-        "mu": np.log(3.68e-4),
-        "kappa": np.log(3.14e-2),
-        "theta": np.log(1.12e-4),
-        "xi": np.log(2.27e-3),
-        "rho": rho_transform(-7.38e-1),
-        "V_0": np.log(7.66e-3**2),
-    },
-    reps=72,
-)
-
-spx_obj.results()
-```
-
-Weizhe obtained an LL estimate of 11847.12 from profiling according to his thesis
-
-Evaluating the Weizhe model with the Weizhe parameter estimates under Honor_Thesis/output/1d_global/weizhe_eval yielded LL 11849.65, sd 1.1217372.
-
