@@ -1,5 +1,7 @@
-# Omit slurm files
+# Omit output files (add manually if needed)
 **slurm*
+**.pkl
+**.html
 
 # No need to save level 0 results
 *_0
