@@ -57,7 +57,7 @@ for params in initial_params_list:
         if k in ["R0", "sigmaSE", "sigma", "iota", "psi", "gamma"]:
             transformed_params[k] = float(np.log(v))
         elif k in ["rho", "amplitude", "cohort"]:
-            transformed_params[k] = float(np.log((1 + v) / (1 - v)))
+            transformed_params[k] = float(pp.logit(v))
         else:
             transformed_params[k] = v
     transformed_params_list.append(transformed_params)

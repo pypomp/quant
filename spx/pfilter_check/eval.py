@@ -31,15 +31,6 @@ def rho_transform(x):
     return np.log((1 + x) / (1 - x))
 
 
-sp500_box = {
-    "mu": [1e-6, 1e-4],
-    "kappa": [1e-8, 0.1],
-    "theta": [0.000075, 0.0002],
-    "xi": [1e-8, 1e-2],
-    "rho": [1e-8, 1],
-    "V_0": [1e-10, 1e-4],
-}
-
 key, subkey = jax.random.split(key)
 spx_obj = pp.spx()
 

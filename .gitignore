@@ -1,3 +1,6 @@
+# Omit slurm files
+**slurm*
+
 # No need to save level 0 results
 *_0
 
