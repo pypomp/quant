@@ -1,5 +1,5 @@
 ---
-title: "Speed test for pypomp on cpu 
+title: "Speed test for pypomp on cpu"
 jupyter: python3
 embed-resources: true
 format: 
