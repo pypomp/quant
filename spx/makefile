@@ -5,18 +5,17 @@
 .PHONY: gpu cpu clean
 
 # Default run level if not specified
-RUN_LEVEL ?= 2
+RUN_LEVEL ?= 1
 
 # Set wall time based on run level
-# Level 1: 30 seconds, Level 2: 4 minutes, Level 3: 4 hours, Level 4: 12 hours
 ifeq ($(RUN_LEVEL),1)
 WALL_TIME := 00:00:30
 else ifeq ($(RUN_LEVEL),2)
 WALL_TIME := 00:04:00
 else ifeq ($(RUN_LEVEL),3)
-WALL_TIME := 04:00:00
+WALL_TIME := 02:00:00
 else ifeq ($(RUN_LEVEL),4)
-WALL_TIME := 12:00:00
+WALL_TIME := 06:00:00
 else
 $(warning Unknown RUN_LEVEL '$(RUN_LEVEL)', defaulting to 12:00:00)
 WALL_TIME := 12:00:00

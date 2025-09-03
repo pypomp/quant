@@ -87,7 +87,7 @@ measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
 print(f"pfilter time taken: {time.time() - start_time} seconds")
 
 # start_time = time.time()
-# measles_obj.train(J=NP_FITR, reps=NTRAIN, key=subkey)
+# measles_obj.train(J=NP_FITR, M=NTRAIN, key=subkey)
 # print(f"train time taken: {time.time() - start_time} seconds")
 
 # start_time = time.time()

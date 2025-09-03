@@ -32,16 +32,5 @@ echo "Running on $SLURM_JOB_NODELIST"
 echo "Running in $(pwd)"
 echo "Running with $SLURM_CPUS_PER_TASK CPUs"
 
-## Important variables ##
-# out_dir must end with /
-# export out_dir="output/1d_global/search_09/"
-# file_to_run="1d_global.py"
-# this_file="job.sbat" 
-
-### Main commands ###
-# mkdir -p $out_dir
-# echo "Copying .sbat file to $out_dir"
-# cp $this_file $out_dir$this_file
-# Activate venv
 source ../../.venv/bin/activate
 python ../test.py

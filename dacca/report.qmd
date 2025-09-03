@@ -1,0 +1,104 @@
+---
+title: "Dacca Report"
+format:
+  html:
+    toc: true
+    embed-resources: true
+engine: knitr
+---
+
+```{r Load R libraries, echo = FALSE}
+library(reticulate)
+library(tidyverse)
+library(pomp)
+setwd(paste0(here::here(), "/dacca"))
+sessionInfo()
+
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+print(Sys.time())
+```
+
+```{python Import python modules}
+import os
+import pickle
+import numpy as np
+import pandas as pd
+import pypomp as pp
+import jax
+```
+
+```{python Load data in python}
+PKL_PATH = "gpu/dacca_results.pkl"
+pkl_in = pickle.load(open(PKL_PATH, "rb"))
+```
+
+```{python Make basic frame}
+LL_frame = pkl_in.results()
+print(LL_frame)
+LL_frame = (
+    pd.DataFrame(
+        {
+            "LL": LL_frame["logLik"],
+            "sd": LL_frame["se"],
+        }
+    )
+    .sort_values(by="LL", ascending=False)
+    .reset_index(drop=True)
+)
+
+traces = pkl_in.traces()
+```
+
+# Python results
+
+## Process results
+
+```{r Make traces frame in R}
+traces <- py$traces
+LL_frame <- py$LL_frame
+best_rep <- LL_frame$index[[1]]
+traces <- traces |>
+    rename(rep = replication, iter = iteration, logLik = loglik) |>
+    pivot_longer(
+        cols = c(-rep, -iter, -logLik, -method),
+        names_to = "quantity",
+        values_to = "param_value"
+    )
+```
+
+## Plot traces
+
+```{r Set best_rep}
+# Set best_rep to the rep with the largest logLik on the last iteration
+last_iter <- max(traces$iter)
+best_rep <- traces |>
+    filter(iter == last_iter, method == "pfilter") |>
+    group_by(rep) |>
+    summarise(final_logLik = logLik[1]) |>
+    arrange(desc(final_logLik)) |>
+    slice(1) |>
+    pull(rep)
+```
+
+```{r Plot traces}
+ggplot(
+    filter(traces, quantity != "logLik"),
+    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+) +
+    geom_line(show.legend = FALSE) +
+    facet_wrap(vars(quantity), scales = "free")
+```
+
+```{r Plot LL traces, eval = FALSE}
+ggplot(
+    filter(traces, quantity == "logLik"),
+    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+) +
+    geom_line() +
+    facet_wrap(vars(quantity), scales = "free") +
+    coord_cartesian(ylim = c(11000, 11850))
+```
+
