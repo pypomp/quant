@@ -35,4 +35,4 @@ eval:
 	cd pfilter_check && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:20:00 eval_py.sbat
 
 report:
-	cd .. && quarto render measles/report.qmd
+	cd .. && quarto render dacca/report.qmd
