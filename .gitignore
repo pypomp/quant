@@ -1,3 +1,6 @@
+# General
+scratch
+
 # Omit output files (add manually if needed)
 **slurm*
 **.pkl
