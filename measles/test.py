@@ -17,7 +17,7 @@ MAIN_SEED = 631409
 key = jax.random.key(MAIN_SEED)
 np.random.seed(MAIN_SEED)
 
-RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "2"))
+RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 
 NP_FITR = (2, 500, 1000, 5000)[RUN_LEVEL - 1]
 NFITR = (2, 20, 100, 100)[RUN_LEVEL - 1]
@@ -27,24 +27,41 @@ NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
 
-RW_SD = jnp.array([0.02] * 4 + [0] * 4 + [0.02] * 5)
-RW_SD_INIT = jnp.array([0.0] * 4 + [0.1] * 4 + [0.0] * 5)
+# RW_SD = jnp.array([0.02] * 9 + [0.0] * 4)
+# RW_SD_INIT = jnp.array([0.0] * 9 + [0.1] * 4)
+RW_SD_DICT = {
+    "R0": (0.02, 0.0),
+    "sigma": (0.02, 0.0),
+    "gamma": (0.02, 0.02),
+    "iota": (0.02, 0.02),
+    "rho": (0.02, 0.0),
+    "sigmaSE": (0.02, 0.0),
+    "psi": (0.02, 0.0),
+    "cohort": (0.02, 0.0),
+    "amplitude": (0.02, 0.0),
+    "S_0": (0.0, 0.1),
+    "E_0": (0.0, 0.1),
+    "I_0": (0.0, 0.1),
+    "R_0": (0.0, 0.1),
+}
+RW_SD = jnp.array([RW_SD_DICT[k][0] for k in RW_SD_DICT.keys()])
+RW_SD_INIT = jnp.array([RW_SD_DICT[k][1] for k in RW_SD_DICT.keys()])
 COOLING_RATE = 0.5
 
 measles_box = {
-    "R0": [10, 60],
+    "R0": [10.0, 60.0],
+    "sigma": [25.0, 100.0],
+    "gamma": [25.0, 320.0],
+    "iota": [0.004, 3.0],
     "rho": [0.1, 0.9],
     "sigmaSE": [0.04, 0.1],
+    "psi": [0.05, 3.0],
+    "cohort": [0.1, 0.7],
     "amplitude": [0.1, 0.6],
     "S_0": [0.01, 0.07],
     "E_0": [0.000004, 0.0001],
     "I_0": [0.000003, 0.001],
     "R_0": [0.9, 0.99],
-    "sigma": [25, 100],
-    "iota": [0.004, 3],
-    "psi": [0.05, 3],
-    "cohort": [0.1, 0.7],
-    "gamma": [25, 320],
 }
 
 key, subkey = jax.random.split(key)
@@ -62,15 +79,33 @@ for params in initial_params_list:
             transformed_params[k] = v
     transformed_params_list.append(transformed_params)
 
+# Apply log barycentric transformation to S_0, E_0, I_0, R_0
+for params in transformed_params_list:
+    S = params["S_0"]
+    E = params["E_0"]
+    I = params["I_0"]
+    R = params["R_0"]
+    total = S + E + I + R
+
+    S /= total
+    E /= total
+    I /= total
+    R /= total
+
+    params["S_0"] = float(np.log(S))
+    params["E_0"] = float(np.log(E))
+    params["I_0"] = float(np.log(I))
+    params["R_0"] = float(np.log(R))
+
 
 measles_obj = pp.UKMeasles.Pomp(
     unit=["London"],
     theta=transformed_params_list,
+    model="001c",
 )
-
-print("Starting IF2")
+# with jax.profiler.trace("measles_profiler"):
 key, subkey = jax.random.split(key)
-start_time = time.time()
+time0 = time.time()
 measles_obj.mif(
     theta=transformed_params_list,
     sigmas=RW_SD,
@@ -80,19 +115,19 @@ measles_obj.mif(
     J=NP_FITR,
     key=subkey,
 )
-print(f"mif time taken: {time.time() - start_time} seconds")
-
-start_time = time.time()
-measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
-print(f"pfilter time taken: {time.time() - start_time} seconds")
-
-# start_time = time.time()
+print(measles_obj.results(ignore_nan=True))
+time1 = time.time()
+print(f"mif time: {time1 - time0} seconds")
+time0 = time.time()
+measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey, CLL=True)
+print(measles_obj.results(ignore_nan=True))
+time1 = time.time()
+print(f"pfilter time: {time1 - time0} seconds")
 # measles_obj.train(J=NP_FITR, M=NTRAIN, key=subkey)
-# print(f"train time taken: {time.time() - start_time} seconds")
-
-# start_time = time.time()
 # measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
-# print(f"pfilter time taken: {time.time() - start_time} seconds")
+
+measles_obj.print_summary()
+print(measles_obj.time())
 
 with open("measles_results.pkl", "wb") as f:
     pickle.dump(measles_obj, f)
