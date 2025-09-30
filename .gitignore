@@ -1,6 +1,10 @@
 # General
 scratch
 
+# Omit profiles (too big)
+measles/gpu/measles_profiler
+dacca/gpu/dacca_profiler
+
 # Omit output files (add manually if needed)
 **slurm*
 **.pkl

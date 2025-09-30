@@ -1,0 +1,140 @@
+---
+title: "Measles Report"
+format:
+  html:
+    toc: true
+    embed-resources: true
+engine: knitr
+---
+
+```{r Load R libraries, echo = FALSE}
+library(reticulate)
+library(tidyverse)
+library(pomp)
+setwd(paste0(here::here(), "/measles"))
+sessionInfo()
+
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+print(Sys.time())
+```
+
+```{python Import python modules}
+import os
+import pickle
+import numpy as np
+import pandas as pd
+import pypomp as pp
+import jax
+```
+
+```{python Load data in python}
+PKL_PATH = "gpu/measles_results.pkl"
+pomp_obj = pickle.load(open(PKL_PATH, "rb"))
+```
+
+```{python Make basic frame}
+LL_frame = pomp_obj.results()
+traces = pomp_obj.traces()
+```
+
+
+
+# Python results
+
+## Tables
+
+```{r Make traces frame in R}
+traces <- py$traces
+best_rep <- py$LL_frame$index[[1]]
+traces <- traces |>
+    rename(rep = replicate, iter = iteration, logLik = loglik) |>
+    pivot_longer(
+        cols = c(-rep, -iter, -logLik, -method),
+        names_to = "quantity",
+        values_to = "param_value"
+    )
+```
+
+
+### Summary
+```{python}
+pomp_obj.print_summary()
+print(pomp_obj.results(ignore_nan=True))
+```
+
+### Top results for each method call
+```{python}
+for i in range(len(pomp_obj.results_history)):
+    print(pomp_obj.results(index=i).sort_values(by="logLik", ascending=False).head())
+```
+
+## Plot traces
+
+```{r Set best_rep}
+# Set best_rep to the rep with the largest logLik on the last iteration
+last_iter <- max(traces$iter)
+best_rep <- traces |>
+    filter(iter == last_iter, method == "pfilter") |>
+    group_by(rep) |>
+    summarise(final_logLik = logLik[1]) |>
+    arrange(desc(final_logLik)) |>
+    slice(1) |>
+    pull(rep)
+```
+
+```{r Plot traces, fig.width = 10, fig.height = 10}
+ggplot(
+    traces, aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+) +
+    geom_line(show.legend = FALSE) +
+    facet_wrap(vars(quantity), scales = "free")
+```
+
+```{r Plot traces (natural scale), fig.width = 10, fig.height = 10}
+traces_natural <- traces |>
+    mutate(param_value = case_when(
+        quantity == "logLik" ~ param_value,
+        quantity == "R0" ~ exp(param_value),
+        quantity == "sigma" ~ exp(param_value),
+        quantity == "gamma" ~ exp(param_value),
+        quantity == "iota" ~ exp(param_value),
+        quantity == "rho" ~ 1/(1 + exp(-param_value)),
+        quantity == "sigmaSE" ~ exp(param_value),
+        quantity == "psi" ~ exp(param_value),
+        quantity == "cohort" ~ 1/(1 + exp(-param_value)),
+        quantity == "amplitude" ~ 1/(1 + exp(-param_value)),
+        quantity == "S_0" ~ exp(param_value),
+        quantity == "E_0" ~ exp(param_value),
+        quantity == "I_0" ~ exp(param_value),
+        quantity == "R_0" ~ exp(param_value),
+        TRUE ~ param_value
+    ))
+
+ggplot(
+    traces_natural, aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+) +
+    geom_line(show.legend = FALSE) +
+    facet_wrap(vars(quantity), scales = "free")
+```
+
+
+```{r Final parameter values}
+traces_natural |>
+    filter(method == "pfilter") |>
+ggplot(aes(y = param_value, x = quantity)) +
+    geom_violin() +
+    facet_wrap(vars(quantity), scales = "free")
+```
+
+
+```{r Plot LL traces, eval = TRUE}
+ggplot(
+    traces, 
+    aes(x = iter, y = logLik, group = rep, color = as.factor(rep))
+) +
+    geom_line(show.legend = FALSE)
+```
+
