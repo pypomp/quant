@@ -16,7 +16,7 @@ WALL_TIME := 00:20:00
 else ifeq ($(RUN_LEVEL),3)
 WALL_TIME := 01:00:00
 else ifeq ($(RUN_LEVEL),4)
-WALL_TIME := 04:00:00
+WALL_TIME := 01:00:00
 else
 $(warning Unknown RUN_LEVEL '$(RUN_LEVEL)', defaulting to 12:00:00)
 WALL_TIME := 12:00:00
@@ -33,6 +33,10 @@ cpu:
 # Eval pfilter with pypomp
 eval:
 	cd pfilter_check && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:20:00 eval_py.sbat
+
+# Eval pfilter with pomp (runs from root for renv)
+R_eval:
+	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=02:00:00 measles/R/london.sbat
 
 report:
 	cd .. && quarto render measles/report.qmd
