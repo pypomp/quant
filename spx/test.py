@@ -38,7 +38,7 @@ RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 
 NP_FITR = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NFITR = (2, 20, 200, 200)[RUN_LEVEL - 1]
-NREPS_FITR = (2, 3, 20, 120*3)[RUN_LEVEL - 1]
+NREPS_FITR = (2, 3, 20, 120 * 3)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 24)[RUN_LEVEL - 1]
 NTRAIN = (2, 20, 40, 40)[RUN_LEVEL - 1]
@@ -115,6 +115,8 @@ print(f"pfilter time taken: {time.time() - start_time} seconds")
 # start_time = time.time()
 # spx_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
 # print(f"pfilter time taken: {time.time() - start_time} seconds")
+
+print(spx_obj.time())
 
 with open("spx_results.pkl", "wb") as f:
     pickle.dump(spx_obj, f)

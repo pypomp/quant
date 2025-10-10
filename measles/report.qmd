@@ -62,7 +62,7 @@ traces <- traces |>
 ### Summary
 ```{python}
 pomp_obj.print_summary()
-print(pomp_obj.results(ignore_nan=True))
+print(pomp_obj.results(ignore_nan=True).sort_values(by="logLik", ascending=False))
 ```
 
 ### Top results for each method call
