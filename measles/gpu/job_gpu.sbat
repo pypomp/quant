@@ -13,8 +13,10 @@
 #SBATCH --mail-user=aaronabk@umich.edu
 
 # GPU settings
-#SBATCH --partition=spgpu
-#SBATCH --gpus=a40:1
+# --partition=gpu_mig40
+# --gpus=nvidia_a100_80gb_pcie_3g.40gb:1
+#SBATCH --partition=gpu
+#SBATCH --gpus=v100:1
 #SBATCH --cpus-per-gpu=1
 
 # Total memory
@@ -26,7 +28,40 @@
 # The account which this job should run under:
 #SBATCH --account="ionides1"
 
-# Run the job from the directory where it was launched (default)
+# --- VRAM Tracking Setup ---
+# Log file for VRAM usage
+VRAM_LOG_FILE="vram_usage_${SLURM_JOB_ID}.log"
+
+# Function to monitor VRAM and write to file
+monitor_vram() {
+    local gpu_id=0  # Change this if you need a different GPU index
+    local interval=5 # Check every 5 seconds
+    local max_vram=0
+
+    while true; do
+        # Query memory usage (used MiB) for the specified GPU
+        # 'pmon' format for persistence mode is good, but 'memory.used' is a direct metric
+        CURRENT_VRAM=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits -i $gpu_id)
+
+        # Check if the query was successful and update max
+        if [[ $? -eq 0 && $CURRENT_VRAM -gt $max_vram ]]; then
+            max_vram=$CURRENT_VRAM
+        fi
+
+        # Write the current maximum to a temporary file
+        echo "$max_vram" > "$VRAM_LOG_FILE.tmp"
+        
+        # Sleep for the interval
+        sleep $interval
+    done
+}
+
+# Start the VRAM monitoring function in the background
+monitor_vram &
+# Capture the PID of the background process
+VRAM_MONITOR_PID=$!
+# --- VRAM Tracking End of Setup ---
+
 
 # The job command(s):
 echo "Running on $SLURM_JOB_NODELIST"
@@ -45,3 +80,19 @@ echo "Running in $(pwd)"
 # Activate venv
 source ../../.venv/bin/activate
 python ../test.py
+
+# --- Final VRAM Cleanup and Reporting ---
+# Stop the background monitor process
+kill $VRAM_MONITOR_PID
+
+# Get the final maximum VRAM from the temporary file
+MAX_VRAM_USED=$(cat "$VRAM_LOG_FILE.tmp")
+
+# Output the final result to the main Slurm output file
+echo "-----------------------------------"
+echo "Maximum VRAM Used: $MAX_VRAM_USED MiB"
+echo "-----------------------------------"
+
+# Clean up the temporary log file
+rm -f "$VRAM_LOG_FILE.tmp"
+# --- End of VRAM Cleanup ---
