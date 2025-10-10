@@ -60,7 +60,7 @@ traces <- py$traces
 LL_frame <- py$LL_frame
 best_rep <- LL_frame$index[[1]]
 traces <- traces |>
-    rename(rep = replication, iter = iteration, logLik = loglik) |>
+    rename(rep = replicate, iter = iteration, logLik = loglik) |>
     pivot_longer(
         cols = c(-rep, -iter, -logLik, -method),
         names_to = "quantity",
@@ -112,20 +112,24 @@ traces_long <- lapply(seq_along(if.box), function(x) {
         as.data.frame() |>
         mutate(iter = 1:nrow(tr), rep = x) |>
         pivot_longer(
-            names_to = "quantity", values_to = "param_value", cols = c(-iter, -rep)
+            names_to = "quantity",
+            values_to = "param_value",
+            cols = c(-iter, -rep)
         )
 }) |>
     bind_rows() |>
     mutate(language = "R") |>
-    mutate(value_T = case_when(
-        quantity == "logLik" ~ param_value,
-        quantity == "mu" ~ log(param_value),
-        quantity == "kappa" ~ log(param_value),
-        quantity == "theta" ~ log(param_value),
-        quantity == "xi" ~ log(param_value),
-        quantity == "rho" ~ log((1 + param_value) / (1 - param_value)),
-        quantity == "V_0" ~ log(param_value)
-    ))
+    mutate(
+        value_T = case_when(
+            quantity == "logLik" ~ param_value,
+            quantity == "mu" ~ log(param_value),
+            quantity == "kappa" ~ log(param_value),
+            quantity == "theta" ~ log(param_value),
+            quantity == "xi" ~ log(param_value),
+            quantity == "rho" ~ log((1 + param_value) / (1 - param_value)),
+            quantity == "V_0" ~ log(param_value)
+        )
+    )
 
 traces_pyr <- bind_rows(
     traces |> mutate(language = "python", value_T = param_value),
@@ -139,7 +143,9 @@ traces_pyr |>
     filter(value_T >= -12, value_T <= 12) |>
     ggplot(
         mapping = aes(
-            x = iter, y = value_T, group = interaction(rep, language),
+            x = iter,
+            y = value_T,
+            group = interaction(rep, language),
             color = as.factor(language)
         )
     ) +
@@ -184,7 +190,10 @@ traces_pyr |>
         by = c("language", "quantity")
     ) |>
     filter(value_T >= -10, value_T <= 10) |>
-    ggplot(mapping = aes(x = language, y = value_T, color = language), alpha = 0.2) +
+    ggplot(
+        mapping = aes(x = language, y = value_T, color = language),
+        alpha = 0.2
+    ) +
     geom_jitter() +
     facet_wrap(vars(quantity), scales = "free") +
     labs(
@@ -200,7 +209,10 @@ traces_pyr |>
     filter(quantity != "logLik", quantity != "loglik") |>
     group_by(language, quantity) |>
     filter(iter == min(iter)) |>
-    ggplot(mapping = aes(x = language, y = value_T, color = language), alpha = 0.2) +
+    ggplot(
+        mapping = aes(x = language, y = value_T, color = language),
+        alpha = 0.2
+    ) +
     geom_boxplot() +
     facet_wrap(vars(quantity), scales = "free") +
     labs(
@@ -232,7 +244,11 @@ data.frame(
     R = LL_df_R$est
 ) |>
     filter(python > 11000, R > 11000) |>
-    pivot_longer(names_to = "language", values_to = "LL", cols = c(python, R)) |>
+    pivot_longer(
+        names_to = "language",
+        values_to = "LL",
+        cols = c(python, R)
+    ) |>
     ggplot(aes(x = LL, fill = language)) +
     geom_density(alpha = 0.5) +
     labs(
