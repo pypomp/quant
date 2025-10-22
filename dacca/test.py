@@ -20,16 +20,39 @@ np.random.seed(MAIN_SEED)
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 
 NP_FITR = (2, 500, 1000, 5000)[RUN_LEVEL - 1]
-NFITR = (2, 20, 100, 100)[RUN_LEVEL - 1]
+NFITR = (2, 5, 100, 100)[RUN_LEVEL - 1]
 NTRAIN = (2, 20, 40, 40)[RUN_LEVEL - 1]
 NREPS_FITR = (2, 3, 20, 36)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
 
-# rho fixed at 0
-RW_SD = jnp.array([0.02] * 2 + [0.0] + [0.02] * 18)
-RW_SD_INIT = jnp.array([0.0] * 21)
+RW_SD = pp.RWSigma(
+    sigmas={
+        "gamma": 0.02,
+        "m": 0.02,
+        "rho": 0.0,
+        "epsilon": 0.02,
+        "omega": 0.02,
+        "c": 0.02,
+        "beta_trend": 0.02,
+        "sigma": 0.02,
+        "tau": 0.02,
+        "b1": 0.02,
+        "b2": 0.02,
+        "b3": 0.02,
+        "b4": 0.02,
+        "b5": 0.02,
+        "b6": 0.02,
+        "omega1": 0.02,
+        "omega2": 0.02,
+        "omega3": 0.02,
+        "omega4": 0.02,
+        "omega5": 0.02,
+        "omega6": 0.02,
+    },
+    init_names=[],
+)
 COOLING_RATE = 0.5
 
 dacca_obj = pp.dacca(dt=None, nstep=20)
@@ -39,12 +62,14 @@ params_box["rho"] = [0.0, 0.0]
 key, subkey = jax.random.split(key)
 initial_params_list = pp.Pomp.sample_params(params_box, NREPS_FITR, key=subkey)
 
-# with jax.profiler.trace("dacca_profiler"):
+
+# options = jax.profiler.ProfileOptions()
+# options.gpu_max_activity_api_events = 1028 * 1024 * 4
+# with jax.profiler.trace("dacca_profiler", profiler_options=options):
 key, subkey = jax.random.split(key)
 dacca_obj.mif(
     theta=initial_params_list,
-    sigmas=RW_SD,
-    sigmas_init=RW_SD_INIT,
+    rw_sd=RW_SD,
     M=NFITR,
     a=COOLING_RATE,
     J=NP_FITR,
@@ -53,17 +78,20 @@ dacca_obj.mif(
 print(dacca_obj.results())
 dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 print(dacca_obj.results())
-dacca_obj.prune(n=3, refill=False)
+dacca_obj.prune(n=10, refill=True)
 # dacca_obj.train(J=NP_FITR, M=NTRAIN, eta=0.2)
+RW_SD.cool(0.25)
 dacca_obj.mif(
-    sigmas=RW_SD / 4,
-    sigmas_init=RW_SD_INIT / 4,
+    rw_sd=RW_SD,
     M=NFITR,
     a=COOLING_RATE,
     J=NP_FITR,
     key=subkey,
 )
 print(dacca_obj.results())
+dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
+print(dacca_obj.results())
+dacca_obj.prune(n=1, refill=False)
 dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 print(dacca_obj.results())
 
