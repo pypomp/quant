@@ -1,5 +1,5 @@
 ---
-title: "Measles Report"
+title: "Panel Measles Report"
 format:
   html:
     toc: true
@@ -11,7 +11,8 @@ engine: knitr
 library(reticulate)
 library(tidyverse)
 library(pomp)
-setwd(paste0(here::here(), "/measles"))
+
+setwd(paste0(here::here(), "/panel_measles"))
 sessionInfo()
 
 knitr::opts_chunk$set(echo = FALSE)
@@ -52,7 +53,7 @@ best_rep <- py$LL_frame$index[[1]]
 traces <- traces |>
     rename(rep = replicate, iter = iteration) |>
     pivot_longer(
-        cols = c(-rep, -iter, -logLik, -method),
+        cols = c(-rep, -iter, -logLik, -method, -unit),
         names_to = "quantity",
         values_to = "param_value"
     )
@@ -61,14 +62,21 @@ traces <- traces |>
 
 ### Summary
 ```{python}
-pomp_obj.print_summary()
-print(pomp_obj.results(ignore_nan=True).sort_values(by="logLik", ascending=False))
+print(
+    pomp_obj.results(ignore_nan=True)
+    .sort_values(by="shared logLik", ascending=False)
+    .head()
+)
 ```
 
 ### Top results for each method call
 ```{python}
 for i in range(len(pomp_obj.results_history)):
-    print(pomp_obj.results(index=i).sort_values(by="logLik", ascending=False).head())
+    print(
+        pomp_obj.results(index=i)
+        .sort_values(by="shared logLik", ascending=False)
+        .head()
+    )
 ```
 
 ## Plot traces
@@ -86,12 +94,16 @@ best_rep <- traces |>
 ```
 
 ```{r Plot traces, fig.width = 10, fig.height = 10}
-ggplot(
-    traces,
-    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
-) +
-    geom_line(show.legend = FALSE) +
-    facet_wrap(vars(quantity), scales = "free")
+for (unit_val in unique(traces$unit)) {
+    gg <- ggplot(
+        traces |> filter(unit == unit_val),
+        aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+    ) +
+        geom_line(show.legend = FALSE) +
+        facet_wrap(vars(quantity), scales = "free") +
+        ggtitle(paste("Unit:", unit_val))
+    print(gg)
+}
 ```
 
 ```{r Plot traces (natural scale), fig.width = 10, fig.height = 10}
