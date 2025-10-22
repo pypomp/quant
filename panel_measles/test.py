@@ -82,16 +82,17 @@ transformed_shared = []
 if initial_shared is not None:
     for df in initial_shared:
         df_t = df.copy()
-        for idx, row in df.iterrows():
-            transformed_row = row.copy()
-            for k, v in row.items():
-                if k in ["R0", "sigmaSE", "sigma", "iota", "psi", "gamma"]:
-                    transformed_row[k] = float(np.log(v))
-                elif k in ["rho", "amplitude", "cohort"]:
-                    transformed_row[k] = float(pp.logit(v))
-                else:
-                    transformed_row[k] = v
-            df_t.loc[idx] = transformed_row
+        for param_name in df.index:
+            if param_name in ["R0", "sigmaSE", "sigma", "iota", "psi", "gamma"]:
+                df_t.loc[param_name, "shared"] = float(
+                    np.log(df.loc[param_name, "shared"])
+                )
+            elif param_name in ["rho", "amplitude", "cohort"]:
+                df_t.loc[param_name, "shared"] = float(
+                    pp.logit(df.loc[param_name, "shared"])
+                )
+            else:
+                df_t.loc[param_name, "shared"] = df.loc[param_name, "shared"]
         transformed_shared.append(df_t)
 else:
     transformed_shared = None
@@ -101,32 +102,31 @@ transformed_unit_specific = []
 if initial_unit_specific is not None:
     for df in initial_unit_specific:
         df_t = df.copy()
-        for idx, row in df.iterrows():
-            transformed_row = row.copy()
-            for k, v in row.items():
-                if k in ["R0", "sigmaSE", "sigma", "iota", "psi", "gamma"]:
-                    transformed_row[k] = float(np.log(v))
-                elif k in ["rho", "amplitude", "cohort"]:
-                    transformed_row[k] = float(pp.logit(v))
+        for param_name in df.index:
+            for unit_name in df.columns:
+                if param_name in ["R0", "sigmaSE", "sigma", "iota", "psi", "gamma"]:
+                    df_t.loc[param_name, unit_name] = float(
+                        np.log(df.loc[param_name, unit_name])
+                    )
+                elif param_name in ["rho", "amplitude", "cohort"]:
+                    df_t.loc[param_name, unit_name] = float(
+                        pp.logit(df.loc[param_name, unit_name])
+                    )
                 else:
-                    transformed_row[k] = v
-            df_t.loc[idx] = transformed_row
+                    df_t.loc[param_name, unit_name] = df.loc[param_name, unit_name]
         transformed_unit_specific.append(df_t)
 else:
     transformed_unit_specific = None
 
-# Apply log barycentric transformation to S_0, E_0, I_0, R_0
-# Assume each df is indexed by parameter name (S_0, E_0, etc.) and columns are units ("London", "Hastings", etc.)
 if transformed_unit_specific is not None:
     for df in transformed_unit_specific:
-        # Extract all vectors for S_0, E_0, I_0, R_0 per column (unit)
-        if all(col in df.index for col in ["S_0", "E_0", "I_0", "R_0"]):
+        if all(param in df.index for param in ["S_0", "E_0", "I_0", "R_0"]):
             S_vec = df.loc["S_0"]
             E_vec = df.loc["E_0"]
             I_vec = df.loc["I_0"]
             R_vec = df.loc["R_0"]
             total = S_vec + E_vec + I_vec + R_vec
-            # Normalize and log, assign back
+
             df.loc["S_0"] = np.log(S_vec / total)
             df.loc["E_0"] = np.log(E_vec / total)
             df.loc["I_0"] = np.log(I_vec / total)
