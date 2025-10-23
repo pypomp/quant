@@ -27,7 +27,28 @@ NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
 
-
+UNITS = locations = [
+    "Bedwellty",
+    "Birmingham",
+    "Bradford",
+    "Bristol",
+    "Cardiff",
+    "Consett",
+    "Dalton.in.Furness",
+    "Halesworth",
+    "Hastings",
+    "Hull",
+    "Leeds",
+    "Lees",
+    "Liverpool",
+    "London",
+    "Manchester",
+    "Mold",
+    "Northwich",
+    "Nottingham",
+    "Oswestry",
+    "Sheffield",
+]
 DEFAULT_SD = 0.02
 DEFAULT_IVP_SD = DEFAULT_SD * 12
 RW_SD = pp.RWSigma(
@@ -72,9 +93,9 @@ dummy_initial_params_list = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=s
 initial_shared, initial_unit_specific = pp.PanelPomp.sample_params(
     measles_box,
     n=NREPS_FITR,
-    units=["London", "Hastings"],
+    units=UNITS,
     key=subkey,
-    shared_names=["gamma"],
+    shared_names=[],
 )
 
 # Transform shared parameter DataFrames
@@ -133,25 +154,18 @@ if transformed_unit_specific is not None:
             df.loc["R_0"] = np.log(R_vec / total)
 
 
-london = pp.UKMeasles.Pomp(
-    unit=["London"],
-    theta=dummy_initial_params_list,
-    model="001b",
-    clean=True,
-)
-
-hastings = pp.UKMeasles.Pomp(
-    unit=["Hastings"],
-    theta=dummy_initial_params_list,
-    model="001b",
-    clean=True,
-)
+pomp_dict = {
+    unit: pp.UKMeasles.Pomp(
+        unit=[unit],
+        theta=dummy_initial_params_list,
+        model="001b",
+        clean=True,
+    )
+    for unit in UNITS
+}
 
 panel_measles_obj = pp.PanelPomp(
-    Pomp_dict={
-        "London": london,
-        "Hastings": hastings,
-    },
+    Pomp_dict=pomp_dict,
     shared=transformed_shared,
     unit_specific=transformed_unit_specific,
 )
@@ -166,7 +180,14 @@ panel_measles_obj.mif(
 )
 print(panel_measles_obj.results(ignore_nan=False))
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
-print(panel_measles_obj.results(ignore_nan=False))
+
+results = panel_measles_obj.results(ignore_nan=False)
+print(results[["unit", "unit logLik"]].groupby("unit").max())
+print(
+    results[["shared logLik", "shared logLik SE"]]
+    .sort_values(by="shared logLik", ascending=False)
+    .head()
+)
 
 print(panel_measles_obj.time())
 

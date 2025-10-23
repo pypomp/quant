@@ -69,11 +69,16 @@ print(
 )
 ```
 
+```{python}
+pomp_obj.results(ignore_nan=True)[["unit", "unit logLik"]].groupby("unit").max()
+```
+
 ### Top results for each method call
 ```{python}
 for i in range(len(pomp_obj.results_history)):
+    print(f"Method call {i}:")
     print(
-        pomp_obj.results(index=i)
+        pomp_obj.results(index=i)[["unit", "shared logLik", "unit logLik"]]
         .sort_values(by="shared logLik", ascending=False)
         .head()
     )
@@ -128,29 +133,44 @@ traces_natural <- traces |>
         )
     )
 
-ggplot(
-    traces_natural,
-    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
-) +
-    geom_line(show.legend = FALSE) +
-    facet_wrap(vars(quantity), scales = "free")
+for (unit_val in unique(traces$unit)) {
+    gg <- ggplot(
+        traces_natural |> filter(unit == unit_val),
+        aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+    ) +
+        geom_line(show.legend = FALSE) +
+        facet_wrap(vars(quantity), scales = "free") +
+        ggtitle(paste("Unit:", unit_val))
+    print(gg)
+}
 ```
 
 
-```{r Final parameter values}
-traces_natural |>
-    filter(method == "pfilter") |>
-    ggplot(aes(y = param_value, x = quantity)) +
-    geom_violin() +
-    facet_wrap(vars(quantity), scales = "free")
+```{r Final parameter values, eval = FALSE}
+for (unit_val in unique(traces$unit)) {
+    gg <- ggplot(
+        traces_natural |>
+            filter(unit == unit_val) |>
+            filter(method == "pfilter"),
+        aes(y = param_value, x = quantity)
+    ) +
+        geom_violin() +
+        facet_wrap(vars(quantity), scales = "free") +
+        ggtitle(paste("Unit:", unit_val))
+    print(gg)
+}
 ```
 
 
 ```{r Plot LL traces, eval = TRUE}
-ggplot(
-    traces,
-    aes(x = iter, y = logLik, group = rep, color = as.factor(rep))
-) +
-    geom_line(show.legend = FALSE)
+for (unit_val in unique(traces$unit)) {
+    gg <- ggplot(
+        traces |> filter(unit == unit_val),
+        aes(x = iter, y = logLik, group = rep, color = as.factor(rep))
+    ) +
+        geom_line(show.legend = FALSE) +
+        ggtitle(paste("Unit:", unit_val))
+    print(gg)
+}
 ```
 
