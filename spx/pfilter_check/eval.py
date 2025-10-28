@@ -26,26 +26,20 @@ NREPS_EVAL = (2, 5, 24, 3600)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
 
 
-def rho_transform(x):
-    """Transform rho to perturbation scale"""
-    return np.log((1 + x) / (1 - x))
-
-
-key, subkey = jax.random.split(key)
 spx_obj = pp.spx()
 
 theta = {
-    "mu": float(jnp.log(3.68e-4)),
-    "kappa": float(jnp.log(3.14e-2)),
-    "theta": float(jnp.log(1.12e-4)),
-    "xi": float(jnp.log(2.27e-3)),
-    "rho": rho_transform(-7.38e-1),
-    "V_0": float(jnp.log(7.66e-3**2)),
+    "mu": 3.68e-4,
+    "kappa": 3.14e-2,
+    "theta": 1.12e-4,
+    "xi": 2.27e-3,
+    "rho": -7.38e-1,
+    "V_0": 7.66e-3**2,
 }
 
-start_time = time.time()
+key, subkey = jax.random.split(key)
 spx_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey, theta=theta)
-print(f"pfilter time taken: {time.time() - start_time} seconds")
+print(spx_obj.results())
 
 with open("spx_results_eval.pkl", "wb") as f:
     pickle.dump(spx_obj, f)

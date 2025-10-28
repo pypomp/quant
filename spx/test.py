@@ -44,16 +44,18 @@ NREPS_EVAL = (2, 5, 24, 24)[RUN_LEVEL - 1]
 NTRAIN = (2, 20, 40, 40)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
 
-RW_SD = jnp.array([0.02, 0.02, 0.02, 0.02, 0.02, 0])
-RW_SD_INIT = jnp.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.1])
 COOLING_RATE = 0.5
-
-
-def rho_transform(lst):
-    """Transform rho to perturbation scale"""
-    out = [np.log((1 + x) / (1 - x)) for x in lst]
-    return out
-
+RW_SD = pp.RWSigma(
+    sigmas={
+        "mu": 0.02,
+        "kappa": 0.02,
+        "theta": 0.02,
+        "xi": 0.02,
+        "rho": 0.02,
+        "V_0": 0.01,
+    },
+    init_names=["V_0"],
+)
 
 sp500_box = {
     "mu": [1e-6, 1e-4],
@@ -67,46 +69,28 @@ sp500_box = {
 key, subkey = jax.random.split(key)
 initial_params_list = pp.Pomp.sample_params(sp500_box, NREPS_FITR, key=subkey)
 
-transformed_params_list = []
-for params in initial_params_list:
-    transformed_params = {}
-    for k, v in params.items():
-        if k == "rho":
-            transformed_params[k] = float(rho_transform([v])[0])
-        else:
-            transformed_params[k] = float(jnp.log(v))
-    transformed_params_list.append(transformed_params)
-
 # implement Feller's condition
-for params in transformed_params_list:
+for params in initial_params_list:
     params["xi"] = float(
-        np.log(
-            np.random.uniform(
-                low=0,
-                high=np.sqrt(np.exp(params["kappa"]) * np.exp(params["theta"]) * 2),
-            )
+        np.random.uniform(
+            low=0,
+            high=np.sqrt(params["kappa"] * params["theta"] * 2),
         )
     )
 
 spx_obj = pp.spx()
 
-print("Starting IF2")
 key, subkey = jax.random.split(key)
-start_time = time.time()
 spx_obj.mif(
-    theta=transformed_params_list,
-    sigmas=RW_SD,
-    sigmas_init=RW_SD_INIT,
+    theta=initial_params_list,
+    rw_sd=RW_SD,
     M=NFITR,
     a=COOLING_RATE,
     J=NP_FITR,
     key=subkey,
 )
-print(f"mif time taken: {time.time() - start_time} seconds")
-
-start_time = time.time()
-spx_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
-print(f"pfilter time taken: {time.time() - start_time} seconds")
+spx_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
+print(spx_obj.results())
 
 # start_time = time.time()
 # spx_obj.train(J=NP_FITR, M=NTRAIN, key=subkey)
