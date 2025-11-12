@@ -68,47 +68,15 @@ measles_box = {
 key, subkey = jax.random.split(key)
 initial_params_list = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
 
-transformed_params_list = []
-for params in initial_params_list:
-    transformed_params = {}
-    for k, v in params.items():
-        if k in ["R0", "sigmaSE", "sigma", "iota", "psi", "gamma"]:
-            transformed_params[k] = float(np.log(v))
-        elif k in ["rho", "amplitude", "cohort"]:
-            transformed_params[k] = float(pp.logit(v))
-        else:
-            transformed_params[k] = v
-    transformed_params_list.append(transformed_params)
-
-# Apply log barycentric transformation to S_0, E_0, I_0, R_0
-for params in transformed_params_list:
-    S = params["S_0"]
-    E = params["E_0"]
-    I = params["I_0"]
-    R = params["R_0"]
-    total = S + E + I + R
-
-    S /= total
-    E /= total
-    I /= total
-    R /= total
-
-    params["S_0"] = float(np.log(S))
-    params["E_0"] = float(np.log(E))
-    params["I_0"] = float(np.log(I))
-    params["R_0"] = float(np.log(R))
-
-
 measles_obj = pp.UKMeasles.Pomp(
     unit=["Halesworth"],
-    theta=transformed_params_list,
+    theta=initial_params_list,
     model="001b",
     clean=True,
 )
 
 key, subkey = jax.random.split(key)
 measles_obj.mif(
-    theta=transformed_params_list,
     rw_sd=RW_SD,
     M=NFITR,
     a=COOLING_RATE,
