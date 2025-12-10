@@ -1,0 +1,84 @@
+---
+title: "Pypomp vs R LogLik Comparison"
+format:
+  html:
+    toc: true
+    embed-resources: true
+engine: knitr
+---
+
+```{r Load R libraries, echo = FALSE}
+library(tidyverse)
+library(reticulate)
+setwd(paste0(here::here(), "/measles/R"))
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{python Load Python results}
+import pickle
+import pandas as pd
+
+py_results = pickle.load(open("pfilter_logliks.pkl", "rb"))
+py_results["source"] = "pypomp"
+```
+
+```{r Load R results}
+r_results <- readRDS("pfilter_logliks.rds")
+r_results$source <- "R"
+```
+
+
+# Compare results
+
+## Summary statistics
+```{r Combine and compare}
+py_results <- py$py_results
+combined <- bind_rows(
+    py_results |> select(unit, replicate, logLik, source),
+    r_results |> select(unit, replicate, logLik, source)
+)
+
+# print(combined)
+
+summary_stats <- combined |>
+    group_by(unit, source) |>
+    summarise(
+        mean_logLik = mean(logLik),
+        sd_logLik = sd(logLik),
+        min_logLik = min(logLik),
+        max_logLik = max(logLik),
+        .groups = "drop"
+    )
+
+print(summary_stats)
+```
+
+## Density plot
+```{r Comparison plot, fig.width = 10, fig.height = 6}
+combined |>
+    ggplot(aes(x = logLik, fill = source)) +
+    geom_density(alpha = 0.6) +
+    facet_wrap(vars(unit), scales = "free") +
+    labs(
+        title = "LogLik Comparison: Pypomp vs R",
+        x = "Log-Likelihood",
+        fill = "Source"
+    ) +
+    theme_minimal()
+```
+
+## Scatter plot
+```{r Scatter plot, fig.width = 8, fig.height = 8}
+combined |>
+    pivot_wider(names_from = source, values_from = logLik) |>
+    ggplot(aes(x = pypomp, y = R)) +
+    geom_point(alpha = 0.5) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+    facet_wrap(vars(unit), scales = "free") +
+    labs(
+        title = "LogLik Scatter: Pypomp vs R",
+        x = "Pypomp LogLik",
+        y = "R LogLik"
+    ) +
+    theme_minimal()
+```
