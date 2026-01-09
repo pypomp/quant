@@ -14,9 +14,9 @@ WALL_TIME := 00:10:00
 else ifeq ($(RUN_LEVEL),2)
 WALL_TIME := 00:20:00
 else ifeq ($(RUN_LEVEL),3)
-WALL_TIME := 01:00:00
+WALL_TIME := 00:15:00
 else ifeq ($(RUN_LEVEL),4)
-WALL_TIME := 01:00:00
+WALL_TIME := 00:20:00
 else
 $(warning Unknown RUN_LEVEL '$(RUN_LEVEL)', defaulting to 12:00:00)
 WALL_TIME := 12:00:00
@@ -36,7 +36,22 @@ eval:
 
 # Eval pfilter with pomp (runs from root for renv)
 R_eval:
-	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=02:00:00 measles/R/london.sbat
+	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=02:00:00 measles/R/measles.sbat
+
+pypomp_eval:
+	cd R && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:20:00 job_gpu.sbat
+
+R_parameter_comparison:
+	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=15:00:00 measles/R/parameter_comparison/measles.sbat
+
+py_parameter_comparison:
+	cd R/parameter_comparison && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:30:00 job_gpu.sbat
 
 report:
 	cd .. && quarto render measles/report.qmd
+
+R_report:
+	cd .. && quarto render measles/R/report.qmd
+
+R_parameter_comparison_report:
+	cd .. && quarto render measles/R/parameter_comparison/report.qmd

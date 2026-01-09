@@ -1,19 +1,13 @@
 import os
-import time
-
-# Set JAX platform before importing JAX
-if os.environ.get("USE_CPU", "false").lower() == "true":
-    os.environ["JAX_PLATFORMS"] = "cpu"
-
+import pandas as pd
 import jax
 import pickle
-import jax.numpy as jnp
 import pypomp as pp
 import numpy as np
 
 print(jax.devices())
 
-MAIN_SEED = 631409
+MAIN_SEED = 594709947
 key = jax.random.key(MAIN_SEED)
 np.random.seed(MAIN_SEED)
 
@@ -21,11 +15,10 @@ RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 
 NP_FITR = (2, 500, 1000, 5000)[RUN_LEVEL - 1]
 NFITR = (2, 10, 100, 100)[RUN_LEVEL - 1]
-NTRAIN = (2, 20, 40, 40)[RUN_LEVEL - 1]
 NREPS_FITR = (2, 3, 20, 36)[RUN_LEVEL - 1]
-NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
-NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
-print(f"Running at level {RUN_LEVEL}")
+
+# Units to process
+units = ["London", "Halesworth"]
 
 DEFAULT_SD = 0.02
 DEFAULT_IVP_SD = DEFAULT_SD * 12
@@ -66,41 +59,32 @@ measles_box = {
 }
 
 key, subkey = jax.random.split(key)
-initial_params_list = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
+starting_parameters = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
 
-measles_obj = pp.UKMeasles.Pomp(
-    unit=["Halesworth"],
-    theta=initial_params_list,
-    model="001b",
-    clean=True,
-)
+print(f"Processing {len(units)} units: {units}")
 
-key, subkey = jax.random.split(key)
-measles_obj.mif(
-    rw_sd=RW_SD,
-    M=NFITR,
-    a=COOLING_RATE,
-    J=NP_FITR,
-    key=subkey,
-)
-# measles_obj.prune(n=5, refill=False)
-# measles_obj.train(J=NP_FITR, M=NTRAIN, eta=0.2)
-measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
-measles_obj.prune(n=4, refill=True)
-RW_SD.cool(0.25)
-measles_obj.mif(
-    rw_sd=RW_SD,
-    M=NFITR,
-    a=COOLING_RATE,
-    J=NP_FITR,
-    key=subkey,
-)
-measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
-measles_obj.prune(n=1, refill=False)
-measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, CLL=True)
+results_list = []
 
-measles_obj.print_summary()
-print(measles_obj.time())
+# Loop over units
+for unit_name in units:
+    print(f"Processing unit: {unit_name}")
 
-with open("measles_results.pkl", "wb") as f:
-    pickle.dump(measles_obj, f)
+    # Create pomp object for this unit
+    measles_obj = pp.UKMeasles.Pomp(
+        unit=[unit_name],
+        theta=starting_parameters,
+        model="001b",
+        clean=False,
+    )
+
+    key, subkey = jax.random.split(key)
+    measles_obj.mif(J=NP_FITR, M=NFITR, a=COOLING_RATE, key=subkey, rw_sd=RW_SD)
+
+    results_list.append(measles_obj.results())
+    results_list[-1]["unit"] = unit_name
+
+
+parameters_df = pd.concat(results_list)
+
+with open("mif_coefs.pkl", "wb") as f:
+    pickle.dump(parameters_df, f)

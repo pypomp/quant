@@ -13,6 +13,7 @@
 #SBATCH --mail-user=aaronabk@umich.edu
 
 # GPU settings
+#SBATCH --nodes=1
 # --partition=gpu_mig40
 # --gpus=nvidia_a100_80gb_pcie_3g.40gb:1
 #SBATCH --partition=gpu

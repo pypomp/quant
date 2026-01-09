@@ -40,6 +40,7 @@ renv
 .renvignore
 .Rprofile
 renv.lock
+**.rds
 
 # For Latex users
 *.bbl
