@@ -44,5 +44,5 @@ echo "Running in $(pwd)"
 # echo "Copying .sbat file to $out_dir"
 # cp $this_file $out_dir$this_file
 # Activate venv
-source ../../.venv/bin/activate
+source ../../../.venv/bin/activate
 python measles.py

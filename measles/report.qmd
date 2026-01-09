@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 import pypomp as pp
 import jax
+import matplotlib.pyplot as plt
 ```
 
 ```{python Load data in python}
@@ -50,7 +51,7 @@ traces = pomp_obj.traces()
 traces <- py$traces
 best_rep <- py$LL_frame$index[[1]]
 traces <- traces |>
-    rename(rep = replicate, iter = iteration, logLik = loglik) |>
+    rename(rep = replicate, iter = iteration) |>
     pivot_longer(
         cols = c(-rep, -iter, -logLik, -method),
         names_to = "quantity",
@@ -87,34 +88,38 @@ best_rep <- traces |>
 
 ```{r Plot traces, fig.width = 10, fig.height = 10}
 ggplot(
-    traces, aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+    traces,
+    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
 ) +
     geom_line(show.legend = FALSE) +
     facet_wrap(vars(quantity), scales = "free")
 ```
 
 ```{r Plot traces (natural scale), fig.width = 10, fig.height = 10}
-traces_natural <- traces |>
-    mutate(param_value = case_when(
-        quantity == "logLik" ~ param_value,
-        quantity == "R0" ~ exp(param_value),
-        quantity == "sigma" ~ exp(param_value),
-        quantity == "gamma" ~ exp(param_value),
-        quantity == "iota" ~ exp(param_value),
-        quantity == "rho" ~ 1/(1 + exp(-param_value)),
-        quantity == "sigmaSE" ~ exp(param_value),
-        quantity == "psi" ~ exp(param_value),
-        quantity == "cohort" ~ 1/(1 + exp(-param_value)),
-        quantity == "amplitude" ~ 1/(1 + exp(-param_value)),
-        quantity == "S_0" ~ exp(param_value),
-        quantity == "E_0" ~ exp(param_value),
-        quantity == "I_0" ~ exp(param_value),
-        quantity == "R_0" ~ exp(param_value),
-        TRUE ~ param_value
-    ))
+traces_pertubation_scale <- traces |>
+    mutate(
+        param_value = case_when(
+            quantity == "logLik" ~ param_value,
+            quantity == "R0" ~ log(param_value),
+            quantity == "sigma" ~ log(param_value),
+            quantity == "gamma" ~ log(param_value),
+            quantity == "iota" ~ log(param_value),
+            quantity == "rho" ~ logit(param_value),
+            quantity == "sigmaSE" ~ log(param_value),
+            quantity == "psi" ~ log(param_value),
+            quantity == "cohort" ~ logit(param_value),
+            quantity == "amplitude" ~ logit(param_value),
+            quantity == "S_0" ~ log(param_value),
+            quantity == "E_0" ~ log(param_value),
+            quantity == "I_0" ~ log(param_value),
+            quantity == "R_0" ~ log(param_value),
+            TRUE ~ param_value
+        )
+    )
 
 ggplot(
-    traces_natural, aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
+    traces_pertubation_scale,
+    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
 ) +
     geom_line(show.legend = FALSE) +
     facet_wrap(vars(quantity), scales = "free")
@@ -122,9 +127,9 @@ ggplot(
 
 
 ```{r Final parameter values}
-traces_natural |>
+traces |>
     filter(method == "pfilter") |>
-ggplot(aes(y = param_value, x = quantity)) +
+    ggplot(aes(y = param_value, x = quantity)) +
     geom_violin() +
     facet_wrap(vars(quantity), scales = "free")
 ```
@@ -132,9 +137,45 @@ ggplot(aes(y = param_value, x = quantity)) +
 
 ```{r Plot LL traces, eval = TRUE}
 ggplot(
-    traces, 
+    traces,
     aes(x = iter, y = logLik, group = rep, color = as.factor(rep))
 ) +
     geom_line(show.legend = FALSE)
 ```
 
+
+### CLL plots
+
+```{python}
+
+
+# Extract the CLL array: shape (replicates, time index)
+CLL_array = pomp_obj.results_history[-1].CLL[0]
+
+# Compute statistics across replicates for each time index
+mean_CLL = np.mean(CLL_array, axis=0)
+q10 = np.percentile(CLL_array, 10, axis=0)
+q90 = np.percentile(CLL_array, 90, axis=0)
+time_idx = np.arange(CLL_array.shape[1])
+
+plt.figure(figsize=(10, 5))
+plt.plot(time_idx, mean_CLL, label="Mean CLL", color="C0")
+plt.fill_between(time_idx, q10, q90, color="C0", alpha=0.5, label="10%-90% quantile")
+plt.xlabel("Time Index")
+plt.ylabel("Conditional Log Likelihood")
+plt.title("Conditional Log Likelihoods (Mean and 10%-90% Quantiles)")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# Second plot: Show individual replicate CLLs
+plt.figure(figsize=(10, 5))
+colors = plt.cm.tab20(np.linspace(0, 1, CLL_array.shape[0]))
+for i in range(CLL_array.shape[0]):
+    plt.plot(time_idx, CLL_array[i], color=colors[i], alpha=0.7)
+plt.xlabel("Time Index")
+plt.ylabel("Conditional Log Likelihood (individual reps)")
+plt.title("Conditional Log Likelihoods for All Replicates")
+plt.tight_layout()
+plt.show()
+```

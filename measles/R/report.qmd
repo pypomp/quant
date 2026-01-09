@@ -10,6 +10,7 @@ engine: knitr
 ```{r Load R libraries, echo = FALSE}
 library(tidyverse)
 library(reticulate)
+library(pomp)
 setwd(paste0(here::here(), "/measles/R"))
 knitr::opts_chunk$set(echo = FALSE)
 ```
@@ -47,15 +48,27 @@ summary_stats <- combined |>
         sd_logLik = sd(logLik),
         min_logLik = min(logLik),
         max_logLik = max(logLik),
+        logmeanexp_logLik = logmeanexp(logLik),
         .groups = "drop"
     )
 
-print(summary_stats)
+options(pillar.sigfig = 7)
+print(summary_stats, n = Inf, width = Inf)
 ```
 
 ## Density plot
 ```{r Comparison plot, fig.width = 10, fig.height = 6}
-combined |>
+# Toggle to filter outliers (London with very small logLik values)
+filter_outliers <- FALSE
+outlier_threshold <- -3850 # Adjust this threshold as needed
+
+plot_data <- combined
+if (filter_outliers) {
+    plot_data <- plot_data |>
+        filter(!(unit == "London" & logLik < outlier_threshold))
+}
+
+plot_data |>
     ggplot(aes(x = logLik, fill = source)) +
     geom_density(alpha = 0.6) +
     facet_wrap(vars(unit), scales = "free") +
@@ -69,7 +82,13 @@ combined |>
 
 ## Scatter plot
 ```{r Scatter plot, fig.width = 8, fig.height = 8}
-combined |>
+scatter_data <- combined
+if (filter_outliers) {
+    scatter_data <- scatter_data |>
+        filter(!(unit == "London" & logLik < outlier_threshold))
+}
+
+scatter_data |>
     pivot_wider(names_from = source, values_from = logLik) |>
     ggplot(aes(x = pypomp, y = R)) +
     geom_point(alpha = 0.5) +

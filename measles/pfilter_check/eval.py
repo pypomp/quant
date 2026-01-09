@@ -49,10 +49,12 @@ measles_obj = pp.UKMeasles.Pomp(
 
 key, subkey = jax.random.split(key)
 start_time = time.time()
-measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
+measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey, CLL=True)
+print(measles_obj.results(ignore_nan=True))
 print(f"pfilter time taken: {time.time() - start_time} seconds")
 
-print(measles_obj.results())
+measles_obj.print_summary()
+
 
 with open("measles_results_eval.pkl", "wb") as f:
     pickle.dump(measles_obj, f)

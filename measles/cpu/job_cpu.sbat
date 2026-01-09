@@ -14,7 +14,7 @@
 
 # CPU settings
 #SBATCH --partition=standard
-#SBATCH --cpus-per-task=36
+#SBATCH --cpus-per-task=1
 
 # Total memory
 #SBATCH --mem=6GB

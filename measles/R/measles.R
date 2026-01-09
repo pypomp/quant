@@ -33,7 +33,7 @@ rproc <- Csnippet(
       seas = 1.0-amplitude;
 
   // transmission rate
-  beta = R0*(gamma+mu)*seas;
+  beta = R0 * seas * (1.0 - exp(-(gamma+mu) * dt)) / dt;
 
   // expected force of infection
   foi = beta*(I+iota)/pop;
@@ -83,7 +83,7 @@ dmeas <- Csnippet(
   "
   double m = rho*C;
   double v = m*(1.0-rho+psi*psi*m);
-  double tol = 0.0;
+  double tol = 1.0e-18;
   if (cases > 0.0) {
     lik = pnorm(cases+0.5,m,sqrt(v)+tol,1,0)
            - pnorm(cases-0.5,m,sqrt(v)+tol,1,0) + tol;
@@ -99,7 +99,7 @@ rmeas <- Csnippet(
   "
   double m = rho*C;
   double v = m*(1.0-rho+psi*psi*m);
-  double tol = 0.0;
+  double tol = 1.0e-18;
   cases = rnorm(m,sqrt(v)+tol);
   if (cases > 0.0) {
     cases = nearbyint(cases);

@@ -1,0 +1,89 @@
+---
+title: "Pypomp vs R LogLik Comparison"
+format:
+  html:
+    toc: true
+    embed-resources: true
+engine: knitr
+---
+
+```{r Load R libraries, echo = FALSE}
+library(tidyverse)
+library(reticulate)
+library(pomp)
+setwd(paste0(here::here(), "/measles/R/parameter_comparison"))
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{python Load Python results}
+import pickle
+import pandas as pd
+
+py_results = pickle.load(open("mif_coefs.pkl", "rb"))
+py_results["source"] = "pypomp"
+py_results = py_results.drop(columns=["logLik", "se"]).melt(
+    id_vars=["source", "unit"], var_name="param", value_name="value"
+)
+```
+
+```{r Load R results}
+r_results <- readRDS("mif_coefs.rds")
+r_results$source <- "R"
+
+r_results <- r_results[c("source", "unit", "coef", "names")]
+r_results <- r_results |>
+    rename(value = coef, param = names)
+```
+
+
+# Compare results
+
+## Summary statistics
+```{r Combine results}
+py_results <- py$py_results
+combined <- bind_rows(py_results, r_results)
+
+combined <- combined |>
+    mutate(
+        value = case_when(
+            param %in% c("gamma", "sigma", "iota", "R0", "sigmaSE") ~ log(
+                value
+            ),
+            param %in% c("S_0", "E_0", "I_0", "R_0") ~ qlogis(value),
+            TRUE ~ value
+        ),
+        param = case_when(
+            param == "gamma" ~ "log(gamma)",
+            param == "sigma" ~ "log(sigma)",
+            param == "iota" ~ "log(iota)",
+            param == "R0" ~ "log(R0)",
+            param == "sigmaSE" ~ "log(sigmaSE)",
+            param == "S_0" ~ "logit(S_0)",
+            param == "E_0" ~ "logit(E_0)",
+            param == "I_0" ~ "logit(I_0)",
+            param == "R_0" ~ "logit(R_0)",
+            TRUE ~ param
+        )
+    )
+
+```
+
+## Density plot
+```{r Comparison plot, fig.width = 10, fig.height = 6}
+# Plot a density curve for each parameter comparing pypomp vs R
+
+for (unit_val in unique(combined$unit)) {
+    gg <- combined |>
+        filter(unit == unit_val) |>
+        ggplot(aes(x = value, fill = source)) +
+        geom_density(alpha = 0.6) +
+        facet_wrap(vars(param), scales = "free") +
+        labs(
+            title = paste("Unit:", unit_val),
+            x = "Parameter Value",
+            fill = "Source"
+        ) +
+        theme_minimal()
+    print(gg)
+}
+```
