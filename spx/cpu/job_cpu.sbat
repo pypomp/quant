@@ -14,7 +14,7 @@
 
 # CPU settings
 #SBATCH --partition=standard
-#SBATCH --cpus-per-task=36
+#SBATCH --cpus-per-task=1
 
 # Total memory
 #SBATCH --mem=6GB
@@ -23,7 +23,7 @@
 # --time=0-0:4:00
 
 # The account which this job should run under:
-#SBATCH --account="ionides1"
+#SBATCH --account="ionides0"
 
 # Run the job from the directory where it was launched (default)
 

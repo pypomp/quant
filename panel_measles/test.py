@@ -35,19 +35,19 @@ UNITS = [
     # "Cardiff",
     # "Consett",
     # "Dalton.in.Furness",
-    # "Halesworth",
-    # "Hastings",
-    # "Hull",
+    "Halesworth",
+    "Hastings",
+    "Hull",
     "Leeds",
     "Lees",
     "Liverpool",
     "London",
     "Manchester",
-    "Mold",
-    "Northwich",
-    "Nottingham",
-    "Oswestry",
-    "Sheffield",
+    # "Mold",
+    # "Northwich",
+    # "Nottingham",
+    # "Oswestry",
+    # "Sheffield",
 ]
 DEFAULT_SD = 0.02
 DEFAULT_IVP_SD = DEFAULT_SD * 12
@@ -90,13 +90,15 @@ measles_box = {
 key, subkey = jax.random.split(key)
 dummy_initial_params_list = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
 
-initial_shared, initial_unit_specific = pp.PanelPomp.sample_params(
+initial_params = pp.PanelPomp.sample_params(
     measles_box,
     n=NREPS_FITR,
     units=UNITS,
     key=subkey,
     shared_names=[],
 )
+
+# ----- Create pomp objects -----
 
 pomp_dict = {
     unit: pp.UKMeasles.Pomp(
@@ -110,10 +112,11 @@ pomp_dict = {
 
 panel_measles_obj = pp.PanelPomp(
     Pomp_dict=pomp_dict,
-    shared=initial_shared,
-    unit_specific=initial_unit_specific,
+    theta=pp.PanelParameters(theta=initial_params),
 )
 
+
+# ----- MIF round 1 -----
 key, subkey = jax.random.split(key)
 panel_measles_obj.mif(
     rw_sd=RW_SD,
@@ -123,12 +126,22 @@ panel_measles_obj.mif(
     key=subkey,
 )
 print(panel_measles_obj.results(ignore_nan=False))
+
+# ----- PFILTER round 1 -----
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
+print(panel_measles_obj.results(ignore_nan=False))
+
+# ----- Mix-and-match, then evaluate best model -----
+panel_measles_obj.mix_and_match()
+panel_measles_obj.prune(n=1, refill=False)
+panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
+
+with open("panel_measles_results.pkl", "wb") as f:
+    pickle.dump(panel_measles_obj, f)
+
+panel_measles_obj.print_summary()
 
 results = panel_measles_obj.results(ignore_nan=False)
 print(results[["unit", "unit logLik"]].groupby("unit").max())
 
 print(panel_measles_obj.time())
-
-with open("panel_measles_results.pkl", "wb") as f:
-    pickle.dump(panel_measles_obj, f)

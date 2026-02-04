@@ -112,30 +112,30 @@ for (unit_val in unique(traces$unit)) {
 ```
 
 ```{r Plot traces (natural scale), fig.width = 10, fig.height = 10}
-traces_natural <- traces |>
+traces_pertubation_scale <- traces |>
     mutate(
         param_value = case_when(
             quantity == "logLik" ~ param_value,
-            quantity == "R0" ~ exp(param_value),
-            quantity == "sigma" ~ exp(param_value),
-            quantity == "gamma" ~ exp(param_value),
-            quantity == "iota" ~ exp(param_value),
-            quantity == "rho" ~ 1 / (1 + exp(-param_value)),
-            quantity == "sigmaSE" ~ exp(param_value),
-            quantity == "psi" ~ exp(param_value),
-            quantity == "cohort" ~ 1 / (1 + exp(-param_value)),
-            quantity == "amplitude" ~ 1 / (1 + exp(-param_value)),
-            quantity == "S_0" ~ exp(param_value),
-            quantity == "E_0" ~ exp(param_value),
-            quantity == "I_0" ~ exp(param_value),
-            quantity == "R_0" ~ exp(param_value),
+            quantity == "R0" ~ log(param_value),
+            quantity == "sigma" ~ log(param_value),
+            quantity == "gamma" ~ log(param_value),
+            quantity == "iota" ~ log(param_value),
+            quantity == "rho" ~ logit(param_value),
+            quantity == "sigmaSE" ~ log(param_value),
+            quantity == "psi" ~ log(param_value),
+            quantity == "cohort" ~ logit(param_value),
+            quantity == "amplitude" ~ logit(param_value),
+            quantity == "S_0" ~ log(param_value),
+            quantity == "E_0" ~ log(param_value),
+            quantity == "I_0" ~ log(param_value),
+            quantity == "R_0" ~ log(param_value),
             TRUE ~ param_value
         )
     )
 
 for (unit_val in unique(traces$unit)) {
     gg <- ggplot(
-        traces_natural |> filter(unit == unit_val),
+        traces_pertubation_scale |> filter(unit == unit_val),
         aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
     ) +
         geom_line(show.legend = FALSE) +
@@ -149,7 +149,7 @@ for (unit_val in unique(traces$unit)) {
 ```{r Final parameter values, eval = FALSE}
 for (unit_val in unique(traces$unit)) {
     gg <- ggplot(
-        traces_natural |>
+        traces_pertubation_scale |>
             filter(unit == unit_val) |>
             filter(method == "pfilter"),
         aes(y = param_value, x = quantity)

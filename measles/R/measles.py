@@ -10,6 +10,8 @@ import pickle
 import pypomp as pp
 import numpy as np
 
+# jax.config.update("jax_enable_x64", True)
+
 print(jax.devices())
 
 MAIN_SEED = 594709947

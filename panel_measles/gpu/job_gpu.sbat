@@ -26,7 +26,7 @@
 # --time=0-0:04:00
 
 # The account which this job should run under:
-#SBATCH --account="ionides1"
+#SBATCH --account="ionides0"
 
 # The job command(s):
 echo "Running on $SLURM_JOB_NODELIST"
