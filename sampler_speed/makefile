@@ -3,13 +3,22 @@
 # Declare phony targets (targets that don't represent files)
 .PHONY: gpu cpu clean
 
-# Set wall time
-WALL_TIME := 00:02:00
-
 # Make logs directory
-logs:
-	mkdir -p logs
+cpu_logs:
+	mkdir -p cpu_logs
+
+gpu_logs:
+	mkdir -p gpu_logs
 
 # GPU job
-gpu: logs
-	USE_CPU=false sbatch --time=$(WALL_TIME) job_gpu.sbat
+gpu: gpu_logs
+	USE_CPU=false sbatch --time=00:02:00 job_gpu.sbat
+
+# CPU job
+cpu: cpu_logs
+	USE_CPU=true sbatch --time=00:05:00 job_cpu.sbat
+
+both: gpu cpu
+
+clean:
+	rm -rf cpu_logs gpu_logs
