@@ -66,6 +66,35 @@ combined <- combined |>
         )
     )
 
+# Summarize pypomp and R results
+
+# For py_results
+summary_py <- py_results |>
+    group_by(param) |>
+    summarise(
+        n = n(),
+        mean = mean(value, na.rm = TRUE),
+        sd = sd(value, na.rm = TRUE),
+        min = min(value, na.rm = TRUE),
+        max = max(value, na.rm = TRUE)
+    ) |>
+    mutate(source = "pypomp")
+
+# For r_results
+summary_r <- r_results |>
+    group_by(param) |>
+    summarise(
+        n = n(),
+        mean = mean(value, na.rm = TRUE),
+        sd = sd(value, na.rm = TRUE),
+        min = min(value, na.rm = TRUE),
+        max = max(value, na.rm = TRUE)
+    ) |>
+    mutate(source = "R")
+
+
+print(summary_py)
+print(summary_r)
 ```
 
 ## Density plot

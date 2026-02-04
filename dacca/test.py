@@ -90,6 +90,8 @@ initial_params_list = pp.Pomp.sample_params(params_box, NREPS_FITR, key=subkey)
 # options = jax.profiler.ProfileOptions()
 # options.gpu_max_activity_api_events = 1028 * 1024 * 4
 # with jax.profiler.trace("dacca_profiler", profiler_options=options):
+
+# MIF round 1
 key, subkey = jax.random.split(key)
 dacca_obj.mif(
     theta=initial_params_list,
@@ -100,10 +102,16 @@ dacca_obj.mif(
     key=subkey,
 )
 print(dacca_obj.results())
+
+# PFILTER round 1
 dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 print(dacca_obj.results())
+
+# Prune step
 dacca_obj.prune(n=10, refill=True)
 # dacca_obj.train(J=NP_FITR, M=NTRAIN, eta=0.2)
+
+# MIF round 2
 RW_SD.cool(0.25)
 dacca_obj.mif(
     rw_sd=RW_SD,
@@ -117,6 +125,8 @@ print(dacca_obj.results())
 # PFILTER round 2
 dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 print(dacca_obj.results())
+
+# Re-evaluate top fit to account for sample max luck
 dacca_obj.prune(n=1, refill=False)
 dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 print(dacca_obj.results())

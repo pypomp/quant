@@ -19,12 +19,15 @@ knitr::opts_chunk$set(echo = FALSE)
 import pickle
 import pandas as pd
 
-py_results = pickle.load(open("pfilter_logliks.pkl", "rb"))
+py_results = pickle.load(open("pfilter_logliks_approx.pkl", "rb"))
 py_results["source"] = "pypomp"
+
+py_exact_results = pickle.load(open("pfilter_logliks_exact.pkl", "rb"))
+py_exact_results["source"] = "pypomp (exact)"
 ```
 
 ```{r Load R results}
-r_results <- readRDS("pfilter_logliks.rds")
+r_results <- readRDS("pfilter_logliks_f64.rds")
 r_results$source <- "R"
 ```
 
@@ -34,9 +37,15 @@ r_results$source <- "R"
 ## Summary statistics
 ```{r Combine and compare}
 py_results <- py$py_results
+py_exact_results <- py$py_exact_results
 combined <- bind_rows(
     py_results |> select(unit, replicate, logLik, source),
     r_results |> select(unit, replicate, logLik, source)
+)
+
+python_combined <- bind_rows(
+    py_exact_results |> select(unit, replicate, logLik, source),
+    py_results |> select(unit, replicate, logLik, source)
 )
 
 # print(combined)
@@ -74,6 +83,21 @@ plot_data |>
     facet_wrap(vars(unit), scales = "free") +
     labs(
         title = "LogLik Comparison: Pypomp vs R",
+        x = "Log-Likelihood",
+        fill = "Source"
+    ) +
+    theme_minimal()
+```
+
+
+## Density plot (exact vs approximate)
+```{r Python comparison plot, fig.width = 10, fig.height = 6}
+python_combined |>
+    ggplot(aes(x = logLik, fill = source)) +
+    geom_density(alpha = 0.6) +
+    facet_wrap(vars(unit), scales = "free") +
+    labs(
+        title = "LogLik Comparison: Pypomp (exact) vs Pypomp (approx)",
         x = "Log-Likelihood",
         fill = "Source"
     ) +

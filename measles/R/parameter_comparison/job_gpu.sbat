@@ -21,7 +21,7 @@
 #SBATCH --cpus-per-gpu=1
 
 # Total memory
-#SBATCH --mem=6GB
+#SBATCH --mem=10GB
 
 # The maximum running time of the job in days-hours:mins:sec
 # --time=0-0:04:00

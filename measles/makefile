@@ -39,13 +39,13 @@ R_eval:
 	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=02:00:00 measles/R/measles.sbat
 
 pypomp_eval:
-	cd R && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:20:00 job_gpu.sbat
+	cd R && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=4:20:00 job_gpu.sbat
 
 R_parameter_comparison:
 	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=15:00:00 measles/R/parameter_comparison/measles.sbat
 
 py_parameter_comparison:
-	cd R/parameter_comparison && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:30:00 job_gpu.sbat
+	cd R/parameter_comparison && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=02:30:00 job_gpu.sbat
 
 report:
 	cd .. && quarto render measles/report.qmd
