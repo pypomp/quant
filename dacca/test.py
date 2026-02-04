@@ -57,8 +57,32 @@ COOLING_RATE = 0.5
 
 dacca_obj = pp.dacca(dt=None, nstep=20)
 
-params_box = {k: [v * 0.5, v * 1.5] for k, v in dacca_obj.theta[0].items()}
-params_box["rho"] = [0.0, 0.0]
+# params_box = {k: [v * 0.5, v * 1.5] for k, v in dacca_obj.theta[0].items()}
+# params_box["rho"] = [0.0, 0.0]
+params_box = {
+    "gamma": [10.0, 40.0],
+    "m": [0.03, 0.60],
+    "rho": [0.0, 0.0],
+    "epsilon": [0.20, 30.0],
+    "omega": [float(jnp.exp(-4.5)), float(jnp.exp(-4.5))],
+    "c": [1.0, 1.0],
+    "beta_trend": [-0.01, 0.00],
+    "sigma": [1.0, 5.0],
+    "tau": [0.10, 0.50],
+    "bs1": [-4.0, 4.0],
+    "bs2": [0.0, 8.0],
+    "bs3": [-4.0, 4.0],
+    "bs4": [0.0, 8.0],
+    "bs5": [0.0, 8.0],
+    "bs6": [0.0, 8.0],
+    "omegas1": [-10.0, 0.0],
+    "omegas2": [-10.0, 0.0],
+    "omegas3": [-10.0, 0.0],
+    "omegas4": [-10.0, 0.0],
+    "omegas5": [-10.0, 0.0],
+    "omegas6": [-10.0, 0.0],
+}
+
 key, subkey = jax.random.split(key)
 initial_params_list = pp.Pomp.sample_params(params_box, NREPS_FITR, key=subkey)
 
@@ -89,6 +113,8 @@ dacca_obj.mif(
     key=subkey,
 )
 print(dacca_obj.results())
+
+# PFILTER round 2
 dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 print(dacca_obj.results())
 dacca_obj.prune(n=1, refill=False)
