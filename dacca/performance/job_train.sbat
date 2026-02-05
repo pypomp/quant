@@ -1,6 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name="dacca pfilter check"
+#SBATCH --job-name="pypomp dacca test (train)"
+#SBATCH --output=train_results/logs/slurm-%j.out
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-type=END
 #SBATCH --mail-user=aaronabk@umich.edu
@@ -12,6 +13,7 @@
 
 echo "Running on $SLURM_JOB_NODELIST"
 echo "Running in $(pwd)"
-
+ 
+### Main commands ###
 source ../../.venv/bin/activate
-python eval.py
+python -u train_test.py

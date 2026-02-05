@@ -1,0 +1,9 @@
+This test suite is meant to examine the performance (speed and logLik maximization potential) of different approaches in pypomp to fitting the Dacca model. 
+
+The approaches include:
+
+1. GPU, IF2 only
+
+2. CPU, IF2 only
+
+3. GPU, IF2 + train
