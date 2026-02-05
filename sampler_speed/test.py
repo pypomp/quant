@@ -1,3 +1,7 @@
+"""
+This script tests the speed of the fast_approx_rpoisson, fast_approx_rbinom, and fast_approx_rgamma functions in pypomp.random. They are compared against the corresponding functions in jax.random.
+"""
+
 import os
 
 USE_CPU = os.environ.get("USE_CPU", "false").lower() == "true"
