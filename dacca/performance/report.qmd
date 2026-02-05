@@ -4,98 +4,152 @@ format:
   html:
     toc: true
     embed-resources: true
-engine: knitr
+jupyter: python3
+execute:
+  daemon: false
 ---
 
-```{r Load R libraries, echo = FALSE}
-library(reticulate)
-library(tidyverse)
-library(pomp)
-setwd(paste0(here::here(), "/dacca"))
-sessionInfo()
-
-knitr::opts_chunk$set(echo = FALSE)
-```
-
-```{r}
-print(Sys.time())
-```
-
-```{python Import python modules}
+```{python}
+# | label: setup
+# | echo: false
 import os
 import pickle
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
+from plotnine import *
+
 import pypomp as pp
 import jax
+
+# When rendering, run from dacca/performance so PKL_PATH resolves
+print(datetime.now())
 ```
 
-```{python Load data in python}
-PKL_PATH = "gpu_results/dacca_results_rl4.pkl"
-pomp_obj = pickle.load(open(PKL_PATH, "rb"))
-```
-
-```{python Make basic frame}
+```{python}
+# | label: load-data
+# | echo: false
+pomp_obj = pickle.load(open("gpu_results/dacca_results_rl4.pkl", "rb"))
+pomp_obj_train = pickle.load(open("train_results/dacca_results_rl4.pkl", "rb"))
 LL_frame = pomp_obj.results()
-traces = pomp_obj.traces()
+traces_raw_gpu = pomp_obj.traces()
+traces_raw_gpu["source"] = "gpu"
+traces_raw_train = pomp_obj_train.traces()
+traces_raw_train["source"] = "train"
+traces_raw = pd.concat([traces_raw_gpu, traces_raw_train], ignore_index=True)
 ```
 
 # Python results
 
 ## Tables
 
-```{r Make traces frame in R}
-traces <- py$traces
-best_rep <- py$LL_frame$index[[1]]
-traces <- traces |>
-    rename(rep = replicate, iter = iteration, logLik = loglik) |>
-    pivot_longer(
-        cols = c(-rep, -iter, -logLik, -method),
-        names_to = "quantity",
-        values_to = "param_value"
-    )
+```{python}
+# | label: traces-long
+# | echo: false
+# Build long-format traces (equivalent to R pivot_longer)
+traces = traces_raw.rename(
+    columns={"replicate": "rep", "iteration": "iter", "loglik": "logLik"}
+)
+id_cols = ["rep", "iter", "logLik", "method", "source"]
+param_cols = [c for c in traces.columns if c not in id_cols]
+traces_long = traces.melt(
+    id_vars=id_cols,
+    value_vars=param_cols,
+    var_name="quantity",
+    value_name="param_value",
+)
 ```
-
 
 ### Summary
 ```{python}
 pomp_obj.print_summary()
 ```
 
-### Top results for each method call
-```{python}
-for i in range(len(pomp_obj.results_history)):
-    print(pomp_obj.results(index=i).sort_values(by="logLik", ascending=False).head())
-```
-
 ## Plot traces
 
-```{r Set best_rep}
-# Set best_rep to the rep with the largest logLik on the last iteration
-last_iter <- max(traces$iter)
-best_rep <- traces |>
-    filter(iter == last_iter, method == "pfilter") |>
-    group_by(rep) |>
-    summarise(final_logLik = logLik[1]) |>
-    arrange(desc(final_logLik)) |>
-    slice(1) |>
-    pull(rep)
+```{python}
+# | label: best-rep
+# | echo: false
+# Best rep = largest logLik on last iteration for method "pfilter"
+last_iter = traces_long["iter"].max()
+pfilter_last = traces_long[
+    (traces_long["iter"] == last_iter) & (traces_long["method"] == "pfilter")
+]
+best_rep = (
+    pfilter_last.groupby("rep")["logLik"].first().sort_values(ascending=False).index[0]
+)
 ```
 
-```{r Plot traces, fig.width = 10, fig.height = 10}
-ggplot(
-    traces, aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
-) +
-    geom_line(show.legend = FALSE) +
-    facet_wrap(vars(quantity), scales = "free")
+```{python}
+# | label: plot-traces
+# | fig-width: 10
+# | fig-height: 10
+(
+    ggplot(
+        traces_long, aes(x="iter", y="param_value", group="rep", color="factor(rep)")
+    )
+    + geom_line(show_legend=False)
+    + facet_wrap("quantity", scales="free")
+)
 ```
 
-```{r Plot LL traces, eval = TRUE}
-ggplot(
-    traces, 
-    aes(x = iter, y = logLik, group = rep, color = as.factor(rep))
-) +
-    geom_line(show.legend = FALSE) +
-    coord_cartesian(ylim = c(-4000, NA))
+```{python}
+# | label: plot-ll-traces
+# | fig-width: 10
+# | fig-height: 6
+traces_ll = traces_long.drop_duplicates(subset=["rep", "iter", "source"])[
+    ["rep", "iter", "logLik", "source"]
+]
+(
+    ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+    + geom_line(show_legend=False)
+    + coord_cartesian(ylim=(-4000, None))
+)
 ```
 
+# Comparison: GPU vs train
+
+## LogLik (density)
+
+```{python}
+# | label: final-loglik
+# | echo: false
+pfilter_traces = traces_long[traces_long["method"] == "pfilter"]
+last_pfilter_iter = pfilter_traces.groupby(["rep", "source"])["iter"].transform("max")
+final_loglik = pfilter_traces.loc[
+    pfilter_traces["iter"] == last_pfilter_iter, ["rep", "source", "logLik"]
+].drop_duplicates(subset=["rep", "source"])
+```
+
+```{python}
+# | label: plot-ll-density
+# | fig-width: 8
+# | fig-height: 5
+(
+    ggplot(final_loglik, aes(x="logLik", fill="source", color="source"))
+    + geom_density(alpha=0.4)
+    + labs(x="logLik", title="Final logLik: GPU vs train")
+)
+```
+
+## Final parameter estimates (density)
+
+```{python}
+# | label: final-params
+# | echo: false
+last_iter_by_source = traces_long.groupby("source")["iter"].transform("max")
+final_params = traces_long[traces_long["iter"] == last_iter_by_source].copy()
+```
+
+```{python}
+# | label: plot-param-density
+# | fig-width: 10
+# | fig-height: 10
+(
+    ggplot(final_params, aes(x="param_value", fill="source", color="source"))
+    + geom_density(alpha=0.4)
+    + facet_wrap("quantity", scales="free")
+    + labs(x="estimate", title="Final parameter estimates: GPU vs train")
+)
+```
