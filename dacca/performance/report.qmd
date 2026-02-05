@@ -31,7 +31,7 @@ import jax
 ```
 
 ```{python Load data in python}
-PKL_PATH = "gpu/dacca_results.pkl"
+PKL_PATH = "gpu_results/dacca_results_rl4.pkl"
 pomp_obj = pickle.load(open(PKL_PATH, "rb"))
 ```
 
