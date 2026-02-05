@@ -37,6 +37,7 @@ venv*
 *.Rout
 *.Rhistory
 renv
+.renv
 .renvignore
 .Rprofile
 renv.lock
