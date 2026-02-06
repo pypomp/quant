@@ -1,1 +1,0 @@
-We run mif and pfilter with 3000 particles, up from 1000, to see how the runtime compares with the 360 reps run. 

@@ -8,7 +8,9 @@ library(tidyverse)
 cores <- as.numeric(Sys.getenv("SLURM_NTASKS_PER_NODE", unset = NA))
 run_level <- as.numeric(Sys.getenv("run_level", unset = NA))
 
-if (is.na(cores)) cores <- detectCores()
+if (is.na(cores)) {
+  cores <- detectCores()
+}
 registerDoParallel(cores)
 registerDoRNG(34118892)
 
@@ -93,7 +95,8 @@ sp500_partrans <- parameter_trans(
 
 sp500.filt <- pomp(
   data = data.frame(
-    y = sp500$y, time = 1:length(sp500$y)
+    y = sp500$y,
+    time = 1:length(sp500$y)
   ),
   statenames = sp500_statenames,
   paramnames = sp500_parameters,
@@ -114,8 +117,6 @@ sp500.filt <- pomp(
 
 
 # Filter POMP to data ----------------------------------------------------
-
-
 
 # sp500_Np <- switch(run_level,
 #   100,
@@ -138,14 +139,16 @@ theta <- c(
   rho = -7.38e-1,
   V_0 = 7.66e-3^2
 )
-stew(file = sprintf("spx/pfilter_check/eval.rda"), {
+stew(file = sprintf("spx/pfilter_check/R_results/spx_results_eval.rda"), {
   t.box <- system.time({
     L.box <- foreach(
-      i = 1:3600, .packages = "pomp",
+      i = 1:3600,
+      .packages = "pomp",
       .combine = rbind,
       .options.multicore = list(set.seed = TRUE)
-    ) %dopar% {
+    ) %dopar%
+      {
         logLik(pfilter(sp500.filt, params = theta, Np = 1000))
-      } 
+      }
   })
 })

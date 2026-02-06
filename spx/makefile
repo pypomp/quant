@@ -22,23 +22,31 @@ WALL_TIME := 12:00:00
 endif
 
 # GPU job
-gpu:
-	cd gpu && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:40:00 job_gpu.sbat
+performance_gpu:
+	mkdir -p performance/gpu_results/logs
+	cd performance && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=$(WALL_TIME) job_gpu.sbat
 
 # CPU job  
-cpu:
-	cd cpu && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=$(WALL_TIME) job_cpu.sbat
+performance_cpu:
+	mkdir -p performance/cpu_results/logs
+	cd performance && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=$(WALL_TIME) job_cpu.sbat
 
-R_search:
-	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=03:20:00 spx/R/1d_global_search.sbat
+performance_R:
+	mkdir -p performance/R_results/logs
+	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=03:20:00 spx/performance/job_R.sbat
 
 # Eval pfilter with pypomp
-py_eval:
+py_pfilter_check:
+	mkdir -p pfilter_check/py_results/logs
 	cd pfilter_check && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=false sbatch --time=00:02:00 eval_py.sbat
 
 # Eval pfilter with pomp (runs from root for renv)
-R_eval:
+R_pfilter_check:
+	mkdir -p pfilter_check/R_results/logs
 	cd .. && RUN_LEVEL=$(RUN_LEVEL) USE_CPU=true sbatch --time=00:20:00 spx/pfilter_check/eval_R.sbat
+
+# Run all pfilter checks
+pfilter_check: py_pfilter_check R_pfilter_check
 
 report:
 	cd .. && quarto render spx/report.qmd

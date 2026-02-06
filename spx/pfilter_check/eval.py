@@ -1,16 +1,17 @@
 import os
-import time
-
-# Set JAX platform before importing JAX
-if os.environ.get("USE_CPU", "false").lower() == "true":
-    os.environ["JAX_PLATFORMS"] = "cpu"
-
+from datetime import datetime
+from importlib.metadata import version
 import jax
 import pickle
-import jax.numpy as jnp
 import pypomp as pp
 import numpy as np
 
+
+now = datetime.now()
+print("DATE: ", now.date())
+print("TIME: ", now.time())
+print("pypomp version:", version("pypomp"))
+print("jax version:", version("jax"))
 
 print(jax.devices())
 
@@ -41,5 +42,5 @@ key, subkey = jax.random.split(key)
 spx_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey, theta=theta)
 print(spx_obj.results())
 
-with open("spx_results_eval.pkl", "wb") as f:
+with open("py_results/spx_results_eval.pkl", "wb") as f:
     pickle.dump(spx_obj, f)

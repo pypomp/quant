@@ -20,10 +20,6 @@ NTRAIN = (2, 20, 40, 40)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 
-# options = jax.profiler.ProfileOptions()
-# options.gpu_max_activity_api_events = 1028 * 1024 * 4
-# with jax.profiler.trace("dacca_profiler", profiler_options=options):
-
 # MIF step
 key, subkey = jax.random.split(key)
 dacca_obj.mif(
