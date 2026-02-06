@@ -1,7 +1,0 @@
-Running on gl1001
-Running in /home/aaronabk/research/quant/spx/gpu
-[CudaDevice(id=0)]
-Running at level 4
-Starting IF2
-mif time taken: 333.4336049556732 seconds
-pfilter time taken: 17.271932125091553 seconds

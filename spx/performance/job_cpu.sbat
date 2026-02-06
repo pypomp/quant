@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#SBATCH --job-name="SPX test (cpu)"
+#SBATCH --output=cpu_results/logs/slurm-%j.out
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=END
+#SBATCH --mail-user=aaronabk@umich.edu
+#SBATCH --partition=standard
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=6GB
+#SBATCH --account="ionides0"
+
+echo "Running on $SLURM_JOB_NODELIST"
+echo "Running in $(pwd)"
+echo "Running with $SLURM_CPUS_PER_TASK CPUs"
+
+### Main commands ###
+source ../../.venv/bin/activate
+python test.py

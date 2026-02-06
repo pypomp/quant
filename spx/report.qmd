@@ -11,7 +11,8 @@ engine: knitr
 library(reticulate)
 library(tidyverse)
 library(pomp)
-setwd(paste0(here::here(), "/spx"))
+
+setwd(file.path(here::here(), "spx", "performance"))
 sessionInfo()
 
 knitr::opts_chunk$set(echo = FALSE)
@@ -31,7 +32,7 @@ import jax
 ```
 
 ```{python Load data in python}
-PKL_PATH = "gpu/spx_results.pkl"
+PKL_PATH = "performance/gpu_results/spx_results_rl4.pkl"
 pkl_in = pickle.load(open(PKL_PATH, "rb"))
 ```
 
@@ -60,7 +61,7 @@ traces <- py$traces
 LL_frame <- py$LL_frame
 best_rep <- LL_frame$index[[1]]
 traces <- traces |>
-    rename(rep = replicate, iter = iteration, logLik = loglik) |>
+    rename(rep = replicate, iter = iteration) |>
     pivot_longer(
         cols = c(-rep, -iter, -logLik, -method),
         names_to = "quantity",
@@ -104,7 +105,12 @@ ggplot(
 #  Compare python and R traces
 
 ```{r Load R estimates}
-load("R/search360/1d_global_search360.rda")
+load(file.path(
+    "performance",
+    "R_results",
+    "search360_hidden",
+    "1d_global_search360.rda"
+))
 LL_df_R <- as.data.frame(L.box)
 traces_long <- lapply(seq_along(if.box), function(x) {
     tr <- traces(if.box[[x]])
@@ -132,7 +138,20 @@ traces_long <- lapply(seq_along(if.box), function(x) {
     )
 
 traces_pyr <- bind_rows(
-    traces |> mutate(language = "python", value_T = param_value),
+    traces |>
+        mutate(language = "python") |>
+        mutate(
+            value_T = case_when(
+                quantity == "logLik" ~ param_value,
+                quantity == "mu" ~ log(param_value),
+                quantity == "kappa" ~ log(param_value),
+                quantity == "theta" ~ log(param_value),
+                quantity == "xi" ~ log(param_value),
+                quantity == "rho" ~ log((1 + param_value) / (1 - param_value)),
+                quantity == "V_0" ~ log(param_value),
+                TRUE ~ param_value
+            )
+        ),
     traces_long
 )
 ```
@@ -190,11 +209,8 @@ traces_pyr |>
         by = c("language", "quantity")
     ) |>
     filter(value_T >= -10, value_T <= 10) |>
-    ggplot(
-        mapping = aes(x = language, y = value_T, color = language),
-        alpha = 0.2
-    ) +
-    geom_jitter() +
+    ggplot(mapping = aes(x = value_T, fill = language)) +
+    geom_density(alpha = 0.5) +
     facet_wrap(vars(quantity), scales = "free") +
     labs(
         title = "Comparison of Final Iteration Values for Each Parameter (Zoomed)",
@@ -209,16 +225,14 @@ traces_pyr |>
     filter(quantity != "logLik", quantity != "loglik") |>
     group_by(language, quantity) |>
     filter(iter == min(iter)) |>
-    ggplot(
-        mapping = aes(x = language, y = value_T, color = language),
-        alpha = 0.2
-    ) +
-    geom_boxplot() +
+    ggplot(mapping = aes(x = value_T, fill = language)) +
+    geom_density(alpha = 0.5) +
     facet_wrap(vars(quantity), scales = "free") +
     labs(
         title = "Comparison of Starting Parameter Values for Each Parameter (Zoomed)",
         x = "Parameter",
         y = "Transformed Value",
+        fill = "Language"
     )
 ```
 
@@ -261,13 +275,13 @@ data.frame(
 # Compare python and R LL estimates at Weizhe's estimates
 
 ```{python Load rep3600 eval results}
-EVAL_PKL_PATH = "pfilter_check/rep3600/spx_results_eval.pkl"
+EVAL_PKL_PATH = os.path.join("pfilter_check", "py_results", "spx_results_eval.pkl")
 pkl_eval = pickle.load(open(EVAL_PKL_PATH, "rb"))
-LL_rep3600 = pkl_eval.results_history[0]["logLiks"][0].values.tolist()
+LL_rep3600 = pkl_eval.results_history[0].logLiks[0].values.tolist()
 ```
 
 ```{r Load rep3600 R eval and plot combined density}
-load("pfilter_check/rep3600/eval.rda")
+load(file.path("pfilter_check", "R_results", "spx_results_eval.rda"))
 
 # Extract numeric log-likelihoods from L.box regardless of shape
 LL_rep3600_R <- as.numeric(L.box)
@@ -316,8 +330,20 @@ df <- as.data.frame(data)
 traces |>
     filter(iter == last_iter, rep == best_rep, method == "pfilter") |>
     select(quantity, param_value) |>
+    mutate(
+        param_value_T = case_when(
+            quantity == "logLik" ~ param_value,
+            quantity == "mu" ~ log(param_value),
+            quantity == "kappa" ~ log(param_value),
+            quantity == "theta" ~ log(param_value),
+            quantity == "xi" ~ log(param_value),
+            quantity == "rho" ~ log((1 + param_value) / (1 - param_value)),
+            quantity == "V_0" ~ log(param_value),
+            TRUE ~ param_value
+        )
+    ) |>
     left_join(df, by = c("quantity" = "Parameter")) |>
-    mutate(difference = param_value - Value) |>
-    rename(Weizhe_value = Value, python_value = param_value) |>
+    mutate(difference = param_value_T - Value) |>
+    rename(Weizhe_value = Value, python_value = param_value_T) |>
     print()
 ```

@@ -5,10 +5,15 @@ scratch
 measles/gpu/measles_profiler
 dacca/gpu/dacca_profiler
 
+# Omit anything ending in "_hidden"
+*_hidden/
+
 # Omit output files (add manually if needed)
 **slurm*
 **.pkl
 **.html
+**.rds
+**.rda
 
 # No need to save level 0 results
 *_0
@@ -41,7 +46,7 @@ renv
 .renvignore
 .Rprofile
 renv.lock
-**.rds
+
 
 # For Latex users
 *.bbl
