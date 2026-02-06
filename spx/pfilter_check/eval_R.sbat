@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="SPX pfilter check (R pomp)"
-#SBATCH --output=R_results/logs/slurm-%j.out
+#SBATCH --output=spx/pfilter_check/R_results/logs/slurm-%j.out
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-type=END
 #SBATCH --mail-user=aaronabk@umich.edu
