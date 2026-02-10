@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#SBATCH --job-name="pypomp contiunous measles test (IF2)"
+#SBATCH --output=IF2_results/logs/slurm-%j.out
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=END
+#SBATCH --mail-user=aaronabk@umich.edu
+#SBATCH --partition=gpu
+#SBATCH --gpus=v100:1
+#SBATCH --cpus-per-gpu=1
+#SBATCH --mem=6GB
+#SBATCH --account="ionides0"
+
+# The job command(s):
+echo "Running on $SLURM_JOB_NODELIST"
+echo "Running in $(pwd)"
+ 
+### Main commands ###
+source ../../.venv/bin/activate
+python -u IF2_test.py

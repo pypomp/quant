@@ -1,0 +1,160 @@
+---
+title: "Continuous Measles Report"
+format:
+  html:
+    toc: true
+    embed-resources: true
+jupyter: python3
+---
+
+```{python Import python modules}
+# | label: setup
+# | echo: false
+import os
+import pickle
+import numpy as np
+import pandas as pd
+from plotnine import *
+import pypomp as pp
+import jax
+import matplotlib.pyplot as plt
+```
+
+```{python Load data in python}
+# | echo: false
+PKL_PATH = "IF2_results/measles_results_rl4.pkl"
+pomp_obj = pickle.load(open(PKL_PATH, "rb"))
+```
+
+```{python Make basic frame}
+# | echo: false
+LL_frame = pomp_obj.results()
+traces_raw = pomp_obj.traces()
+traces = traces_raw.rename(
+    columns={"replicate": "rep", "iteration": "iter", "loglik": "logLik"}
+)
+id_cols = ["rep", "iter", "logLik", "method"]
+param_cols = [c for c in traces.columns if c not in id_cols]
+traces_long = traces.melt(
+    id_vars=id_cols,
+    value_vars=param_cols,
+    var_name="quantity",
+    value_name="param_value",
+)
+```
+
+# Python results
+
+## Parameter traces
+
+```{python}
+# | label: plot-param-traces
+# | fig-width: 12
+# | fig-height: 12
+# | echo: false
+(
+    ggplot(
+        traces_long,
+        aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
+    )
+    + geom_line(show_legend=False)
+    + facet_wrap("quantity", scales="free_y")
+    + labs(title="Parameter traces")
+)
+```
+
+## LogLik traces
+
+```{python}
+# | label: plot-loglik-traces
+# | fig-width: 10
+# | fig-height: 6
+# | echo: false
+traces_ll = traces[["rep", "iter", "logLik"]].copy()
+(
+    ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+    + geom_line(show_legend=False)
+    + labs(title="logLik traces")
+    + coord_cartesian(ylim=(5000, None))
+)
+```
+
+## Final logLik density
+
+```{python}
+# | label: final-loglik
+# | echo: false
+pfilter_traces = traces_long[traces_long["method"] == "pfilter"]
+last_pfilter_iter = pfilter_traces.groupby("rep")["iter"].transform("max")
+final_loglik = pfilter_traces.loc[
+    pfilter_traces["iter"] == last_pfilter_iter, ["rep", "logLik"]
+].drop_duplicates(subset=["rep"])
+
+# Filter out insanely low logLiks
+# Use a threshold: values below median - 3*IQR and below -10000
+loglik_values = final_loglik["logLik"]
+q1 = loglik_values.quantile(0.25)
+q3 = loglik_values.quantile(0.75)
+iqr = q3 - q1
+threshold = max(q1 - 3 * iqr, -10000)
+
+omitted = final_loglik[final_loglik["logLik"] < threshold]
+if len(omitted) > 0:
+    print(f"Omitted {len(omitted)} logLik values below threshold {threshold:.2f}:")
+    print(omitted[["rep", "logLik"]].to_string(index=False))
+    print()
+
+final_loglik_filtered = final_loglik[final_loglik["logLik"] >= threshold].copy()
+```
+
+### Summary statistics
+
+```{python}
+# | label: loglik-summary-stats
+# | echo: false
+loglik_summary = (
+    final_loglik_filtered["logLik"]
+    .agg(["count", "mean", "std", "min", "median", "max"])
+    .round(2)
+    .to_frame()
+    .T
+)
+loglik_summary.columns = ["N", "Mean", "Std", "Min", "Median", "Max"]
+print(loglik_summary.to_string(index=False))
+```
+
+```{python}
+# | label: plot-loglik-density
+# | fig-width: 8
+# | fig-height: 5
+# | echo: false
+(
+    ggplot(final_loglik_filtered, aes(x="logLik"))
+    + geom_density(fill="steelblue", alpha=0.5, color="steelblue")
+    + labs(x="logLik", title="Final logLik density")
+)
+```
+
+## Final parameter density
+
+```{python}
+# | label: final-params
+# | echo: false
+last_iter = traces_long.groupby("rep")["iter"].transform("max")
+final_params = traces_long[traces_long["iter"] == last_iter].copy()
+```
+
+```{python}
+# | label: plot-param-density
+# | fig-width: 10
+# | fig-height: 10
+# | echo: false
+(
+    ggplot(final_params, aes(x="param_value"))
+    + geom_density(fill="steelblue", alpha=0.5, color="steelblue")
+    + facet_wrap("quantity", scales="free")
+    + labs(x="estimate", title="Final parameter density")
+)
+```
+
+
