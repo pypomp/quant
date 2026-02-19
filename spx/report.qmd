@@ -32,7 +32,7 @@ import jax
 ```
 
 ```{python Load data in python}
-PKL_PATH = "performance/gpu_results/spx_results_rl4.pkl"
+PKL_PATH = "performance/cpu_results/spx_results_rl4.pkl"
 pkl_in = pickle.load(open(PKL_PATH, "rb"))
 ```
 

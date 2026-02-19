@@ -6,11 +6,18 @@ from importlib.metadata import version
 USE_CPU = os.environ.get("USE_CPU", "false").lower() == "true"
 if USE_CPU:
     os.environ["JAX_PLATFORMS"] = "cpu"
+    if "SLURM_CPUS_PER_TASK" in os.environ:
+        os.environ["XLA_FLAGS"] = (
+            os.environ.get("XLA_FLAGS", "")
+            + f" --xla_force_host_platform_device_count={os.environ['SLURM_CPUS_PER_TASK']}"
+        )
 
 import jax  # noqa: E402
 import pickle  # noqa: E402
 import pypomp as pp  # noqa: E402
 import numpy as np  # noqa: E402
+
+print(jax.devices())
 
 print("Using CPU: ", USE_CPU)
 now = datetime.now()
@@ -80,6 +87,7 @@ spx_obj.mif(
     J=NP_FITR,
     key=subkey,
 )
+print(spx_obj.results())
 spx_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 print(spx_obj.results())
 
