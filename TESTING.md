@@ -66,16 +66,16 @@ The runner takes a command (either `run` or `list`) and a target, which can be a
 
 ```bash
 # List all tests anywhere in the repository:
-python run_tests.py list
+python scripts/run_tests.py list
 
 # The above command is a bit slow, so maybe limit it to a specific folder, e.g.,:
-python run_tests.py list tests/
+python scripts/run_tests.py list tests/
 
 # Run a single test:
-python run_tests.py run tests/spx/performance/test.py
+python scripts/run_tests.py run tests/spx/performance/test.py
 
 # Run all tests in a directory:
-python run_tests.py run tests/spx/
+python scripts/run_tests.py run tests/spx/
 ```
 
 ### Setting the Run Level
@@ -86,12 +86,12 @@ You can set the run level via an environment variable (similar to traditional Ma
 
 **Method 1: CLI Argument**
 ```bash
-python run_tests.py tests/spx/performance/test.py --run-level 2
+python scripts/run_tests.py run tests/spx/performance/test.py --run-level 2
 ```
 
 **Method 2: Environmental Variable**
 ```bash
-RUN_LEVEL=2 python run_tests.py tests/spx/performance/test.py
+RUN_LEVEL=2 python scripts/run_tests.py run tests/spx/performance/test.py
 ```
 
 ### Running a Specific Target Job
@@ -100,18 +100,18 @@ If a test file has multiple target setups (for example, comparing `cpu` vs `gpu`
 
 If you ONLY want to test one configuration without spinning up the other:
 ```bash
-python run_tests.py tests/spx/performance/test.py --run-level 2 --job cpu
+python scripts/run_tests.py run tests/spx/performance/test.py --run-level 2 --job cpu
 ```
 This tells the tool to exclusively run the job named `cpu` and to ignore the `gpu` job definition in that file.
 
 ### Running All Tests in a Directory
 If you want to run every test script within a directory (that has a `SLURM CONFIG` block), simply point the script to the directory:
 ```bash
-python run_tests.py tests/spx/performance/
+python scripts/run_tests.py run tests/spx/performance/
 ```
 
 ### Testing a Run (`--dry-run`)
 If you want to view the `sbatch` script that the python runner dynamically constructs before submitting it to the cluster, use the `--dry-run` flag:
 ```bash
-python run_tests.py tests/spx/performance/test.py --run-level 2 --dry-run
+python scripts/run_tests.py run tests/spx/performance/test.py --run-level 2 --dry-run
 ```

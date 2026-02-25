@@ -119,13 +119,13 @@ def generate_sbatch_script(test_filepath, config, run_level):
     if not command:
         ext = os.path.splitext(test_filepath)[1].lower()
         if ext == ".py":
-            # Assume local virtualenv at the project root
-            project_root = os.path.abspath(os.path.dirname(__file__))
+            # Assume local virtualenv at the project root (one level up from scripts/)
+            project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
             venv_bin = os.path.join(project_root, ".venv", "bin", "activate")
             lines.append(f"source {venv_bin}")
             command = f"python -u {os.path.basename(test_filepath)}"
         elif ext in [".r", ".R"]:
-            project_root = os.path.abspath(os.path.dirname(__file__))
+            project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
             activate_r = os.path.join(project_root, ".renv", "activate.R")
             lines.append(f'echo "source(\'{activate_r}\')" > .Rprofile')
             
