@@ -22,8 +22,11 @@ import matplotlib.pyplot as plt
 
 ```{python Load data in python}
 # | echo: false
-PKL_PATH = "IF2_results/measles_results_rl4.pkl"
-pomp_obj = pickle.load(open(PKL_PATH, "rb"))
+PKL_PATH_IF2 = "IF2_results/measles_results_rl4.pkl"
+pomp_obj = pickle.load(open(PKL_PATH_IF2, "rb"))
+
+PKL_PATH_IFAD = "IFAD_results/measles_results_rl4.pkl"
+pomp_obj_ifad = pickle.load(open(PKL_PATH_IFAD, "rb"))
 ```
 
 ```{python Make basic frame}
@@ -43,9 +46,28 @@ traces_long = traces.melt(
 )
 ```
 
-# Python results
+```{python Make basic frame for IFAD}
+# | echo: false
+LL_frame_ifad = pomp_obj_ifad.results()
+traces_raw_ifad = pomp_obj_ifad.traces()
+traces_ifad = traces_raw_ifad.rename(
+    columns={"replicate": "rep", "iteration": "iter", "loglik": "logLik"}
+)
+id_cols_ifad = ["rep", "iter", "logLik", "method"]
+param_cols_ifad = [c for c in traces_ifad.columns if c not in id_cols_ifad]
+traces_long_ifad = traces_ifad.melt(
+    id_vars=id_cols_ifad,
+    value_vars=param_cols_ifad,
+    var_name="quantity",
+    value_name="param_value",
+)
+```
+
+# Results
 
 ## Parameter traces
+
+### IF2
 
 ```{python}
 # | label: plot-param-traces
@@ -59,11 +81,31 @@ traces_long = traces.melt(
     )
     + geom_line(show_legend=False)
     + facet_wrap("quantity", scales="free_y")
-    + labs(title="Parameter traces")
+    + labs(title="Parameter traces (IF2)")
+)
+```
+
+### IFAD
+
+```{python}
+# | label: plot-param-traces-ifad
+# | fig-width: 12
+# | fig-height: 12
+# | echo: false
+(
+    ggplot(
+        traces_long_ifad,
+        aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
+    )
+    + geom_line(show_legend=False)
+    + facet_wrap("quantity", scales="free_y")
+    + labs(title="Parameter traces (IFAD)")
 )
 ```
 
 ## LogLik traces
+
+### IF2
 
 ```{python}
 # | label: plot-loglik-traces
@@ -74,7 +116,23 @@ traces_ll = traces[["rep", "iter", "logLik"]].copy()
 (
     ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
     + geom_line(show_legend=False)
-    + labs(title="logLik traces")
+    + labs(title="logLik traces (IF2)")
+    + coord_cartesian(ylim=(5000, None))
+)
+```
+
+### IFAD
+
+```{python}
+# | label: plot-loglik-traces-ifad
+# | fig-width: 10
+# | fig-height: 6
+# | echo: false
+traces_ll_ifad = traces_ifad[["rep", "iter", "logLik"]].copy()
+(
+    ggplot(traces_ll_ifad, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+    + geom_line(show_legend=False)
+    + labs(title="logLik traces (IFAD)")
     + coord_cartesian(ylim=(5000, None))
 )
 ```
@@ -105,9 +163,48 @@ if len(omitted) > 0:
     print()
 
 final_loglik_filtered = final_loglik[final_loglik["logLik"] >= threshold].copy()
+final_loglik_filtered["method"] = "IF2"
+```
+
+```{python}
+# | label: final-loglik-ifad
+# | echo: false
+pfilter_traces_ifad = traces_long_ifad[traces_long_ifad["method"] == "pfilter"]
+last_pfilter_iter_ifad = pfilter_traces_ifad.groupby("rep")["iter"].transform("max")
+final_loglik_ifad = pfilter_traces_ifad.loc[
+    pfilter_traces_ifad["iter"] == last_pfilter_iter_ifad, ["rep", "logLik"]
+].drop_duplicates(subset=["rep"])
+
+# Filter out insanely low logLiks
+# Use a threshold: values below median - 3*IQR and below -10000
+loglik_values_ifad = final_loglik_ifad["logLik"]
+q1_ifad = loglik_values_ifad.quantile(0.25)
+q3_ifad = loglik_values_ifad.quantile(0.75)
+iqr_ifad = q3_ifad - q1_ifad
+threshold_ifad = max(q1_ifad - 3 * iqr_ifad, -10000)
+
+omitted_ifad = final_loglik_ifad[final_loglik_ifad["logLik"] < threshold_ifad]
+if len(omitted_ifad) > 0:
+    print(f"Omitted {len(omitted_ifad)} logLik values below threshold {threshold_ifad:.2f}:")
+    print(omitted_ifad[["rep", "logLik"]].to_string(index=False))
+    print()
+
+final_loglik_filtered_ifad = final_loglik_ifad[final_loglik_ifad["logLik"] >= threshold_ifad].copy()
+final_loglik_filtered_ifad["method"] = "IFAD"
+```
+
+```{python}
+# | label: combine-loglik-data
+# | echo: false
+final_loglik_combined = pd.concat([
+    final_loglik_filtered[["logLik", "method"]],
+    final_loglik_filtered_ifad[["logLik", "method"]]
+], ignore_index=True)
 ```
 
 ### Summary statistics
+
+#### IF2
 
 ```{python}
 # | label: loglik-summary-stats
@@ -120,7 +217,25 @@ loglik_summary = (
     .T
 )
 loglik_summary.columns = ["N", "Mean", "Std", "Min", "Median", "Max"]
+print("IF2:")
 print(loglik_summary.to_string(index=False))
+```
+
+#### IFAD
+
+```{python}
+# | label: loglik-summary-stats-ifad
+# | echo: false
+loglik_summary_ifad = (
+    final_loglik_filtered_ifad["logLik"]
+    .agg(["count", "mean", "std", "min", "median", "max"])
+    .round(2)
+    .to_frame()
+    .T
+)
+loglik_summary_ifad.columns = ["N", "Mean", "Std", "Min", "Median", "Max"]
+print("\nIFAD:")
+print(loglik_summary_ifad.to_string(index=False))
 ```
 
 ```{python}
@@ -129,9 +244,11 @@ print(loglik_summary.to_string(index=False))
 # | fig-height: 5
 # | echo: false
 (
-    ggplot(final_loglik_filtered, aes(x="logLik"))
-    + geom_density(fill="steelblue", alpha=0.5, color="steelblue")
-    + labs(x="logLik", title="Final logLik density")
+    ggplot(final_loglik_combined, aes(x="logLik", fill="method", color="method"))
+    + geom_density(alpha=0.5)
+    + labs(x="logLik", title="Final logLik density", fill="Method", color="Method")
+    + scale_fill_manual(values={"IF2": "steelblue", "IFAD": "coral"})
+    + scale_color_manual(values={"IF2": "steelblue", "IFAD": "coral"})
 )
 ```
 
@@ -142,6 +259,24 @@ print(loglik_summary.to_string(index=False))
 # | echo: false
 last_iter = traces_long.groupby("rep")["iter"].transform("max")
 final_params = traces_long[traces_long["iter"] == last_iter].copy()
+final_params["method"] = "IF2"
+```
+
+```{python}
+# | label: final-params-ifad
+# | echo: false
+last_iter_ifad = traces_long_ifad.groupby("rep")["iter"].transform("max")
+final_params_ifad = traces_long_ifad[traces_long_ifad["iter"] == last_iter_ifad].copy()
+final_params_ifad["method"] = "IFAD"
+```
+
+```{python}
+# | label: combine-params-data
+# | echo: false
+final_params_combined = pd.concat([
+    final_params,
+    final_params_ifad
+], ignore_index=True)
 ```
 
 ```{python}
@@ -150,10 +285,12 @@ final_params = traces_long[traces_long["iter"] == last_iter].copy()
 # | fig-height: 10
 # | echo: false
 (
-    ggplot(final_params, aes(x="param_value"))
-    + geom_density(fill="steelblue", alpha=0.5, color="steelblue")
+    ggplot(final_params_combined, aes(x="param_value", fill="method", color="method"))
+    + geom_density(alpha=0.5)
     + facet_wrap("quantity", scales="free")
-    + labs(x="estimate", title="Final parameter density")
+    + labs(x="estimate", title="Final parameter density", fill="Method", color="Method")
+    + scale_fill_manual(values={"IF2": "steelblue", "IFAD": "coral"})
+    + scale_color_manual(values={"IF2": "steelblue", "IFAD": "coral"})
 )
 ```
 

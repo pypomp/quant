@@ -15,7 +15,7 @@ WALL_TIME := 00:30:00
 else ifeq ($(RUN_LEVEL),3)
 WALL_TIME := 00:30:00
 else ifeq ($(RUN_LEVEL),4)
-WALL_TIME := 01:00:00
+WALL_TIME := 00:30:00
 else
 $(warning Unknown RUN_LEVEL '$(RUN_LEVEL)', defaulting to 12:00:00)
 WALL_TIME := 12:00:00

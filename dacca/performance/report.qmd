@@ -30,8 +30,8 @@ print(datetime.now())
 ```{python}
 # | label: load-data
 # | echo: false
-pomp_obj = pickle.load(open("gpu_results/dacca_results_rl4.pkl", "rb"))
-pomp_obj_train = pickle.load(open("train_results/dacca_results_rl4.pkl", "rb"))
+pomp_obj = pickle.load(open("train_results/dacca_results_rl4.pkl", "rb"))
+pomp_obj_train = pickle.load(open("train_results/dacca_results_rl4_Adam.pkl", "rb"))
 LL_frame = pomp_obj.results()
 traces_raw_gpu = pomp_obj.traces()
 traces_raw_gpu["source"] = "gpu"
@@ -73,6 +73,30 @@ print(pomp_obj.print_summary())
 # | label: summary-if2-train
 # | echo: false
 print(pomp_obj_train.print_summary())
+```
+
+## LogLik Summary Statistics
+
+### Final pfilter logLik by source
+```{python}
+# | label: loglik-summary-stats
+# | echo: false
+# Get final pfilter logLik for each replicate by source
+pfilter_traces = traces[traces["method"] == "pfilter"]
+last_pfilter_iter = pfilter_traces.groupby(["rep", "source"])["iter"].transform("max")
+final_pfilter_loglik = pfilter_traces.loc[
+    pfilter_traces["iter"] == last_pfilter_iter, ["rep", "source", "logLik"]
+].drop_duplicates(subset=["rep", "source"])
+
+# Compute summary statistics grouped by source
+loglik_summary = (
+    final_pfilter_loglik.groupby("source")["logLik"]
+    .agg(["count", "mean", "std", "min", "median", "max"])
+    .round(2)
+    .reset_index()
+)
+loglik_summary.columns = ["Source", "N", "Mean", "Std", "Min", "Median", "Max"]
+print(loglik_summary.to_string(index=False))
 ```
 
 ## Times
@@ -147,6 +171,21 @@ traces_long_train = traces_long[traces_long["source"] == "train"].copy()
 )
 ```
 
+
+```{python}
+# | label: plot-ll-traces-train
+# | fig-width: 10
+# | fig-height: 6
+# | echo: false
+traces_ll = traces[traces["source"] == "train"][["rep", "iter", "logLik"]].copy()
+(
+    ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+    + geom_line(show_legend=False)
+    + coord_cartesian(ylim=(-4000, None))
+    + labs(title="IF2 + train logLik traces")
+)
+```
+
 # Comparison: GPU vs train
 
 ## LogLik (density)
@@ -167,9 +206,14 @@ final_loglik = pfilter_traces.loc[
 # | fig-height: 5
 # | echo: false
 (
-    ggplot(final_loglik, aes(x="logLik", fill="source", color="source"))
+    ggplot(
+        final_loglik.replace({"source": {"gpu": "IF2", "train": "IFAD"}}),
+        aes(x="logLik", fill="source", color="source"),
+    )
     + geom_density(alpha=0.4)
-    + labs(x="logLik", title="Final logLik: GPU vs train")
+    + labs(x="logLik", title="Final logLik: IF2 only vs IFAD")
+    # + coord_cartesian(xlim=(-4000, None))
+    + scale_x_continuous(limits=(-4000, None))
 )
 ```
 
@@ -188,9 +232,12 @@ final_params = traces_long[traces_long["iter"] == last_iter_by_source].copy()
 # | fig-height: 10
 # | echo: false
 (
-    ggplot(final_params, aes(x="param_value", fill="source", color="source"))
+    ggplot(
+        final_params.replace({"source": {"gpu": "IF2", "train": "IFAD"}}),
+        aes(x="param_value", fill="source", color="source"),
+    )
     + geom_density(alpha=0.4)
     + facet_wrap("quantity", scales="free")
-    + labs(x="estimate", title="Final parameter estimates: GPU vs train")
+    + labs(x="estimate", title="Final parameter estimates: IF2 only vs IFAD")
 )
 ```
