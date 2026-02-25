@@ -20,12 +20,26 @@ NTRAIN = (2, 20, 40, 40)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 
+eta = {
+    "gamma": 0.2,
+    "epsilon": 0.2,
+    "rho": 0.0,
+    "m": 0.2,
+    "c": 0.0,
+    "beta_trend": 0.2,
+    **{f"bs{i + 1}": 0.2 for i in range(6)},
+    "sigma": 0.2,
+    "tau": 0.2,
+    "omega": 0.2,
+    **{f"omegas{i + 1}": 0.2 for i in range(6)},
+}
+
 # MIF step
 key, subkey = jax.random.split(key)
 dacca_obj.mif(
     theta=initial_params_list,
     rw_sd=RW_SD,
-    M=NFITR,
+    M=60,
     a=COOLING_RATE,
     J=NP_FITR,
     key=subkey,
@@ -33,17 +47,17 @@ dacca_obj.mif(
 print(dacca_obj.results())
 
 # PFILTER round 1
-dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
-print(dacca_obj.results())
+# dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
+# print(dacca_obj.results())
 
-# Prune step
-dacca_obj.prune(n=10, refill=True)
+# # Prune step
+# dacca_obj.prune(n=10, refill=True)
 
 # Train step
-dacca_obj.train(J=NP_FITR, M=NTRAIN, eta=0.2)
+dacca_obj.train(J=NP_FITR, M=40, eta=eta, optimizer="Adam", n_monitors=1)
 print(dacca_obj.results())
 
-# PFILTER round 2
+# # PFILTER round 2
 dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 print(dacca_obj.results())
 

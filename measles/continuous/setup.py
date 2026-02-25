@@ -44,16 +44,12 @@ RW_SD = pp.RWSigma(
         "E_0": DEFAULT_IVP_SD,
         "I_0": DEFAULT_IVP_SD,
         "R_0": DEFAULT_IVP_SD,
-        "mu": 0.0,
-        "alpha": 0.0,
     },
     init_names=["S_0", "E_0", "I_0", "R_0"],
 )
 COOLING_RATE = 0.5
 
 measles_box = {
-    "mu": [0.02, 0.02],
-    "alpha": [1.0, 1.0],
     "R0": [10.0, 60.0],
     "sigma": [25.0, 100.0],
     "gamma": [25.0, 320.0],
