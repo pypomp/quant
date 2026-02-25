@@ -1,5 +1,8 @@
 # General
 scratch
+.vscode
+.ruff_cache
+pyrightconfig.json
 
 # Omit profiles (too big)
 measles/gpu/measles_profiler
