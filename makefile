@@ -14,3 +14,4 @@ install_requirements: .venv
 
 .venv:
 	python3.12 -m venv .venv
+

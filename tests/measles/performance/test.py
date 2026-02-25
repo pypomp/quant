@@ -44,15 +44,12 @@ import jax.numpy as jnp
 import pypomp as pp
 import numpy as np
 import time
-from tests.utils import get_system_info, get_pomp_metrics, append_history
 
 print(jax.devices())
 
 MAIN_SEED = 631409
 key = jax.random.key(MAIN_SEED)
 np.random.seed(MAIN_SEED)
-
-sys_info = get_system_info()
 
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 
@@ -133,18 +130,6 @@ measles_obj.mif(
     J=NP_FITR,
     key=subkey,
 )
-# measles_obj.prune(n=5, refill=False)
-# measles_obj.train(J=NP_FITR, M=NTRAIN, eta=0.2)
-measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
-measles_obj.prune(n=4, refill=True)
-RW_SD.cool(0.25)
-measles_obj.mif(
-    rw_sd=RW_SD,
-    M=NFITR,
-    a=COOLING_RATE,
-    J=NP_FITR,
-    key=subkey,
-)
 measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 measles_obj.prune(n=1, refill=False)
 measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, CLL=True)
@@ -156,10 +141,3 @@ out_dir = "cpu_results" if USE_CPU else "gpu_results"
 
 with open(f"{out_dir}/measles_results.pkl", "wb") as f:
     pickle.dump(measles_obj, f)
-
-execution_time = time.time() - start_time
-
-metrics = get_pomp_metrics(measles_obj, execution_time=execution_time, run_config=run_config)
-metrics.update(sys_info)
-
-append_history(metrics, f"{out_dir}/measles_history.jsonl")
