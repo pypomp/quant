@@ -65,6 +65,30 @@ traces_long_ifad = traces_ifad.melt(
 
 # Results
 
+## Times
+
+```{python}
+# | label: times
+# | echo: false
+
+print("IF2:")
+print(pomp_obj.time())
+print("\nIFAD:")
+print(pomp_obj_ifad.time())
+```
+
+## Verbose summary
+
+```{python}
+# | label: verbose-summary
+# | echo: false
+
+print("IF2:")
+print(pomp_obj.print_summary())
+print("\nIFAD:")
+print(pomp_obj_ifad.print_summary())
+```
+
 ## Parameter traces
 
 ### IF2
@@ -117,7 +141,7 @@ traces_ll = traces[["rep", "iter", "logLik"]].copy()
     ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
     + geom_line(show_legend=False)
     + labs(title="logLik traces (IF2)")
-    + coord_cartesian(ylim=(5000, None))
+    + coord_cartesian(ylim=(-350, None))
 )
 ```
 
@@ -133,7 +157,7 @@ traces_ll_ifad = traces_ifad[["rep", "iter", "logLik"]].copy()
     ggplot(traces_ll_ifad, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
     + geom_line(show_legend=False)
     + labs(title="logLik traces (IFAD)")
-    + coord_cartesian(ylim=(5000, None))
+    + coord_cartesian(ylim=(-350, None))
 )
 ```
 
