@@ -3,6 +3,7 @@ scratch
 .vscode
 .ruff_cache
 pyrightconfig.json
+test_config.yaml
 
 # Omit profiles (too big)
 measles/gpu/measles_profiler

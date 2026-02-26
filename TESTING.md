@@ -58,6 +58,21 @@ If a single script tests both CPU and GPU execution methods, you can group them 
 ```
 In this example, running the file creates two distinct SLURM jobs named "gpu" and "cpu". The "cpu" job injects `USE_CPU=true` into the environment dynamically. The `run_levels` section at the bottom defines overrides—if run level `2` is used, the jobs will run using `time: "00:04:00"`, overriding the base job configurations if necessary.
 
+### Global User Configuration (`test_config.yaml`)
+
+Because personal SLURM arguments (like your email address for job completion notifications) should not be committed to the repository, you can create a `test_config.yaml` file at the exact root of your repository (e.g. `/home/user/research/quant/test_config.yaml`).
+
+Any `sbatch_args` you define in this file will automatically be injected into **every** job you submit using the runner script, preserving your preferences globally!
+
+**Example `test_config.yaml`:**
+```yaml
+sbatch_args:
+  mail-type: ALL
+  mail-user: your_email@umich.edu
+```
+
+*(Note: `test_config.yaml` is permanently added to `.gitignore` so your personal email is never accidentally tracked.)*
+
 ---
 
 ## Usage

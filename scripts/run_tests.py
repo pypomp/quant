@@ -61,6 +61,18 @@ def parse_test_metadata(filepath):
         print(f"Error parsing YAML in {filepath}:\n{e}")
         sys.exit(1)
 
+def load_global_config():
+    """Loads a global test_config.yaml from the project root if it exists."""
+    project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    config_path = os.path.join(project_root, "test_config.yaml")
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            try:
+                return yaml.safe_load(f) or {}
+            except yaml.YAMLError as e:
+                print(f"Warning: Failed to parse {config_path}:\n{e}")
+    return {}
+
 
 def generate_sbatch_script(test_filepath, config, run_level):
     """Generates the content for a dynamic sbatch script."""
@@ -141,7 +153,17 @@ def generate_sbatch_script(test_filepath, config, run_level):
     return "\n".join(lines)
 
 
-def run_test_config(filepath, config, run_level, dry_run=False):
+def run_test_config(filepath, config, run_level, global_config=None, dry_run=False):
+    # Merge global sbatch args into the specific job's config
+    if global_config and "sbatch_args" in global_config:
+        if "sbatch_args" not in config:
+            config["sbatch_args"] = {}
+        # We only want to add things from global_config that aren't ALREADY in config, 
+        # or we can overwrite. Standard behavior: Local overrides global.
+        for k, v in global_config["sbatch_args"].items():
+            if k not in config["sbatch_args"]:
+                config["sbatch_args"][k] = v
+
     script_content = generate_sbatch_script(filepath, config, run_level)
     
     test_dir = os.path.dirname(os.path.abspath(filepath))
@@ -182,7 +204,7 @@ def run_test_config(filepath, config, run_level, dry_run=False):
                 os.remove(temp_sbat)
 
 
-def run_test(filepath, run_level, target_job=None, dry_run=False):
+def run_test(filepath, run_level, target_job=None, global_config=None, dry_run=False):
     config = parse_test_metadata(filepath)
     if not config or not isinstance(config, dict):
         print(f"Ignored: no valid SLURM CONFIG found in {filepath}")
@@ -210,14 +232,14 @@ def run_test(filepath, run_level, target_job=None, dry_run=False):
                     merged["sbatch_args"] = config["sbatch_args"].copy()
                     merged["sbatch_args"].update(job_config["sbatch_args"])
                 
-            run_test_config(filepath, merged, run_level, dry_run)
+            run_test_config(filepath, merged, run_level, global_config, dry_run)
     else:
         # For single job configs, just check if the name matches the target (if provided)
         job_name = config.get("name", os.path.basename(filepath))
         if target_job and target_job != job_name:
              return
              
-        run_test_config(filepath, config, run_level, dry_run)
+        run_test_config(filepath, config, run_level, global_config, dry_run)
 
 
 def find_tests(target_path):
@@ -271,7 +293,11 @@ if __name__ == "__main__":
                 name = config.get("name", os.path.basename(test))
                 print(f"  Includes job: {name}")
                 
-        print("\nUse 'python run_tests.py run <path>' to execute them.\n")
+        print("\nUse 'python scripts/run_tests.py run <path>' to execute them.\n")
     elif args.action == "run":
+        global_config = load_global_config()
+        if global_config:
+            print(f"Loaded global config from test_config.yaml")
+
         for test in tests:
-            run_test(test, args.run_level, args.job, args.dry_run)
+            run_test(test, args.run_level, args.job, global_config, args.dry_run)
