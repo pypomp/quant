@@ -13,9 +13,9 @@
 #   2:
 #     sbatch_args: { time: "00:20:00" }
 #   3:
-#     sbatch_args: { time: "00:30:00" }
+#     sbatch_args: { time: "00:20:00" }
 #   4:
-#     sbatch_args: { time: "01:00:00" }
+#     sbatch_args: { time: "00:20:00" }
 # --- END SLURM CONFIG ---
 
 import jax
