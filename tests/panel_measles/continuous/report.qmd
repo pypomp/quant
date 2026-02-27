@@ -1,0 +1,345 @@
+---
+title: "Continuous Panel Measles Report"
+format:
+  html:
+    toc: true
+    embed-resources: true
+jupyter: python3
+---
+
+```{python Import python modules}
+# | label: setup
+# | echo: false
+import os
+import pickle
+import numpy as np
+import pandas as pd
+from plotnine import *
+import pypomp as pp
+import jax
+import matplotlib.pyplot as plt
+```
+
+```{python Load data in python}
+# | echo: false
+PKL_PATH_IF2 = "IF2_results/panel_measles_results_rl4.pkl"
+try:
+    pomp_obj = pickle.load(open(PKL_PATH_IF2, "rb"))
+except FileNotFoundError:
+    print(f"File not found: {PKL_PATH_IF2}. Waiting for results...")
+    pomp_obj = None
+
+PKL_PATH_IFAD = "IFAD_results/panel_measles_results_rl4.pkl"
+try:
+    pomp_obj_ifad = pickle.load(open(PKL_PATH_IFAD, "rb"))
+except FileNotFoundError:
+    print(f"File not found: {PKL_PATH_IFAD}. Waiting for results...")
+    pomp_obj_ifad = None
+```
+
+```{python Make basic frame}
+# | echo: false
+if pomp_obj is not None:
+    LL_frame = pomp_obj.results()
+    traces_raw = pomp_obj.traces()
+    traces = traces_raw.rename(
+        columns={"replicate": "rep", "iteration": "iter", "loglik": "logLik"}
+    )
+    id_cols = ["rep", "iter", "logLik", "method"]
+    param_cols = [c for c in traces.columns if c not in id_cols]
+    traces_long = traces.melt(
+        id_vars=id_cols,
+        value_vars=param_cols,
+        var_name="quantity",
+        value_name="param_value",
+    )
+else:
+    traces_long = pd.DataFrame()
+    traces = pd.DataFrame()
+```
+
+```{python Make basic frame for IFAD}
+# | echo: false
+if pomp_obj_ifad is not None:
+    LL_frame_ifad = pomp_obj_ifad.results()
+    traces_raw_ifad = pomp_obj_ifad.traces()
+    traces_ifad = traces_raw_ifad.rename(
+        columns={"replicate": "rep", "iteration": "iter", "loglik": "logLik"}
+    )
+    id_cols_ifad = ["rep", "iter", "logLik", "method"]
+    param_cols_ifad = [c for c in traces_ifad.columns if c not in id_cols_ifad]
+    traces_long_ifad = traces_ifad.melt(
+        id_vars=id_cols_ifad,
+        value_vars=param_cols_ifad,
+        var_name="quantity",
+        value_name="param_value",
+    )
+else:
+    traces_long_ifad = pd.DataFrame()
+    traces_ifad = pd.DataFrame()
+```
+
+# Results
+
+## Times
+
+```{python}
+# | label: times
+# | echo: false
+
+print("IF2:")
+if pomp_obj is not None:
+    print(pomp_obj.time())
+print("\nIFAD:")
+if pomp_obj_ifad is not None:
+    print(pomp_obj_ifad.time())
+```
+
+## Verbose summary
+
+```{python}
+# | label: verbose-summary
+# | echo: false
+
+print("IF2:")
+if pomp_obj is not None:
+    print(pomp_obj.print_summary())
+print("\nIFAD:")
+if pomp_obj_ifad is not None:
+    print(pomp_obj_ifad.print_summary())
+```
+
+## Parameter traces
+
+### IF2
+
+```{python}
+# | label: plot-param-traces
+# | fig-width: 12
+# | fig-height: 12
+# | echo: false
+if not traces_long.empty:
+    (
+        ggplot(
+            traces_long,
+            aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
+        )
+        + geom_line(show_legend=False)
+        + facet_wrap("quantity", scales="free_y")
+        + labs(title="Parameter traces (IF2)")
+    )
+```
+
+### IFAD
+
+```{python}
+# | label: plot-param-traces-ifad
+# | fig-width: 12
+# | fig-height: 12
+# | echo: false
+if not traces_long_ifad.empty:
+    (
+        ggplot(
+            traces_long_ifad,
+            aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
+        )
+        + geom_line(show_legend=False)
+        + facet_wrap("quantity", scales="free_y")
+        + labs(title="Parameter traces (IFAD)")
+    )
+```
+
+## LogLik traces
+
+### IF2
+
+```{python}
+# | label: plot-loglik-traces
+# | fig-width: 10
+# | fig-height: 6
+# | echo: false
+if not traces.empty and "logLik" in traces.columns:
+    traces_ll = traces[["rep", "iter", "logLik"]].copy()
+    (
+        ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+        + geom_line(show_legend=False)
+        + labs(title="logLik traces (IF2)")
+        + coord_cartesian(ylim=(-350, None))
+    )
+```
+
+### IFAD
+
+```{python}
+# | label: plot-loglik-traces-ifad
+# | fig-width: 10
+# | fig-height: 6
+# | echo: false
+if not traces_ifad.empty and "logLik" in traces_ifad.columns:
+    traces_ll_ifad = traces_ifad[["rep", "iter", "logLik"]].copy()
+    (
+        ggplot(traces_ll_ifad, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+        + geom_line(show_legend=False)
+        + labs(title="logLik traces (IFAD)")
+        + coord_cartesian(ylim=(-350, None))
+    )
+```
+
+## Final logLik density
+
+```{python}
+# | label: final-loglik
+# | echo: false
+pfilter_traces = traces_long[traces_long["method"] == "pfilter"]
+last_pfilter_iter = pfilter_traces.groupby("rep")["iter"].transform("max")
+final_loglik = pfilter_traces.loc[
+    pfilter_traces["iter"] == last_pfilter_iter, ["rep", "logLik"]
+].drop_duplicates(subset=["rep"])
+
+# Filter out insanely low logLiks
+# Use a threshold: values below median - 3*IQR and below -10000
+loglik_values = final_loglik["logLik"]
+q1 = loglik_values.quantile(0.25)
+q3 = loglik_values.quantile(0.75)
+iqr = q3 - q1
+threshold = max(q1 - 3 * iqr, -10000)
+
+omitted = final_loglik[final_loglik["logLik"] < threshold]
+if len(omitted) > 0:
+    print(f"Omitted {len(omitted)} logLik values below threshold {threshold:.2f}:")
+    print(omitted[["rep", "logLik"]].to_string(index=False))
+    print()
+
+final_loglik_filtered = final_loglik[final_loglik["logLik"] >= threshold].copy()
+final_loglik_filtered["method"] = "IF2"
+```
+
+```{python}
+# | label: final-loglik-ifad
+# | echo: false
+pfilter_traces_ifad = traces_long_ifad[traces_long_ifad["method"] == "pfilter"]
+last_pfilter_iter_ifad = pfilter_traces_ifad.groupby("rep")["iter"].transform("max")
+final_loglik_ifad = pfilter_traces_ifad.loc[
+    pfilter_traces_ifad["iter"] == last_pfilter_iter_ifad, ["rep", "logLik"]
+].drop_duplicates(subset=["rep"])
+
+# Filter out insanely low logLiks
+# Use a threshold: values below median - 3*IQR and below -10000
+loglik_values_ifad = final_loglik_ifad["logLik"]
+q1_ifad = loglik_values_ifad.quantile(0.25)
+q3_ifad = loglik_values_ifad.quantile(0.75)
+iqr_ifad = q3_ifad - q1_ifad
+threshold_ifad = max(q1_ifad - 3 * iqr_ifad, -10000)
+
+omitted_ifad = final_loglik_ifad[final_loglik_ifad["logLik"] < threshold_ifad]
+if len(omitted_ifad) > 0:
+    print(f"Omitted {len(omitted_ifad)} logLik values below threshold {threshold_ifad:.2f}:")
+    print(omitted_ifad[["rep", "logLik"]].to_string(index=False))
+    print()
+
+final_loglik_filtered_ifad = final_loglik_ifad[final_loglik_ifad["logLik"] >= threshold_ifad].copy()
+final_loglik_filtered_ifad["method"] = "IFAD"
+```
+
+```{python}
+# | label: combine-loglik-data
+# | echo: false
+final_loglik_combined = pd.concat([
+    final_loglik_filtered[["logLik", "method"]],
+    final_loglik_filtered_ifad[["logLik", "method"]]
+], ignore_index=True)
+```
+
+### Summary statistics
+
+#### IF2
+
+```{python}
+# | label: loglik-summary-stats
+# | echo: false
+loglik_summary = (
+    final_loglik_filtered["logLik"]
+    .agg(["count", "mean", "std", "min", "median", "max"])
+    .round(2)
+    .to_frame()
+    .T
+)
+loglik_summary.columns = ["N", "Mean", "Std", "Min", "Median", "Max"]
+print("IF2:")
+print(loglik_summary.to_string(index=False))
+```
+
+#### IFAD
+
+```{python}
+# | label: loglik-summary-stats-ifad
+# | echo: false
+loglik_summary_ifad = (
+    final_loglik_filtered_ifad["logLik"]
+    .agg(["count", "mean", "std", "min", "median", "max"])
+    .round(2)
+    .to_frame()
+    .T
+)
+loglik_summary_ifad.columns = ["N", "Mean", "Std", "Min", "Median", "Max"]
+print("\nIFAD:")
+print(loglik_summary_ifad.to_string(index=False))
+```
+
+```{python}
+# | label: plot-loglik-density
+# | fig-width: 8
+# | fig-height: 5
+# | echo: false
+(
+    ggplot(final_loglik_combined, aes(x="logLik", fill="method", color="method"))
+    + geom_density(alpha=0.5)
+    + labs(x="logLik", title="Final logLik density", fill="Method", color="Method")
+    + scale_fill_manual(values={"IF2": "steelblue", "IFAD": "coral"})
+    + scale_color_manual(values={"IF2": "steelblue", "IFAD": "coral"})
+)
+```
+
+## Final parameter density
+
+```{python}
+# | label: final-params
+# | echo: false
+last_iter = traces_long.groupby("rep")["iter"].transform("max")
+final_params = traces_long[traces_long["iter"] == last_iter].copy()
+final_params["method"] = "IF2"
+```
+
+```{python}
+# | label: final-params-ifad
+# | echo: false
+last_iter_ifad = traces_long_ifad.groupby("rep")["iter"].transform("max")
+final_params_ifad = traces_long_ifad[traces_long_ifad["iter"] == last_iter_ifad].copy()
+final_params_ifad["method"] = "IFAD"
+```
+
+```{python}
+# | label: combine-params-data
+# | echo: false
+final_params_combined = pd.concat([
+    final_params,
+    final_params_ifad
+], ignore_index=True)
+```
+
+```{python}
+# | label: plot-param-density
+# | fig-width: 10
+# | fig-height: 10
+# | echo: false
+(
+    ggplot(final_params_combined, aes(x="param_value", fill="method", color="method"))
+    + geom_density(alpha=0.5)
+    + facet_wrap("quantity", scales="free")
+    + labs(x="estimate", title="Final parameter density", fill="Method", color="Method")
+    + scale_fill_manual(values={"IF2": "steelblue", "IFAD": "coral"})
+    + scale_color_manual(values={"IF2": "steelblue", "IFAD": "coral"})
+)
+```
+
+
