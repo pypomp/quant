@@ -1,8 +1,8 @@
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "pypomp panel continuous measles test (IF2)"
-#   partition: gpu
-#   gpus: "v100:1"
+#   partition: gpu-rtx6000
+#   gpus: "rtx_pro_6000_blackwell:1"
 #   cpus-per-gpu: 1
 #   mem: 6GB
 #   output: "IF2_results/logs/slurm-%j.out"
@@ -15,7 +15,7 @@
 #   3:
 #     sbatch_args: { time: "03:00:00" }
 #   4:
-#     sbatch_args: { time: "03:00:00" }
+#     sbatch_args: { time: "04:00:00" }
 # --- END SLURM CONFIG ---
 
 import jax

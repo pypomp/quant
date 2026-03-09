@@ -1,8 +1,8 @@
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "pypomp panel continuous measles test (IFAD)"
-#   partition: gpu
-#   gpus: "v100:1"
+#   partition: gpu-rtx6000
+#   gpus: "rtx_pro_6000_blackwell:1"
 #   cpus-per-gpu: 1
 #   mem: 6GB
 #   output: "IFAD_results/logs/slurm-%j.out"
@@ -44,7 +44,7 @@ eta = {
     "sigma": DEFAULT_ETA,
     "gamma": DEFAULT_ETA,
     "iota": DEFAULT_ETA,
-    "rho": DEFAULT_ETA,
+    "rho": DEFAULT_ETA/4,
     "sigmaSE": DEFAULT_ETA,
     "psi": DEFAULT_ETA,
     "cohort": DEFAULT_ETA,
@@ -64,7 +64,7 @@ panel_measles_obj.mif(
     key=subkey,
 )
 
-panel_measles_obj.train(J=NP_FITR, M=NTRAIN, eta=eta, optimizer="Adam")
+panel_measles_obj.train(J=NP_FITR, M=NTRAIN, eta=eta, optimizer="FullMatrixAdam")
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 panel_measles_obj.prune(n=1)
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, CLL=True)

@@ -64,7 +64,7 @@ measles_obj.mif(
     key=subkey,
 )
 measles_obj.train(
-    J=NP_FITR, M=NTRAIN, eta=eta, optimizer="Adam", n_monitors=1
+    J=NP_FITR, M=NTRAIN, eta=eta, optimizer="FullMatrixAdam", n_monitors=1
 )
 measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 measles_obj.prune(n=1, refill=False)
