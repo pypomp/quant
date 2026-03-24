@@ -137,11 +137,12 @@ print(pomp_obj_ifad.print_summary())
 # | fig-height: 6
 # | echo: false
 traces_ll = traces[["rep", "iter", "logLik"]].copy()
+max_ll = traces_ll["logLik"].max()
 (
     ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
     + geom_line(show_legend=False)
     + labs(title="logLik traces (IF2)")
-    + coord_cartesian(ylim=(-350, None))
+    + coord_cartesian(ylim=(max_ll - 30, None))
 )
 ```
 
@@ -153,11 +154,12 @@ traces_ll = traces[["rep", "iter", "logLik"]].copy()
 # | fig-height: 6
 # | echo: false
 traces_ll_ifad = traces_ifad[["rep", "iter", "logLik"]].copy()
+max_ll_ifad = traces_ll_ifad["logLik"].max()
 (
     ggplot(traces_ll_ifad, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
     + geom_line(show_legend=False)
     + labs(title="logLik traces (IFAD)")
-    + coord_cartesian(ylim=(-350, None))
+    + coord_cartesian(ylim=(max_ll_ifad - 30, None))
 )
 ```
 
@@ -199,6 +201,13 @@ final_loglik_ifad = pfilter_traces_ifad.loc[
     pfilter_traces_ifad["iter"] == last_pfilter_iter_ifad, ["rep", "logLik"]
 ].drop_duplicates(subset=["rep"])
 
+# Extract initial train logLik
+train_traces_ifad = traces_ifad[traces_ifad["method"] == "train"]
+first_train_iter_ifad = train_traces_ifad["iter"].min()
+initial_loglik_ifad = train_traces_ifad.loc[
+    train_traces_ifad["iter"] == first_train_iter_ifad, ["rep", "logLik"]
+].drop_duplicates(subset=["rep"])
+
 # Filter out insanely low logLiks
 # Use a threshold: values below median - 3*IQR and below -10000
 loglik_values_ifad = final_loglik_ifad["logLik"]
@@ -209,22 +218,41 @@ threshold_ifad = max(q1_ifad - 3 * iqr_ifad, -10000)
 
 omitted_ifad = final_loglik_ifad[final_loglik_ifad["logLik"] < threshold_ifad]
 if len(omitted_ifad) > 0:
-    print(f"Omitted {len(omitted_ifad)} logLik values below threshold {threshold_ifad:.2f}:")
+    print(f"Omitted {len(omitted_ifad)} final IFAD logLik values below threshold {threshold_ifad:.2f}:")
     print(omitted_ifad[["rep", "logLik"]].to_string(index=False))
     print()
 
 final_loglik_filtered_ifad = final_loglik_ifad[final_loglik_ifad["logLik"] >= threshold_ifad].copy()
 final_loglik_filtered_ifad["method"] = "IFAD"
+
+# Filter initial logliks
+loglik_values_init = initial_loglik_ifad["logLik"]
+q1_init = loglik_values_init.quantile(0.25)
+q3_init = loglik_values_init.quantile(0.75)
+iqr_init = q3_init - q1_init
+threshold_init = max(q1_init - 3 * iqr_init, -10000)
+
+omitted_init = initial_loglik_ifad[initial_loglik_ifad["logLik"] < threshold_init]
+if len(omitted_init) > 0:
+    print(f"Omitted {len(omitted_init)} initial IFAD logLik values below threshold {threshold_init:.2f}:")
+    print(omitted_init[["rep", "logLik"]].to_string(index=False))
+    print()
+
+initial_loglik_filtered_ifad = initial_loglik_ifad[initial_loglik_ifad["logLik"] >= threshold_init].copy()
+initial_loglik_filtered_ifad["method"] = "IFAD (Initial)"
 ```
+
 
 ```{python}
 # | label: combine-loglik-data
 # | echo: false
 final_loglik_combined = pd.concat([
     final_loglik_filtered[["logLik", "method"]],
-    final_loglik_filtered_ifad[["logLik", "method"]]
+    final_loglik_filtered_ifad[["logLik", "method"]],
+    initial_loglik_filtered_ifad[["logLik", "method"]]
 ], ignore_index=True)
 ```
+
 
 ### Summary statistics
 
@@ -260,7 +288,19 @@ loglik_summary_ifad = (
 loglik_summary_ifad.columns = ["N", "Mean", "Std", "Min", "Median", "Max"]
 print("\nIFAD:")
 print(loglik_summary_ifad.to_string(index=False))
+
+loglik_summary_init = (
+    initial_loglik_filtered_ifad["logLik"]
+    .agg(["count", "mean", "std", "min", "median", "max"])
+    .round(2)
+    .to_frame()
+    .T
+)
+loglik_summary_init.columns = ["N", "Mean", "Std", "Min", "Median", "Max"]
+print("\nIFAD (Initial):")
+print(loglik_summary_init.to_string(index=False))
 ```
+
 
 ```{python}
 # | label: plot-loglik-density
@@ -271,10 +311,11 @@ print(loglik_summary_ifad.to_string(index=False))
     ggplot(final_loglik_combined, aes(x="logLik", fill="method", color="method"))
     + geom_density(alpha=0.5)
     + labs(x="logLik", title="Final logLik density", fill="Method", color="Method")
-    + scale_fill_manual(values={"IF2": "steelblue", "IFAD": "coral"})
-    + scale_color_manual(values={"IF2": "steelblue", "IFAD": "coral"})
+    + scale_fill_manual(values={"IF2": "steelblue", "IFAD": "coral", "IFAD (Initial)": "seagreen"})
+    + scale_color_manual(values={"IF2": "steelblue", "IFAD": "coral", "IFAD (Initial)": "seagreen"})
 )
 ```
+
 
 ## Final parameter density
 

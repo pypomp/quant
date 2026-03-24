@@ -1,3 +1,9 @@
+#' This script is used to test that pfilter in pypomp generates logLiks with 
+#' the proper distribution at a given set of parameters. A large number of 
+#' replicates are used to ensure that the distribution is properly estimated. 
+#' The results are meant to be compared against the Python version of the 
+#' script.
+
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "SPX pfilter check (R pomp)"

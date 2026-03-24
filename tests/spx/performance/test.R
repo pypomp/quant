@@ -1,3 +1,8 @@
+#' This script tests the speed, parameter estimation, and likelihood estimation 
+#' of the pomp package on the S&P 500 dataset. It only tests CPU performance.
+#' The results are meant to be compared against the Python version of the 
+#'script.
+
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "SPX test (R)"

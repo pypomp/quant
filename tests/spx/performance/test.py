@@ -1,3 +1,16 @@
+"""
+This script is used to test the speed, parameter estimation, and likelihood estimation of the pypomp package on the S&P 500 dataset using fairly typical algorithmic parameters. It can test both GPU and CPU performance. The results are meant to be compared against the R version of the script.
+
+Because the SPX model uses simple random number generation (it samples from a normal distribution) and has just one rproc step per observation, it is more sensitive to certain kinds of overhead in mif and pfilter, which makes it a useful measure of whether this overhead has grown too much.
+
+Particular points of comparison:
+
+- Execution time.
+- Parameter and log likelihood traces.
+- Empirical distribution of the parameter estimates.
+- Empirical distribution of the log likelihood estimates.
+"""
+
 # --- SLURM CONFIG ---
 # jobs:
 #   gpu:

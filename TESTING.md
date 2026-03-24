@@ -130,3 +130,19 @@ If you want to view the `sbatch` script that the python runner dynamically const
 ```bash
 python scripts/run_tests.py run tests/spx/performance/test.py --run-level 2 --dry-run
 ```
+
+---
+
+## 3. Generating the Test Index
+
+To generate a structured Markdown table of contents for all tests (which includes descriptions and job lists), use the `generate_test_toc.py` script:
+
+```bash
+python scripts/generate_test_toc.py tests --output TESTS_INDEX.md
+```
+
+This will crawl the `tests/` directory, create/update `TESTS_INDEX.md` at the project root, and **automatically render it to `TESTS_INDEX.html` using Quarto** (if installed).
+
+The script automatically extracts descriptions for the index:
+- **Python**: Uses the module-level docstring (the triple-quoted string at the top of the file).
+- **R**: Uses consecutive lines starting with `#'` (Roxygen style) at the top of the file.
