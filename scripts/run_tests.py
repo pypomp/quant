@@ -28,8 +28,11 @@ def parse_test_metadata(filepath):
                 
             # Both R and Python use '#' for comments
             if not stripped.startswith("#"):
-                # If we hit actual code, stop looking
-                break
+                # If we hit actual code, keep looking for the config start
+                # unless we were already in the config (which shouldn't happen)
+                if in_config:
+                    break
+                continue
             
             comment_content = stripped[1:].strip()
             
@@ -139,7 +142,11 @@ def generate_sbatch_script(test_filepath, config, run_level):
         elif ext in [".r", ".R"]:
             project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
             activate_r = os.path.join(project_root, ".renv", "activate.R")
-            lines.append(f'echo "source(\'{activate_r}\')" > .Rprofile')
+            
+            # Use RENV_PROJECT, RENV_PATHS_RENV and R_PROFILE_USER to point to the root renv without creating a local .Rprofile
+            lines.append(f'export RENV_PROJECT="{project_root}"')
+            lines.append(f'export RENV_PATHS_RENV="{os.path.join(project_root, ".renv")}"')
+            lines.append(f"export R_PROFILE_USER='{activate_r}'")
             
             # Use R CMD BATCH to generate a .Rout file by default for R scripts
             script_name = os.path.basename(test_filepath)
@@ -286,12 +293,14 @@ if __name__ == "__main__":
                 continue
                 
             print(f"\n- {test}")
-            if "jobs" in config and isinstance(config["jobs"], dict):
+            if isinstance(config, dict) and "jobs" in config and isinstance(config["jobs"], dict):
                 job_names = list(config["jobs"].keys())
                 print(f"  Includes jobs: {', '.join(job_names)}")
-            else:
+            elif isinstance(config, dict):
                 name = config.get("name", os.path.basename(test))
                 print(f"  Includes job: {name}")
+            else:
+                print(f"  (Warning: Unexpected config format)")
                 
         print("\nUse 'python scripts/run_tests.py run <path>' to execute them.\n")
     elif args.action == "run":

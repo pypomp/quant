@@ -30,8 +30,8 @@ print(datetime.now())
 ```{python}
 # | label: load-data
 # | echo: false
-pomp_obj = pickle.load(open("train_results/dacca_results_rl4.pkl", "rb"))
-pomp_obj_train = pickle.load(open("train_results/dacca_results_rl4_Adam.pkl", "rb"))
+pomp_obj = pickle.load(open("gpu_results/dacca_results_rl4.pkl", "rb"))
+pomp_obj_train = pickle.load(open("train_results/dacca_results_rl4.pkl", "rb"))
 LL_frame = pomp_obj.results()
 traces_raw_gpu = pomp_obj.traces()
 traces_raw_gpu["source"] = "gpu"

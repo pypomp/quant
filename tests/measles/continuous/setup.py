@@ -69,7 +69,7 @@ key, subkey = jax.random.split(key)
 initial_params_list = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
 
 measles_obj = pp.UKMeasles.Pomp(
-    unit=["Halesworth"],
+    unit=["Bradford"],
     theta=initial_params_list,
     model="003",
     clean=True,

@@ -1,10 +1,10 @@
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "pypomp contiunous measles test (IF2)"
-#   partition: gpu
-#   gpus: "v100:1"
+#   partition: gpu-rtx6000
+#   gpus: "rtx_pro_6000_blackwell:1"
 #   cpus-per-gpu: 1
-#   mem: 6GB
+#   mem: 30GB
 #   output: "IF2_results/logs/slurm-%j.out"
 #   account: "ionides0"
 # run_levels:
@@ -15,9 +15,10 @@
 #   3:
 #     sbatch_args: { time: "00:20:00" }
 #   4:
-#     sbatch_args: { time: "00:20:00" }
+#     sbatch_args: { time: "00:10:00" }
 # --- END SLURM CONFIG ---
 
+import os
 import jax
 import pickle
 from setup import (
@@ -28,10 +29,10 @@ from setup import (
     RUN_LEVEL,
 )
 
-NFITR = (2, 20, 200, 200)[RUN_LEVEL - 1]
+NFITR = (2, 20, 200, 300)[RUN_LEVEL - 1]
 NP_FITR = (2, 3, 20, 10000)[RUN_LEVEL - 1]
-NP_EVAL = (2, 1000, 1000, 10000)[RUN_LEVEL - 1]
-NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
+NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
+NREPS_EVAL = (36, 5, 24, 36)[RUN_LEVEL - 1]
 
 key, subkey = jax.random.split(key)
 measles_obj.mif(

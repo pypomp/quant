@@ -40,18 +40,19 @@ NTRAIN = (2, 20, 40, 40)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 
+DEFAULT_ETA = 0.2
 eta = {
-    "gamma": 0.2,
-    "epsilon": 0.2,
+    "gamma": DEFAULT_ETA,
+    "epsilon": DEFAULT_ETA,
     "rho": 0.0,
-    "m": 0.2,
+    "m": DEFAULT_ETA,
     "c": 0.0,
-    "beta_trend": 0.2,
-    **{f"bs{i + 1}": 0.2 for i in range(6)},
-    "sigma": 0.2,
-    "tau": 0.2,
-    "omega": 0.2,
-    **{f"omegas{i + 1}": 0.2 for i in range(6)},
+    "beta_trend": DEFAULT_ETA,
+    **{f"bs{i + 1}": DEFAULT_ETA for i in range(6)},
+    "sigma": DEFAULT_ETA,
+    "tau": DEFAULT_ETA,
+    "omega": DEFAULT_ETA,
+    **{f"omegas{i + 1}": DEFAULT_ETA for i in range(6)},
 }
 
 # MIF step
