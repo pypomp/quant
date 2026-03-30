@@ -1,10 +1,13 @@
+"""
+This script tests the performance of the panel POMP implementation, running mif and pfilter.
+"""
 # --- SLURM CONFIG ---
 # jobs:
 #   gpu:
 #     sbatch_args:
 #       job-name: "pypomp panel measles test"
-#       partition: gpu
-#       gpus: "v100:1"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
 #       mem: 6GB
 #       output: "gpu_results/logs/slurm-%j.out"
@@ -67,13 +70,13 @@ NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
 
 UNITS = [
-    # "Bedwellty",
-    # "Birmingham",
-    # "Bradford",
-    # "Bristol",
-    # "Cardiff",
-    # "Consett",
-    # "Dalton.in.Furness",
+    "Bedwellty",
+    "Birmingham",
+    "Bradford",
+    "Bristol",
+    "Cardiff",
+    "Consett",
+    "Dalton.in.Furness",
     "Halesworth",
     "Hastings",
     "Hull",
@@ -82,11 +85,11 @@ UNITS = [
     "Liverpool",
     "London",
     "Manchester",
-    # "Mold",
-    # "Northwich",
-    # "Nottingham",
-    # "Oswestry",
-    # "Sheffield",
+    "Mold",
+    "Northwich",
+    "Nottingham",
+    "Oswestry",
+    "Sheffield",
 ]
 DEFAULT_SD = 0.02
 DEFAULT_IVP_SD = DEFAULT_SD * 12
@@ -111,20 +114,23 @@ RW_SD = pp.RWSigma(
 COOLING_RATE = 0.5
 
 measles_box = {
-    "R0": [10.0, 60.0],
-    "sigma": [25.0, 100.0],
-    "gamma": [25.0, 320.0],
-    "iota": [0.004, 3.0],
-    "rho": [0.1, 0.9],
-    "sigmaSE": [0.04, 0.1],
-    "psi": [0.05, 3.0],
-    "cohort": [0.1, 0.7],
-    "amplitude": [0.1, 0.6],
-    "S_0": [0.01, 0.07],
-    "E_0": [0.000004, 0.0001],
-    "I_0": [0.000003, 0.001],
-    "R_0": [0.9, 0.99],
+    "R0": (10.0, 60.0),
+    "sigma": (25.0, 100.0),
+    "gamma": (25.0, 320.0),
+    "iota": (0.004, 3.0),
+    "rho": (0.1, 0.9),
+    "sigmaSE": (0.04, 0.1),
+    "psi": (0.05, 3.0),
+    "cohort": (0.1, 0.7),
+    "amplitude": (0.1, 0.6),
+    "S_0": (0.01, 0.07),
+    "E_0": (0.000004, 0.0001),
+    "I_0": (0.000003, 0.001),
+    "R_0": (0.9, 0.99),
 }
+
+SHARED_PARAMS = ["cohort"]
+print("Shared parameters: ", SHARED_PARAMS)
 
 key, subkey = jax.random.split(key)
 dummy_initial_params_list = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
@@ -134,7 +140,7 @@ initial_params = pp.PanelPomp.sample_params(
     n=NREPS_FITR,
     units=UNITS,
     key=subkey,
-    shared_names=[],
+    shared_names=SHARED_PARAMS,
 )
 
 # ----- Create pomp objects -----

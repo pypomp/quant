@@ -13,6 +13,10 @@
 #     sbatch_args: { time: "00:20:00" }
 # --- END SLURM CONFIG ---
 
+"""
+This script estimates the distribution of the estimated logLik at the default parameter value (an estimate of the MLE).
+"""
+
 import os
 import time
 

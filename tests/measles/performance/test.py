@@ -61,16 +61,6 @@ NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
 
-run_config = {
-    "RUN_LEVEL": RUN_LEVEL,
-    "NP_FITR": NP_FITR,
-    "NFITR": NFITR,
-    "NTRAIN": NTRAIN,
-    "NREPS_FITR": NREPS_FITR,
-    "NP_EVAL": NP_EVAL,
-    "NREPS_EVAL": NREPS_EVAL
-}
-
 DEFAULT_SD = 0.02
 DEFAULT_IVP_SD = DEFAULT_SD * 12
 RW_SD = pp.RWSigma(
@@ -94,19 +84,19 @@ RW_SD = pp.RWSigma(
 COOLING_RATE = 0.5
 
 measles_box = {
-    "R0": [10.0, 60.0],
-    "sigma": [25.0, 100.0],
-    "gamma": [25.0, 320.0],
-    "iota": [0.004, 3.0],
-    "rho": [0.1, 0.9],
-    "sigmaSE": [0.04, 0.1],
-    "psi": [0.05, 3.0],
-    "cohort": [0.1, 0.7],
-    "amplitude": [0.1, 0.6],
-    "S_0": [0.01, 0.07],
-    "E_0": [0.000004, 0.0001],
-    "I_0": [0.000003, 0.001],
-    "R_0": [0.9, 0.99],
+    "R0": (10.0, 60.0),
+    "sigma": (25.0, 100.0),
+    "gamma": (25.0, 320.0),
+    "iota": (0.004, 3.0),
+    "rho": (0.1, 0.9),
+    "sigmaSE": (0.04, 0.1),
+    "psi": (0.05, 3.0),
+    "cohort": (0.1, 0.7),
+    "amplitude": (0.1, 0.6),
+    "S_0": (0.01, 0.07),
+    "E_0": (0.000004, 0.0001),
+    "I_0": (0.000003, 0.001),
+    "R_0": (0.9, 0.99),
 }
 
 key, subkey = jax.random.split(key)
@@ -120,8 +110,6 @@ measles_obj = pp.UKMeasles.Pomp(
 )
 
 key, subkey = jax.random.split(key)
-
-start_time = time.time()
 
 measles_obj.mif(
     rw_sd=RW_SD,

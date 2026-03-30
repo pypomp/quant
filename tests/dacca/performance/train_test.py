@@ -19,7 +19,11 @@
 # --- END SLURM CONFIG ---
 
 """
-This script runs the performance test for IF2 + train.
+This script runs the performance test for IF2 + train (IFAD) as the only fitting algorithm. The goal is to see how well IFAD can maximize the likelihood, as well as check how fast it runs. This can be compared with the IFAD Dacca script.
+
+This script can use either the GPU or CPU. 
+
+The Dacca model has a very fast rproc, but many steps between observations, so this test can help determine if the overhead from interpolation steps is too high.
 """
 
 import pickle
@@ -66,13 +70,6 @@ dacca_obj.mif(
     key=subkey,
 )
 print(dacca_obj.results())
-
-# PFILTER round 1
-# dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
-# print(dacca_obj.results())
-
-# # Prune step
-# dacca_obj.prune(n=10, refill=True)
 
 # Train step
 dacca_obj.train(J=NP_FITR, M=40, eta=eta, optimizer="Adam", n_monitors=1)

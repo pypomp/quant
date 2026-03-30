@@ -4,6 +4,7 @@ scratch
 .ruff_cache
 pyrightconfig.json
 test_config.yaml
+tests/lotka_volterra
 
 # Omit profiles (too big)
 measles/gpu/measles_profiler
