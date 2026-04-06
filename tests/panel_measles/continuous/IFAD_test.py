@@ -1,3 +1,7 @@
+"""
+Tests pypomp on the continuous panel measles model using IFAD. This is meant to be compared with the IF2 results to see which one maximizes the logLik better.
+"""
+
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "pypomp panel continuous measles test (IFAD)"
@@ -19,17 +23,19 @@
 # --- END SLURM CONFIG ---
 
 import os
+
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "1.0"
 os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 
-import jax
 import pickle
+
+import jax
 from setup import (
-    key,
-    RW_SD,
     COOLING_RATE,
-    panel_measles_obj,
     RUN_LEVEL,
+    RW_SD,
+    key,
+    panel_measles_obj,
 )
 
 NFITR = (2, 20, 100, 40)[RUN_LEVEL - 1]
@@ -44,7 +50,7 @@ eta = {
     "sigma": DEFAULT_ETA,
     "gamma": DEFAULT_ETA,
     "iota": DEFAULT_ETA,
-    "rho": DEFAULT_ETA/4,
+    "rho": DEFAULT_ETA / 4,
     "sigmaSE": DEFAULT_ETA,
     "psi": DEFAULT_ETA,
     "cohort": DEFAULT_ETA,

@@ -1,3 +1,7 @@
+"""
+Tests pypomp on the continuous panel measles model using IF2. This is meant to be compared with the IFAD results to see which one maximizes the logLik better.
+"""
+
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "pypomp panel continuous measles test (IF2)"
@@ -18,14 +22,15 @@
 #     sbatch_args: { time: "04:00:00" }
 # --- END SLURM CONFIG ---
 
-import jax
 import pickle
+
+import jax
 from setup import (
-    key,
-    RW_SD,
     COOLING_RATE,
-    panel_measles_obj,
     RUN_LEVEL,
+    RW_SD,
+    key,
+    panel_measles_obj,
 )
 
 NFITR = (2, 20, 200, 200)[RUN_LEVEL - 1]

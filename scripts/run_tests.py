@@ -1,31 +1,33 @@
 import argparse
 import os
-import re
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 try:
     import yaml
 except ImportError:
-    print("Error: PyYAML is not installed. Please run `pip install PyYAML` or activate your .venv.")
+    print(
+        "Error: PyYAML is not installed. Please run `pip install PyYAML` or activate your .venv."
+    )
     sys.exit(1)
 
 CONFIG_START = "--- SLURM CONFIG ---"
 CONFIG_END = "--- END SLURM CONFIG ---"
 
+
 def parse_test_metadata(filepath):
     """Extracts and parses the YAML configuration from comments in the test script."""
     yaml_lines = []
     in_config = False
-    
+
     with open(filepath, "r") as f:
         for line in f:
             stripped = line.strip()
             # Ignore completely empty lines
             if not stripped:
                 continue
-                
+
             # Both R and Python use '#' for comments
             if not stripped.startswith("#"):
                 # If we hit actual code, keep looking for the config start
@@ -33,9 +35,9 @@ def parse_test_metadata(filepath):
                 if in_config:
                     break
                 continue
-            
+
             comment_content = stripped[1:].strip()
-            
+
             if comment_content == CONFIG_START:
                 in_config = True
                 continue
@@ -64,6 +66,7 @@ def parse_test_metadata(filepath):
         print(f"Error parsing YAML in {filepath}:\n{e}")
         sys.exit(1)
 
+
 def load_global_config():
     """Loads a global test_config.yaml from the project root if it exists."""
     project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -80,16 +83,18 @@ def load_global_config():
 def generate_sbatch_script(test_filepath, config, run_level):
     """Generates the content for a dynamic sbatch script."""
     lines = ["#!/bin/bash"]
-    
+
     # 1. Base SBATCH arguments
     name = config.get("name", os.path.basename(test_filepath))
     lines.append(f"#SBATCH --job-name={name}")
-    
+
     sbatch_args = config.get("sbatch_args", {})
-    
+
     # Merge run-level specific arguments
     if run_level and "run_levels" in config:
-        rl_config = config["run_levels"].get(int(run_level)) or config["run_levels"].get(str(run_level))
+        rl_config = config["run_levels"].get(int(run_level)) or config[
+            "run_levels"
+        ].get(str(run_level))
         if rl_config and "sbatch_args" in rl_config:
             sbatch_args.update(rl_config["sbatch_args"])
 
@@ -104,14 +109,14 @@ def generate_sbatch_script(test_filepath, config, run_level):
                 lines.append(f"#SBATCH --{key}={value}")
 
     lines.append("")
-    lines.append(f'echo "Running on $SLURM_JOB_NODELIST"')
-    lines.append(f'echo "Running in $(pwd)"')
+    lines.append('echo "Running on $SLURM_JOB_NODELIST"')
+    lines.append('echo "Running in $(pwd)"')
     lines.append("")
-    
+
     # 2. Set environment variables (like RUN_LEVEL)
     if run_level:
         lines.append(f"export RUN_LEVEL={run_level}")
-        
+
     for k, v in config.get("env", {}).items():
         lines.append(f"export {k}={v}")
 
@@ -120,15 +125,15 @@ def generate_sbatch_script(test_filepath, config, run_level):
     if setup_commands:
         lines.append("\n### Setup =====")
         lines.append(setup_commands.strip())
-        
+
     # Default behavior: run python/R script depending on extension
     test_filepath_abs = os.path.abspath(test_filepath)
     test_dir_abs = os.path.dirname(test_filepath_abs)
-    
+
     # Navigate to the test directory so it runs in context natively
     lines.append("\n### Main ======")
     lines.append(f"cd {test_dir_abs}")
-    
+
     # Base command logic
     command = config.get("command")
     if not command:
@@ -142,21 +147,27 @@ def generate_sbatch_script(test_filepath, config, run_level):
         elif ext in [".r", ".R"]:
             project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
             activate_r = os.path.join(project_root, ".renv", "activate.R")
-            
+
             # Use RENV_PROJECT, RENV_PATHS_RENV and R_PROFILE_USER to point to the root renv without creating a local .Rprofile
             lines.append(f'export RENV_PROJECT="{project_root}"')
-            lines.append(f'export RENV_PATHS_RENV="{os.path.join(project_root, ".renv")}"')
+            lines.append(
+                f'export RENV_PATHS_RENV="{os.path.join(project_root, ".renv")}"'
+            )
             lines.append(f"export R_PROFILE_USER='{activate_r}'")
-            
+
             # Use R CMD BATCH to generate a .Rout file by default for R scripts
             script_name = os.path.basename(test_filepath)
-            command = f"R CMD BATCH --no-restore --no-save {script_name} {script_name}out"
+            command = (
+                f"R CMD BATCH --no-restore --no-save {script_name} {script_name}out"
+            )
         else:
-            print(f"Error: Unknown file type {ext} for {test_filepath}. Please provide a 'command' securely in YAML.")
+            print(
+                f"Error: Unknown file type {ext} for {test_filepath}. Please provide a 'command' securely in YAML."
+            )
             sys.exit(1)
-            
+
     lines.append(command)
-    
+
     return "\n".join(lines)
 
 
@@ -165,47 +176,53 @@ def run_test_config(filepath, config, run_level, global_config=None, dry_run=Fal
     if global_config and "sbatch_args" in global_config:
         if "sbatch_args" not in config:
             config["sbatch_args"] = {}
-        # We only want to add things from global_config that aren't ALREADY in config, 
+        # We only want to add things from global_config that aren't ALREADY in config,
         # or we can overwrite. Standard behavior: Local overrides global.
         for k, v in global_config["sbatch_args"].items():
             if k not in config["sbatch_args"]:
                 config["sbatch_args"][k] = v
 
     script_content = generate_sbatch_script(filepath, config, run_level)
-    
+
     test_dir = os.path.dirname(os.path.abspath(filepath))
-    
+
     if "sbatch_args" in config and "output" in config["sbatch_args"]:
         output_path = config["sbatch_args"]["output"]
-        
+
         # Ensure log directories exist relative to the test
         # Handle both %j outputs and static ones
         if "%" in output_path:
             # If the filename has slurm substitution elements like %j, %x, etc.
             output_dir = os.path.dirname(output_path)
             if output_dir:
-                 os.makedirs(os.path.join(test_dir, output_dir), exist_ok=True)
+                os.makedirs(os.path.join(test_dir, output_dir), exist_ok=True)
         else:
-             output_dir = os.path.dirname(output_path)
-             if output_dir:
-                 os.makedirs(os.path.join(test_dir, output_dir), exist_ok=True)
-            
+            output_dir = os.path.dirname(output_path)
+            if output_dir:
+                os.makedirs(os.path.join(test_dir, output_dir), exist_ok=True)
+
     print(f"\n--- Submitting: {config.get('name', 'Job')} ({filepath}) ---")
     if dry_run:
         print("DRY RUN: Generated script:")
         print(script_content)
         print("-" * 30)
     else:
-        temp_sbat = os.path.join(test_dir, f".temp_run_{config.get('name', 'job').replace(' ', '_')}.sbat")
+        temp_sbat = os.path.join(
+            test_dir, f".temp_run_{config.get('name', 'job').replace(' ', '_')}.sbat"
+        )
         with open(temp_sbat, "w") as f:
             f.write(script_content)
-            
+
         try:
-            subprocess.run(["sbatch", os.path.basename(temp_sbat)], cwd=test_dir, check=True)
+            subprocess.run(
+                ["sbatch", os.path.basename(temp_sbat)], cwd=test_dir, check=True
+            )
         except subprocess.CalledProcessError as e:
             print(f"Failed to submit {filepath}: {e}")
         except FileNotFoundError:
-            print("Error: 'sbatch' command not found. Are you running this on the SLURM cluster?")
+            print(
+                "Error: 'sbatch' command not found. Are you running this on the SLURM cluster?"
+            )
         finally:
             if os.path.exists(temp_sbat):
                 os.remove(temp_sbat)
@@ -222,7 +239,7 @@ def run_test(filepath, run_level, target_job=None, global_config=None, dry_run=F
         for job_name, job_config in config["jobs"].items():
             if not isinstance(job_config, dict):
                 continue
-            
+
             # If the user specified a target job, skip the others
             if target_job and target_job != job_name:
                 continue
@@ -232,33 +249,35 @@ def run_test(filepath, run_level, target_job=None, global_config=None, dry_run=F
             merged.pop("jobs")
             merged.update(job_config)
             merged["name"] = job_name
-            
+
             # Merge sbatch args specifically
             if "sbatch_args" in config and "sbatch_args" in job_config:
-                if isinstance(config["sbatch_args"], dict) and isinstance(job_config["sbatch_args"], dict):
+                if isinstance(config["sbatch_args"], dict) and isinstance(
+                    job_config["sbatch_args"], dict
+                ):
                     merged["sbatch_args"] = config["sbatch_args"].copy()
                     merged["sbatch_args"].update(job_config["sbatch_args"])
-                
+
             run_test_config(filepath, merged, run_level, global_config, dry_run)
     else:
         # For single job configs, just check if the name matches the target (if provided)
         job_name = config.get("name", os.path.basename(filepath))
         if target_job and target_job != job_name:
-             return
-             
+            return
+
         run_test_config(filepath, config, run_level, global_config, dry_run)
 
 
 def find_tests(target_path):
     target_path = Path(target_path)
     test_files = []
-    
+
     if target_path.is_file():
         test_files.append(str(target_path))
     elif target_path.is_dir():
         for ext in ["*.py", "*.R", "*.r"]:
             for file in target_path.rglob(ext):
-                with open(file, 'r', encoding='utf-8', errors='ignore') as f:
+                with open(file, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read(2000)
                     if CONFIG_START in content:
                         test_files.append(str(file))
@@ -267,46 +286,73 @@ def find_tests(target_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Centralized SLURM test runner")
-    parser.add_argument("action", choices=["run", "list"], nargs="?", default="run", help="Action to perform: 'run' submits tests, 'list' shows discovered tests.")
-    parser.add_argument("target", nargs="?", default=".", help="File or directory containing tests (e.g. 'spx/performance/test.py' or 'spx/')")
-    parser.add_argument("--run-level", default=os.environ.get("RUN_LEVEL"), help="The RUN_LEVEL to use (will set the env var and configure dynamic YAML configs)")
-    parser.add_argument("--job", default=None, help="Only run a specific job by name if the file defines multiple in 'jobs:' (e.g. 'cpu' or 'gpu')")
-    parser.add_argument("--dry-run", action="store_true", help="Print the generated sbatch script without submitting")
-    
+    parser.add_argument(
+        "action",
+        choices=["run", "list"],
+        nargs="?",
+        default="run",
+        help="Action to perform: 'run' submits tests, 'list' shows discovered tests.",
+    )
+    parser.add_argument(
+        "target",
+        nargs="?",
+        default=".",
+        help="File or directory containing tests (e.g. 'spx/performance/test.py' or 'spx/')",
+    )
+    parser.add_argument(
+        "--run-level",
+        default=os.environ.get("RUN_LEVEL"),
+        help="The RUN_LEVEL to use (will set the env var and configure dynamic YAML configs)",
+    )
+    parser.add_argument(
+        "--job",
+        default=None,
+        help="Only run a specific job by name if the file defines multiple in 'jobs:' (e.g. 'cpu' or 'gpu')",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the generated sbatch script without submitting",
+    )
+
     args = parser.parse_args()
-    
+
     # Simple hack to assume activation of venv to grab yaml if we couldn't before
     if "yaml" not in sys.modules:
-        pass # Already exited at top of script if missing
-        
+        pass  # Already exited at top of script if missing
+
     tests = find_tests(args.target)
-    
+
     if not tests:
         print(f"No tests found in '{args.target}' with a '{CONFIG_START}' block.")
         sys.exit(0)
-        
+
     if args.action == "list":
         print(f"\nDiscovered {len(tests)} test(s) in '{args.target}':")
         for test in tests:
             config = parse_test_metadata(test)
             if not config:
                 continue
-                
+
             print(f"\n- {test}")
-            if isinstance(config, dict) and "jobs" in config and isinstance(config["jobs"], dict):
+            if (
+                isinstance(config, dict)
+                and "jobs" in config
+                and isinstance(config["jobs"], dict)
+            ):
                 job_names = list(config["jobs"].keys())
                 print(f"  Includes jobs: {', '.join(job_names)}")
             elif isinstance(config, dict):
                 name = config.get("name", os.path.basename(test))
                 print(f"  Includes job: {name}")
             else:
-                print(f"  (Warning: Unexpected config format)")
-                
+                print("  (Warning: Unexpected config format)")
+
         print("\nUse 'python scripts/run_tests.py run <path>' to execute them.\n")
     elif args.action == "run":
         global_config = load_global_config()
         if global_config:
-            print(f"Loaded global config from test_config.yaml")
+            print("Loaded global config from test_config.yaml")
 
         for test in tests:
             run_test(test, args.run_level, args.job, global_config, args.dry_run)

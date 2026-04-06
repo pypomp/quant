@@ -5,11 +5,13 @@ This script sets up the continuous UK measles model.
 import os
 from datetime import datetime
 from importlib.metadata import version
+
 import jax
-import pypomp as pp
 import numpy as np
+import pypomp as pp
 
 print(jax.devices())
+
 
 now = datetime.now()
 print("DATE: ", now.date())
@@ -50,26 +52,26 @@ RW_SD = pp.RWSigma(
 COOLING_RATE = 0.5
 
 measles_box = {
-    "R0": [10.0, 60.0],
-    "sigma": [25.0, 100.0],
-    "gamma": [25.0, 320.0],
-    "iota": [0.004, 3.0],
-    "rho": [0.1, 0.9],
-    "sigmaSE": [0.04, 0.1],
-    "psi": [0.05, 3.0],
-    "cohort": [0.1, 0.7],
-    "amplitude": [0.1, 0.6],
-    "S_0": [0.01, 0.07],
-    "E_0": [0.000004, 0.0001],
-    "I_0": [0.000003, 0.001],
-    "R_0": [0.9, 0.99],
+    "R0": (10.0, 60.0),
+    "sigma": (25.0, 100.0),
+    "gamma": (25.0, 320.0),
+    "iota": (0.004, 3.0),
+    "rho": (0.1, 0.9),
+    "sigmaSE": (0.04, 0.1),
+    "psi": (0.05, 3.0),
+    "cohort": (0.1, 0.7),
+    "amplitude": (0.1, 0.6),
+    "S_0": (0.01, 0.07),
+    "E_0": (0.000004, 0.0001),
+    "I_0": (0.000003, 0.001),
+    "R_0": (0.9, 0.99),
 }
 
 key, subkey = jax.random.split(key)
 initial_params_list = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
 
 measles_obj = pp.UKMeasles.Pomp(
-    unit=["Bradford"],
+    unit=["London"],
     theta=initial_params_list,
     model="003",
     clean=True,

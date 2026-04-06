@@ -18,6 +18,7 @@ from plotnine import *
 import pypomp as pp
 import jax
 import matplotlib.pyplot as plt
+from scipy.special import logit
 ```
 
 ```{python Load data in python}
@@ -61,7 +62,47 @@ traces_long_ifad = traces_ifad.melt(
     var_name="quantity",
     value_name="param_value",
 )
+
+def transform_to_perturbation_scale(df):
+    res = df.copy()
+    # Log transforms
+    for col in ["R0", "sigma", "gamma", "iota", "sigmaSE", "psi"]:
+        if col in res.columns:
+            res[col] = np.log(res[col])
+    
+    # Logit transforms
+    for col in ["cohort", "amplitude", "rho"]:
+        if col in res.columns:
+            res[col] = logit(res[col].clip(1e-7, 1-1e-7))
+            
+    # IVPs (log-fractions)
+    ivp_cols = ["S_0", "E_0", "I_0", "R_0"]
+    if all(c in res.columns for c in ivp_cols):
+        sum_ivp = res[ivp_cols].sum(axis=1)
+        for c in ivp_cols:
+            res[c] = np.log(res[c] / sum_ivp)
+            
+    return res
+
+# Apply to IF2
+traces_pert = transform_to_perturbation_scale(traces)
+traces_long_pert = traces_pert.melt(
+    id_vars=id_cols,
+    value_vars=param_cols,
+    var_name="quantity",
+    value_name="param_value",
+)
+
+# Apply to IFAD
+traces_pert_ifad = transform_to_perturbation_scale(traces_ifad)
+traces_long_pert_ifad = traces_pert_ifad.melt(
+    id_vars=id_cols_ifad,
+    value_vars=param_cols_ifad,
+    var_name="quantity",
+    value_name="param_value",
+)
 ```
+
 
 # Results
 
@@ -124,6 +165,44 @@ print(pomp_obj_ifad.print_summary())
     + geom_line(show_legend=False)
     + facet_wrap("quantity", scales="free_y")
     + labs(title="Parameter traces (IFAD)")
+)
+```
+
+## Parameter traces (perturbation scale)
+
+### IF2
+
+```{python}
+# | label: plot-param-traces-pert
+# | fig-width: 12
+# | fig-height: 12
+# | echo: false
+(
+    ggplot(
+        traces_long_pert,
+        aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
+    )
+    + geom_line(show_legend=False)
+    + facet_wrap("quantity", scales="free_y")
+    + labs(title="Parameter traces (perturbation scale - IF2)")
+)
+```
+
+### IFAD
+
+```{python}
+# | label: plot-param-traces-ifad-pert
+# | fig-width: 12
+# | fig-height: 12
+# | echo: false
+(
+    ggplot(
+        traces_long_pert_ifad,
+        aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
+    )
+    + geom_line(show_legend=False)
+    + facet_wrap("quantity", scales="free_y")
+    + labs(title="Parameter traces (perturbation scale - IFAD)")
 )
 ```
 
@@ -354,6 +433,40 @@ final_params_combined = pd.concat([
     + geom_density(alpha=0.5)
     + facet_wrap("quantity", scales="free")
     + labs(x="estimate", title="Final parameter density", fill="Method", color="Method")
+    + scale_fill_manual(values={"IF2": "steelblue", "IFAD": "coral"})
+    + scale_color_manual(values={"IF2": "steelblue", "IFAD": "coral"})
+)
+```
+
+## Final parameter density (perturbation scale)
+
+```{python}
+# | label: final-params-pert
+# | echo: false
+last_iter_pert = traces_long_pert.groupby("rep")["iter"].transform("max")
+final_params_pert = traces_long_pert[traces_long_pert["iter"] == last_iter_pert].copy()
+final_params_pert["method"] = "IF2"
+
+last_iter_pert_ifad = traces_long_pert_ifad.groupby("rep")["iter"].transform("max")
+final_params_pert_ifad = traces_long_pert_ifad[traces_long_pert_ifad["iter"] == last_iter_pert_ifad].copy()
+final_params_pert_ifad["method"] = "IFAD"
+
+final_params_pert_combined = pd.concat([
+    final_params_pert,
+    final_params_pert_ifad
+], ignore_index=True)
+```
+
+```{python}
+# | label: plot-param-density-pert
+# | fig-width: 10
+# | fig-height: 10
+# | echo: false
+(
+    ggplot(final_params_pert_combined, aes(x="param_value", fill="method", color="method"))
+    + geom_density(alpha=0.5)
+    + facet_wrap("quantity", scales="free")
+    + labs(x="estimate (perturbation scale)", title="Final parameter density (perturbation scale)", fill="Method", color="Method")
     + scale_fill_manual(values={"IF2": "steelblue", "IFAD": "coral"})
     + scale_color_manual(values={"IF2": "steelblue", "IFAD": "coral"})
 )

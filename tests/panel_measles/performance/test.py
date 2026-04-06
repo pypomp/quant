@@ -10,7 +10,7 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
 #       mem: 6GB
-#       output: "gpu_results/logs/slurm-%j.out"
+#       output: "u20_results/logs/slurm-%j.out"
 #       account: "ionides0"
 #     env:
 #       N_UNITS: "20"
@@ -21,7 +21,7 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
 #       mem: 6GB
-#       output: "gpu_results/logs/slurm-%j.out"
+#       output: "u100_results/logs/slurm-%j.out"
 #       account: "ionides0"
 #     env:
 #       N_UNITS: "100"
@@ -32,7 +32,7 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
 #       mem: 12GB
-#       output: "gpu_results/logs/slurm-%j.out"
+#       output: "u200_results/logs/slurm-%j.out"
 #       account: "ionides0"
 #     env:
 #       N_UNITS: "200"
@@ -43,7 +43,7 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
 #       mem: 30GB
-#       output: "gpu_results/logs/slurm-%j.out"
+#       output: "u800_results/logs/slurm-%j.out"
 #       account: "ionides0"
 #     env:
 #       N_UNITS: "800"
@@ -61,10 +61,21 @@ This script tests the performance of the panel POMP implementation, running mif 
 import importlib.util
 import os
 import pickle
+import sys
+import time
 
 import jax
 import numpy as np
 import pypomp as pp
+import session_info
+
+tests_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+if tests_dir not in sys.path:
+    sys.path.append(tests_dir)
+
+import utils
+
+session_info.show(dependencies=True)
 
 print(jax.devices())
 
@@ -83,10 +94,12 @@ print(f"Running at level {RUN_LEVEL}")
 
 units_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../units.py"))
 spec = importlib.util.spec_from_file_location("units", units_path)
+if spec is None or spec.loader is None:
+    raise ImportError(f"Could not load module from {units_path}")
 units = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(units)
 
-N_UNITS = 100
+N_UNITS = int(os.environ.get("N_UNITS", 20))
 CHOSEN_UNITS = units.UNITS[:N_UNITS]
 
 DEFAULT_SD = 0.02
@@ -157,36 +170,17 @@ panel_measles_obj = pp.PanelPomp(
     Pomp_dict=pomp_dict,
     theta=pp.PanelParameters(theta=initial_params),
 )
-
+# ----- MIF and PFILTER -----
+start_time = time.time()
 
 # ----- MIF round 1 -----
 key, subkey = jax.random.split(key)
 panel_measles_obj.mif(
-    rw_sd=RW_SD,
-    M=NFITR,
-    a=COOLING_RATE,
-    J=NP_FITR,
-    key=subkey,
+    rw_sd=RW_SD, M=NFITR, a=COOLING_RATE, J=NP_FITR, key=subkey, vmap_chunk_size=16
 )
 
 # ----- PFILTER round 1 -----
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
-# panel_measles_obj.prune(n=1, refill=True)
-
-# ---- MIF round 2 -----
-# RW_SD.cool(0.5)
-# for param in SHARED_PARAMS:
-#     RW_SD[param] = 0.0
-# panel_measles_obj.mif(
-#     rw_sd=RW_SD,
-#     M=NFITR,
-#     a=COOLING_RATE,
-#     J=NP_FITR,
-#     key=subkey,
-# )
-
-# # ----- PFILTER round 2 -----
-# panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 
 # ----- Mix-and-match, then evaluate best model -----
 panel_measles_obj.mix_and_match()
@@ -195,7 +189,7 @@ panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 
 # ---- Save results ----
 
-out_dir = "cpu_results" if USE_CPU else "gpu_results"
+out_dir = "u" + str(N_UNITS) + "_results"
 
 with open(f"{out_dir}/panel_measles_results.pkl", "wb") as f:
     pickle.dump(panel_measles_obj, f)
@@ -206,3 +200,23 @@ results = panel_measles_obj.results(ignore_nan=False)
 print(results[["unit", "unit logLik"]].groupby("unit").max())
 
 print(panel_measles_obj.time())
+
+execution_time = time.time() - start_time
+print(f"Total execution time: {execution_time:.2f} seconds")
+
+# ---- Save performance history ----
+run_config = {
+    "test": "panel_measles",
+    "N_UNITS": N_UNITS,
+    "RUN_LEVEL": RUN_LEVEL,
+    "partition": os.environ.get("SLURM_JOB_PARTITION", "local"),
+}
+
+metrics = utils.get_pomp_metrics(
+    panel_measles_obj,
+    execution_time=execution_time,
+    run_config=run_config,
+    history_index=-2,
+)
+utils.append_history(metrics, f"{out_dir}/performance_history.jsonl")
+print(f"Performance metrics saved to {out_dir}/performance_history.jsonl")

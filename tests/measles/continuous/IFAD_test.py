@@ -1,3 +1,7 @@
+"""
+Tests pypomp on the continuous measles model using IFAD. This is meant to be compared with the IF2 results to see which one maximizes the logLik better.
+"""
+
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "pypomp continuous measles test (IFAD)"
@@ -19,18 +23,29 @@
 # --- END SLURM CONFIG ---
 
 import os
+
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.95"
 os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 
-import jax
 import pickle
+import sys
+
+tests_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+if tests_dir not in sys.path:
+    sys.path.append(tests_dir)
+
+import jax
+import session_info
+import utils
 from setup import (
-    key,
-    RW_SD,
     COOLING_RATE,
-    measles_obj,
     RUN_LEVEL,
+    RW_SD,
+    key,
+    measles_obj,
 )
+
+session_info.show(dependencies=True)
 
 NFITR = (2, 20, 100, 300)[RUN_LEVEL - 1]
 NTRAIN = (2, 20, 40, 50)[RUN_LEVEL - 1]
@@ -38,13 +53,13 @@ NP_FITR = (2, 3, 20, 10000)[RUN_LEVEL - 1]
 NP_EVAL = (2, 20, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 
-DEFAULT_ETA = 0.001
+DEFAULT_ETA = 0.01
 eta = {
     "R0": DEFAULT_ETA,
     "sigma": DEFAULT_ETA,
     "gamma": DEFAULT_ETA,
     "iota": DEFAULT_ETA,
-    "rho": DEFAULT_ETA/8,
+    "rho": DEFAULT_ETA / 8,
     "sigmaSE": DEFAULT_ETA,
     "psi": DEFAULT_ETA,
     "cohort": DEFAULT_ETA,
@@ -64,7 +79,14 @@ measles_obj.mif(
     key=subkey,
 )
 measles_obj.train(
-    J=NP_FITR, M=NTRAIN, eta=eta, optimizer="Adam", n_monitors=1
+    J=NP_FITR,
+    M=NTRAIN,
+    eta=eta,
+    optimizer="Adam",
+    n_monitors=1,
+    alpha=0.97,
+    alpha_cooling=1.0,
+    eta_cooling=1.0,
 )
 measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 measles_obj.prune(n=1, refill=False)
@@ -75,3 +97,14 @@ print(measles_obj.time())
 
 with open(f"IFAD_results/measles_results_rl{RUN_LEVEL}.pkl", "wb") as f:
     pickle.dump(measles_obj, f)
+
+# ---- Save performance history ----
+
+run_config = {
+    "test": "continuous measles IFAD",
+    "partition": os.environ.get("SLURM_JOB_PARTITION", "local"),
+}
+
+metrics = utils.get_pomp_metrics(measles_obj, run_config=run_config, history_index=-2)
+utils.append_history(metrics, "IFAD_results/performance_history.jsonl")
+print("Performance metrics saved to IFAD_results/performance_history.jsonl")

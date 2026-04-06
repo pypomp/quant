@@ -30,7 +30,7 @@ Particular points of comparison:
 #       output: "cpu_results/logs/slurm-%j.out"
 #     env:
 #       USE_CPU: "true"
-# 
+#
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:00:30" }
@@ -43,8 +43,14 @@ Particular points of comparison:
 # --- END SLURM CONFIG ---
 
 import os
-from datetime import datetime
-from importlib.metadata import version
+import sys
+
+tests_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+if tests_dir not in sys.path:
+    sys.path.append(tests_dir)
+
+import session_info
+import utils
 
 # Set JAX platform before importing JAX
 USE_CPU = os.environ.get("USE_CPU", "false").lower() == "true"
@@ -56,21 +62,17 @@ if USE_CPU:
             + f" --xla_force_host_platform_device_count={os.environ['SLURM_CPUS_PER_TASK']}"
         )
 
-import jax  # noqa: E402
 import pickle  # noqa: E402
-import pypomp as pp  # noqa: E402
+
+import jax  # noqa: E402
 import numpy as np  # noqa: E402
+import pypomp as pp  # noqa: E402
+
+session_info.show(dependencies=True)
 
 print(jax.devices())
 
 print("Using CPU: ", USE_CPU)
-now = datetime.now()
-print("DATE: ", now.date())
-print("TIME: ", now.time())
-print("pypomp version:", version("pypomp"))
-print("jax version:", version("jax"))
-
-print(jax.devices())
 
 MAIN_SEED = 631409
 key = jax.random.key(MAIN_SEED)
@@ -122,6 +124,7 @@ for params in initial_params_list:
 
 spx_obj = pp.spx()
 
+# ----- MIF and PFILTER -----
 key, subkey = jax.random.split(key)
 spx_obj.mif(
     theta=initial_params_list,
@@ -141,3 +144,13 @@ out_dir = "cpu_results" if USE_CPU else "gpu_results"
 
 with open(f"{out_dir}/spx_results_rl{RUN_LEVEL}.pkl", "wb") as f:
     pickle.dump(spx_obj, f)
+
+# ---- Save performance history ----
+run_config = {
+    "test": "spx",
+    "partition": os.environ.get("SLURM_JOB_PARTITION", "local"),
+}
+
+metrics = utils.get_pomp_metrics(spx_obj, run_config=run_config)
+utils.append_history(metrics, f"{out_dir}/performance_history.jsonl")
+print(f"Performance metrics saved to {out_dir}/performance_history.jsonl")
