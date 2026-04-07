@@ -16,7 +16,6 @@ dacca/gpu/dacca_profiler
 # Omit output files (add manually if needed)
 **slurm*
 **.pkl
-**.html
 **.rds
 **.rda
 

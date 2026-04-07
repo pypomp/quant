@@ -1,231 +1,144 @@
 import os
 import re
-import sys
-import argparse
-from pathlib import Path
-import yaml
-import ast
 import subprocess
+from pathlib import Path
 
-CONFIG_START = "--- SLURM CONFIG ---"
-CONFIG_END = "--- END SLURM CONFIG ---"
 
-def parse_test_metadata(filepath):
-    """Extracts and parses the YAML configuration from comments in the test script."""
-    yaml_lines = []
-    in_config = False
-    
-    with open(filepath, "r", encoding='utf-8', errors='ignore') as f:
-        for line in f:
-            stripped = line.strip()
-            if not stripped:
-                continue
-                
-            # Both R and Python use '#' for comments
-            if not stripped.startswith("#"):
-                # If we hit actual code, keep looking (unless we are inside config)
-                if in_config:
-                    break
-                continue
-            
-            comment_content = stripped[1:].strip()
-            
-            if comment_content == CONFIG_START:
-                in_config = True
-                continue
-            elif comment_content == CONFIG_END:
-                in_config = False
-                break
-            elif in_config:
-                raw_line = line.lstrip()
-                if raw_line.startswith("# "):
-                    yaml_core = raw_line[2:]
-                elif raw_line.startswith("#"):
-                    yaml_core = raw_line[1:]
-                else:
-                    yaml_core = raw_line
-                yaml_lines.append(yaml_core)
-
-    if not yaml_lines:
-        return None
-
+def get_html_title(path):
     try:
-        yaml_str = "".join(yaml_lines)
-        config = yaml.safe_load(yaml_str)
-        return config if config else {}
-    except yaml.YAMLError as e:
-        print(f"Error parsing YAML in {filepath}: {e}")
-        return None
-
-def get_python_docstring(filepath):
-    """Extracts the module-level docstring from a Python file."""
-    try:
-        with open(filepath, "r", encoding='utf-8', errors='ignore') as f:
-            tree = ast.parse(f.read())
-            return ast.get_docstring(tree)
-    except Exception:
-        return None
-
-def get_r_description(filepath):
-    """Extracts description from R file using #' (Roxygen) or first comment block."""
-    description_lines = []
-    found_roxygen = False
-    
-    with open(filepath, "r", encoding='utf-8', errors='ignore') as f:
-        for line in f:
-            stripped = line.strip()
-            if stripped.startswith("#'"):
-                found_roxygen = True
-                content = stripped[2:].strip()
-                # Remove trailing #' if it was used for wrapping on the same line
-                if content.endswith("#'"):
-                    content = content[:-2].strip()
-                description_lines.append(content)
-            elif not found_roxygen and stripped.startswith("#"):
-                # If we haven't found Roxygen, collect normal comments at the top
-                # but stop at SLURM CONFIG
-                if CONFIG_START in line:
-                    break
-                content = stripped[1:].strip()
-                if content and not content.startswith("-"): # avoid headers like ## ---
-                    description_lines.append(content)
-            elif not stripped:
-                if description_lines: # Stop at first empty line after a comment block
-                    break
-                continue
-            else:
-                # Actual code or end of leading comment block
-                break
-    
-    return "\n".join(description_lines).strip() if description_lines else None
-
-def find_tests(target_path):
-    target_path = Path(target_path)
-    test_files = []
-    
-    for ext in ["*.py", "*.R", "*.r"]:
-        for file in target_path.rglob(ext):
-            try:
-                with open(file, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read(4000) # Read enough to find config
-                    if CONFIG_START in content:
-                        test_files.append(file)
-            except Exception:
-                continue
-    return sorted(test_files)
-
-def generate_toc(target_dir, output_file, render=True):
-    tests = find_tests(target_dir)
-    if not tests:
-        print(f"No tests found in {target_dir}")
-        return
-
-    project_root = Path(target_dir).absolute()
-    
-    # Organize tests by directory structure
-    tree = {}
-    for test_path in tests:
-        test_path_abs = test_path.absolute()
-        rel_path = test_path_abs.relative_to(project_root)
-        parts = rel_path.parts[:-1]
-        
-        current = tree
-        for part in parts:
-            if part not in current:
-                current[part] = {}
-            current = current[part]
-        
-        if "__files__" not in current:
-            current["__files__"] = []
-        current["__files__"].append(test_path)
-
-    toc_lines = ["---"]
-    toc_lines.append("title: Table of Contents for Tests")
-    toc_lines.append("toc: true")
-    toc_lines.append("format:")
-    toc_lines.append("  html:")
-    toc_lines.append("    embed-resources: true")
-    toc_lines.append("---\n")
-    toc_lines.append("This document is automatically generated. It lists all available tests in the `tests/` directory.\n")
-
-    def walk_tree(node, depth=1):
-        # First process subdirectories (alphabetical)
-        for folder_name in sorted(k for k in node.keys() if k != "__files__"):
-            header = "#" * (depth + 1)
-            toc_lines.append(f"{header} {folder_name}\n")
-            walk_tree(node[folder_name], depth + 1)
-        
-        # Then process files in this directory
-        if "__files__" in node:
-            file_header = "#" * (depth + 1)
-            for test_path in sorted(node["__files__"]):
-                test_path_abs = test_path.absolute()
-                rel_path = test_path_abs.relative_to(project_root)
-                config = parse_test_metadata(test_path)
-                
-                # Extract description
-                description = None
-                if test_path.suffix == ".py":
-                    description = get_python_docstring(test_path)
-                elif test_path.suffix in [".R", ".r"]:
-                    description = get_r_description(test_path)
-                
-                # Extract jobs
-                job_names = []
-                if isinstance(config, dict):
-                    if "jobs" in config and isinstance(config["jobs"], dict):
-                        job_names = list(config["jobs"].keys())
-                    else:
-                        job_names = [config.get("name", test_path.name)]
-                elif config is not None:
-                    print(f"Warning: Unexpected config type {type(config)} in {rel_path}")
-                
-                # Write to TOC
-                toc_lines.append(f"{file_header}# `{rel_path.name}`\n")
-                toc_lines.append(f"- **Path**: `{rel_path}`\n")
-                if job_names:
-                    toc_lines.append(f"- **Jobs**: {', '.join(f'`{j}`' for j in job_names)}\n")
-                
-                if description:
-                    # Clean up description (first paragraph or whole thing)
-                    desc_body = description.strip()
-                    toc_lines.append(f"\n{desc_body}\n")
-                
-                toc_lines.append("\n---\n")
-
-    walk_tree(tree)
-
-    with open(output_file, "w", encoding='utf-8') as f:
-        f.write("\n".join(toc_lines))
-    
-    print(f"Generated TOC at {output_file}")
-    
-    if render:
-        print(f"Rendering {output_file} to HTML via Quarto...")
-        try:
-            # Capture output so we can see what's happening if it fails
-            result = subprocess.run(
-                ["quarto", "render", output_file], 
-                check=True, 
-                capture_output=True, 
-                text=True
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read(8192)
+            match = re.search(
+                r"<title>(.*?)</title>", content, re.IGNORECASE | re.DOTALL
             )
-            print("Rendering complete.")
-            if result.stdout:
-                print(result.stdout)
-        except subprocess.CalledProcessError as e:
-            print(f"Warning: Quarto rendering failed with exit code {e.returncode}")
-            print(f"STDOUT: {e.stdout}")
-            print(f"STDERR: {e.stderr}")
-        except FileNotFoundError:
-            print("Warning: 'quarto' command not found in PATH. Skipping HTML rendering.")
+            if match:
+                return match.group(1).strip()
+    except Exception:
+        pass
+    return None
+
+
+def is_ignored(path):
+    # Returns 0 if ignored, 1 if not ignored
+    try:
+        subprocess.check_call(["git", "check-ignore", "-q", str(path)])
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def main():
+    root_dir = Path(".")
+    reports = []
+    exclude_dirs = {".venv", ".renv", "renv", ".git", ".gemini"}
+
+    for root, dirs, files in os.walk(root_dir):
+        dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith(".")]
+        for file in files:
+            if file == "report.html":
+                path = Path(root) / file
+                if is_ignored(path):
+                    continue
+                title = get_html_title(path)
+                rel_path = str(path.relative_to(root_dir))
+                folder = str(path.parent.relative_to(root_dir))
+                reports.append(
+                    {
+                        "title": title or folder.replace("/", " / ").title(),
+                        "path": rel_path,
+                        "folder": folder,
+                    }
+                )
+
+    reports.sort(key=lambda x: x["folder"])
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quant Portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --bg: #0f172a;
+            --card: #1e293b;
+            --primary: #6366f1;
+            --hover: #242f44;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+        }}
+        * {{ margin:0; padding:0; box-sizing:border-box; }}
+        body {{
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            padding: 5rem 2rem;
+            min-height: 100vh;
+        }}
+        .container {{ max-width: 1100px; margin: 0 auto; }}
+        header {{ margin-bottom: 4rem; border-left: 5px solid var(--primary); padding-left: 2rem; }}
+        h1 {{ font-family: 'Outfit', sans-serif; font-size: 3.5rem; letter-spacing: -0.04em; margin-bottom: 0.5rem; }}
+        .subtitle {{ color: var(--muted); font-size: 1.25rem; font-weight: 300; }}
+        .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; }}
+        .card {{
+            background: var(--card);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid #334155;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: block; box-shadow: 0 4px 6px -1px #000;
+        }}
+        .card:hover {{ transform: translateY(-10px); border-color: var(--primary); background: var(--hover); box-shadow: 0 25px 30px -10px #000; }}
+        .tag {{ color: var(--primary); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em; display: block; margin-bottom: 1.5rem; }}
+        h2 {{ font-family: 'Outfit', sans-serif; font-size: 1.75rem; margin-bottom: 1.5rem; line-height: 1.1; }}
+        .cta {{ display: flex; align-items: center; font-weight: 600; color: #818cf8; font-size: 0.95rem; }}
+        .cta svg {{ width: 18px; height: 18px; margin-left: 0.5rem; transition: transform 0.2s; }}
+        .card:hover .cta svg {{ transform: translateX(6px); }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Research Library</h1>
+            <p class="subtitle">Research output across the quant repository.</p>
+        </header>
+
+        <main class="grid">
+            {
+        "".join(
+            [
+                f'''
+            <a href="{r['path']}" class="card">
+                <span class="tag">{r['folder']}</span>
+                <h2>{r['title']}</h2>
+                <div class="cta">
+                    Open Report
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                </div>
+            </a>
+            '''
+                for r in reports
+            ]
+        )
+    }
+        </main>
+    </div>
+</body>
+</html>"""
+
+    output_path = root_dir / "TESTS_INDEX.html"
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    print(
+        f"Generated index at {output_path} with {len(reports)} items (Git-ignored files skipped)."
+    )
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate a Markdown TOC for tests")
-    parser.add_argument("target", nargs="?", default="tests", help="Directory containing tests")
-    parser.add_argument("--output", default="TESTS_INDEX.md", help="Output Markdown file")
-    parser.add_argument("--no-render", action="store_false", dest="render", help="Skip Quarto rendering")
-    
-    args = parser.parse_args()
-    
-    generate_toc(args.target, args.output, args.render)
+    main()
