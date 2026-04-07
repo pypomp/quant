@@ -1,11 +1,11 @@
 """
-This script tests the performance of the panel POMP implementation, running mif and pfilter.
+This script tests the performance of the panel POMP implementation, running mif and pfilter on models with a mix of shared and unit-specific parameters.
 """
 # --- SLURM CONFIG ---
 # jobs:
 #   u20:
 #     sbatch_args:
-#       job-name: "pypomp panel measles test (20 units)"
+#       job-name: "pypomp mixed panel measles test (20 units)"
 #       partition: gpu-rtx6000
 #       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
@@ -16,7 +16,7 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       N_UNITS: "20"
 #   u100:
 #     sbatch_args:
-#       job-name: "pypomp panel measles test (100 units)"
+#       job-name: "pypomp mixed panel measles test (100 units)"
 #       partition: gpu-rtx6000
 #       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
@@ -27,7 +27,7 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       N_UNITS: "100"
 #   u200:
 #     sbatch_args:
-#       job-name: "pypomp panel measles test (200 units)"
+#       job-name: "pypomp mixed panel measles test (200 units)"
 #       partition: gpu-rtx6000
 #       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
@@ -38,7 +38,7 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       N_UNITS: "200"
 #   u800:
 #     sbatch_args:
-#       job-name: "pypomp panel measles test (800 units)"
+#       job-name: "pypomp mixed panel measles test (800 units)"
 #       partition: gpu-rtx6000
 #       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
@@ -61,18 +61,13 @@ This script tests the performance of the panel POMP implementation, running mif 
 import importlib.util
 import os
 import pickle
-import sys
 import time
 
 import jax
 import numpy as np
 import pypomp as pp
 import session_info
-
-tests_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-if tests_dir not in sys.path:
-    sys.path.append(tests_dir)
-
+import utils
 
 session_info.show(dependencies=True)
 
@@ -85,7 +80,7 @@ np.random.seed(MAIN_SEED)
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 
 NP_FITR = (2, 500, 5000, 10000)[RUN_LEVEL - 1]
-NFITR = (2, 10, 100, 200)[RUN_LEVEL - 1]
+NFITR = (2, 10, 100, 100)[RUN_LEVEL - 1]
 NREPS_FITR = (2, 3, 36, 12)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 5000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 36, 36)[RUN_LEVEL - 1]
@@ -139,7 +134,7 @@ measles_box = {
     "R_0": (0.9, 0.99),
 }
 
-SHARED_PARAMS = []
+SHARED_PARAMS = ["R0", "sigma", "gamma", "sigmaSE", "cohort", "amplitude"]
 print("Shared parameters: ", SHARED_PARAMS)
 
 key, subkey = jax.random.split(key)
@@ -180,6 +175,22 @@ panel_measles_obj.mif(
 
 # ----- PFILTER round 1 -----
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
+# panel_measles_obj.prune(n=1, refill=True)
+
+# ---- MIF round 2 -----
+RW_SD.cool(0.5)
+for param in SHARED_PARAMS:
+    RW_SD[param] = 0.0
+panel_measles_obj.mif(
+    rw_sd=RW_SD,
+    M=NFITR,
+    a=COOLING_RATE,
+    J=NP_FITR,
+    key=subkey,
+)
+
+# ----- PFILTER round 2 -----
+panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 
 # ----- Mix-and-match, then evaluate best model -----
 panel_measles_obj.mix_and_match()
@@ -188,7 +199,7 @@ panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 
 # ---- Save results ----
 
-out_dir = "u" + str(N_UNITS) + "_results"
+out_dir = "u" + str(N_UNITS)
 
 with open(f"{out_dir}/panel_measles_results.pkl", "wb") as f:
     pickle.dump(panel_measles_obj, f)
@@ -202,3 +213,20 @@ print(panel_measles_obj.time())
 
 execution_time = time.time() - start_time
 print(f"Total execution time: {execution_time:.2f} seconds")
+
+# ---- Save performance history ----
+run_config = {
+    "test": "panel_measles",
+    "N_UNITS": N_UNITS,
+    "RUN_LEVEL": RUN_LEVEL,
+    "partition": os.environ.get("SLURM_JOB_PARTITION", "local"),
+}
+
+metrics = utils.get_pomp_metrics(
+    panel_measles_obj,
+    execution_time=execution_time,
+    run_config=run_config,
+    history_index=-2,
+)
+utils.append_history(metrics, f"{out_dir}/performance_history.jsonl")
+print(f"Performance metrics saved to {out_dir}/performance_history.jsonl")

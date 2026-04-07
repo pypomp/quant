@@ -1,0 +1,157 @@
+---
+title: "Panel Mixed Measles Report"
+format:
+  html:
+    toc: true
+    embed-resources: true
+execute:
+  echo: false
+---
+
+```{python Import modules}
+import os
+import pickle
+import numpy as np
+import pandas as pd
+import pypomp as pp
+import jax
+from plotnine import *
+
+theme_set(theme_minimal())
+```
+
+```{python Runtime}
+import datetime
+print(datetime.datetime.now())
+```
+
+```{python Load data}
+PKL_PATH = "gpu_results/panel_measles_results.pkl"
+pomp_obj = pickle.load(open(PKL_PATH, "rb"))
+```
+
+```{python Prepare frames}
+LL_frame = pomp_obj.results()
+traces = pomp_obj.traces()
+
+traces_melted = traces.rename(columns={"replicate": "rep", "iteration": "iter"}).melt(
+    id_vars=["rep", "iter", "logLik", "method", "unit"],
+    var_name="quantity",
+    value_name="param_value"
+)
+traces_melted["rep"] = traces_melted["rep"].astype(str)
+
+last_iter = traces_melted["iter"].max()
+best_pfilter = traces_melted[(traces_melted["iter"] == last_iter) & (traces_melted["method"] == "pfilter")]
+if not best_pfilter.empty:
+    best_rep_val = (
+        best_pfilter.groupby("rep")
+        ["logLik"].first()
+        .sort_values(ascending=False)
+        .index[0]
+    )
+else:
+    best_rep_val = traces_melted["rep"].iloc[0]
+```
+
+# Python results
+
+## Tables
+
+### Summary
+```{python}
+print(
+    pomp_obj.results(ignore_nan=True)
+    .sort_values(by="shared logLik", ascending=False)
+    .head()
+)
+```
+
+```{python}
+print(pomp_obj.results(ignore_nan=True)[["unit", "unit logLik"]].groupby("unit").max())
+```
+
+### Top results for each method call
+```{python}
+pomp_obj.print_summary()
+```
+
+## Plot traces
+
+### Transformed scale traces
+
+```{python Plot traces}
+MAX_UNITS = 3
+unique_units = traces_melted["unit"].unique()[:MAX_UNITS]
+
+for unit_val in unique_units:
+    unit_data = traces_melted[traces_melted["unit"] == unit_val]
+    p = (
+        ggplot(unit_data, aes(x="iter", y="param_value", group="rep", color="rep"))
+        + geom_line(show_legend=False)
+        + facet_wrap("quantity", scales="free")
+        + ggtitle(f"Unit: {unit_val}")
+        + theme(figure_size=(12, 12))
+    )
+    p.show()
+```
+
+### Natural scale traces
+```{python Plot traces (natural scale)}
+def logit(x):
+    return np.log(x / (1 - x))
+
+traces_pertubation_scale = traces_melted.copy()
+
+log_params = ["R0", "sigma", "gamma", "iota", "sigmaSE", "psi", "S_0", "E_0", "I_0", "R_0"]
+logit_params = ["rho", "cohort", "amplitude"]
+
+mask_log = traces_pertubation_scale["quantity"].isin(log_params)
+traces_pertubation_scale.loc[mask_log, "param_value"] = np.log(traces_pertubation_scale.loc[mask_log, "param_value"])
+
+mask_logit = traces_pertubation_scale["quantity"].isin(logit_params)
+traces_pertubation_scale.loc[mask_logit, "param_value"] = logit(traces_pertubation_scale.loc[mask_logit, "param_value"])
+
+for unit_val in unique_units:
+    unit_data = traces_pertubation_scale[traces_pertubation_scale["unit"] == unit_val]
+    p = (
+        ggplot(unit_data, aes(x="iter", y="param_value", group="rep", color="rep"))
+        + geom_line(show_legend=False)
+        + facet_wrap("quantity", scales="free")
+        + ggtitle(f"Unit (scaled): {unit_val}")
+        + theme(figure_size=(12, 12))
+    )
+    p.show()
+```
+
+
+```{python Final parameter values}
+# Violin plots for final pfilter iterations (previously eval = FALSE logic)
+# for unit_val in unique_units:
+#     unit_data = traces_pertubation_scale[(traces_pertubation_scale["unit"] == unit_val) & (traces_pertubation_scale["method"] == "pfilter")]
+#     if not unit_data.empty:
+#         p = (
+#             ggplot(unit_data, aes(y="param_value", x="quantity"))
+#             + geom_violin()
+#             + facet_wrap("~quantity", scales="free")
+#             + ggtitle(f"Unit Violin: {unit_val}")
+#         )
+#         print(p)
+```
+
+
+### LogLik traces
+
+```{python Plot LL traces}
+for unit_val in unique_units:
+    unit_data = traces_melted[traces_melted["unit"] == unit_val]
+    ll_data = unit_data[["iter", "rep", "logLik"]].drop_duplicates()
+    
+    p = (
+        ggplot(ll_data, aes(x="iter", y="logLik", group="rep", color="rep"))
+        + geom_line(show_legend=False)
+        + ggtitle(f"LogLik Traces - Unit: {unit_val}")
+        + theme(figure_size=(10, 6))
+    )
+    p.show()
+```

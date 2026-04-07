@@ -30,14 +30,14 @@ os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 import pickle
 import sys
 
+import session_info
+
 tests_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if tests_dir not in sys.path:
     sys.path.append(tests_dir)
 
-import jax
-import session_info
-import utils
-from setup import (
+import jax  # noqa: E402
+from setup import (  # noqa: E402
     COOLING_RATE,
     RUN_LEVEL,
     RW_SD,
@@ -97,14 +97,3 @@ print(measles_obj.time())
 
 with open(f"IFAD_results/measles_results_rl{RUN_LEVEL}.pkl", "wb") as f:
     pickle.dump(measles_obj, f)
-
-# ---- Save performance history ----
-
-run_config = {
-    "test": "continuous measles IFAD",
-    "partition": os.environ.get("SLURM_JOB_PARTITION", "local"),
-}
-
-metrics = utils.get_pomp_metrics(measles_obj, run_config=run_config, history_index=-2)
-utils.append_history(metrics, "IFAD_results/performance_history.jsonl")
-print("Performance metrics saved to IFAD_results/performance_history.jsonl")
