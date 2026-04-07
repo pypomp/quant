@@ -12,7 +12,7 @@ library(reticulate)
 library(tidyverse)
 library(pomp)
 
-setwd(file.path(here::here(), "spx", "performance"))
+setwd(file.path(here::here(),"tests", "spx", "performance"))
 sessionInfo()
 
 knitr::opts_chunk$set(echo = FALSE)
@@ -24,6 +24,12 @@ print(Sys.time())
 
 ```{python Import python modules}
 import os
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+import logging
+# Hide the noisy JAX CUDA initialization error on machines without a GPU
+logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
+
 import pickle
 import numpy as np
 import pandas as pd
@@ -32,7 +38,7 @@ import jax
 ```
 
 ```{python Load data in python}
-PKL_PATH = "performance/cpu_results/spx_results_rl4.pkl"
+PKL_PATH = "performance/gpu_results/spx_results_rl4.pkl"
 pkl_in = pickle.load(open(PKL_PATH, "rb"))
 ```
 
@@ -105,7 +111,9 @@ ggplot(
 #  Compare python and R traces
 
 ```{r Load R estimates}
-load(file.path(
+load(here::here(
+    "tests",
+    "spx",
     "performance",
     "R_results",
     "search360_hidden",
@@ -114,16 +122,17 @@ load(file.path(
 LL_df_R <- as.data.frame(L.box)
 traces_long <- lapply(seq_along(if.box), function(x) {
     tr <- traces(if.box[[x]])
-    tr_long <- tr |>
-        as.data.frame() |>
-        mutate(iter = 1:nrow(tr), rep = x) |>
-        pivot_longer(
-            names_to = "quantity",
-            values_to = "param_value",
-            cols = c(-iter, -rep)
-        )
+    as.data.frame(tr) |>
+        mutate(iter = 1:nrow(tr), rep = x)
 }) |>
-    bind_rows() |>
+    bind_rows()
+
+traces_long <- traces_long |>
+    pivot_longer(
+        names_to = "quantity",
+        values_to = "param_value",
+        cols = c(-iter, -rep)
+    ) |>
     mutate(language = "R") |>
     mutate(
         value_T = case_when(
@@ -136,6 +145,11 @@ traces_long <- lapply(seq_along(if.box), function(x) {
             quantity == "V_0" ~ log(param_value)
         )
     )
+
+# Memory management
+rm(if.box)
+gc()
+
 
 traces_pyr <- bind_rows(
     traces |>
