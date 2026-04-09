@@ -3,6 +3,13 @@ import re
 import subprocess
 from pathlib import Path
 
+# Directories to exclude from the search (in addition to .gitignore)
+# Hidden directories (starting with '.') are ignored by default.
+DEFAULT_EXCLUDE = {"renv", "node_modules", "__pycache__"}
+
+# Add your custom ignored directories here (e.g., {"archive", "temp"})
+USER_EXCLUDE = set({"daphnia"})
+
 
 def get_html_title(path):
     try:
@@ -30,10 +37,14 @@ def is_ignored(path):
 def main():
     root_dir = Path(".")
     reports = []
-    exclude_dirs = {".venv", ".renv", "renv", ".git", ".gemini"}
+
+    # Combine default and user exclusions
+    all_exclude = DEFAULT_EXCLUDE.union(USER_EXCLUDE)
 
     for root, dirs, files in os.walk(root_dir):
-        dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith(".")]
+        # Filter directories: skip hidden ones and those in our exclusion list
+        dirs[:] = [d for d in dirs if d not in all_exclude and not d.startswith(".")]
+
         for file in files:
             if file == "report.html":
                 path = Path(root) / file
@@ -136,7 +147,7 @@ def main():
         f.write(html_content)
 
     print(
-        f"Generated index at {output_path} with {len(reports)} items (Git-ignored files skipped)."
+        f"Generated index at {output_path} with {len(reports)} items (Git-ignored and manually excluded files skipped)."
     )
 
 

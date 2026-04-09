@@ -13,7 +13,12 @@ engine: jupyter
 
 ```{python Import python modules}
 import os
+import logging
+
+# Hide the noisy JAX CUDA initialization error on machines without a GPU
+logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
 import pickle
+
 import numpy as np
 import pandas as pd
 import pypomp as pp

@@ -16,8 +16,13 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{python Load Python results}
+import logging
+
+# Hide the noisy JAX CUDA initialization error on machines without a GPU
+logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
 import pickle
 import pandas as pd
+
 
 py_results = pickle.load(open("mif_coefs.pkl", "rb"))
 py_results["source"] = "pypomp"

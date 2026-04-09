@@ -13,7 +13,12 @@ execute:
 # | label: setup
 # | echo: false
 import os
+import logging
+
+# Hide the noisy JAX CUDA initialization error on machines without a GPU
+logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
 import pickle
+
 from datetime import datetime
 
 import numpy as np
