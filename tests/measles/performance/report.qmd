@@ -4,22 +4,12 @@ format:
   html:
     toc: true
     embed-resources: true
-engine: knitr
+execute:
+  echo: false
+engine: jupyter
 ---
 
-```{r Load R libraries, echo = FALSE}
-library(reticulate)
-library(tidyverse)
-library(pomp)
-setwd(paste0(here::here(), "/measles"))
-sessionInfo()
-
-knitr::opts_chunk$set(echo = FALSE)
-```
-
-```{r}
-print(Sys.time())
-```
+# Setup
 
 ```{python Import python modules}
 import os
@@ -27,155 +17,173 @@ import pickle
 import numpy as np
 import pandas as pd
 import pypomp as pp
-import jax
-import matplotlib.pyplot as plt
+from plotnine import *
+from scipy.special import logit
 ```
 
 ```{python Load data in python}
-PKL_PATH = "gpu/measles_results.pkl"
+PKL_PATH = "gpu_results/measles_results.pkl"
 pomp_obj = pickle.load(open(PKL_PATH, "rb"))
+
+# Fix for shadowed attributes from old pickles (can be deleted later)
+for res in pomp_obj.results_history:
+    for attr in ["CLL", "ESS"]:
+        if attr in res.__dict__ and not callable(getattr(res, attr)):
+            setattr(res, f"{attr}_da", res.__dict__.pop(attr))
 ```
 
 ```{python Make basic frame}
 LL_frame = pomp_obj.results()
-traces = pomp_obj.traces()
+traces = pomp_obj.traces().rename(columns={"replicate": "rep", "iteration": "iter"})
+
+id_vars = ["rep", "iter", "logLik", "method"]
+param_cols = [c for c in traces.columns if c not in id_vars]
+traces_long = traces.melt(
+    id_vars=id_vars,
+    value_vars=param_cols,
+    var_name="quantity",
+    value_name="param_value",
+)
 ```
 
-
-
-# Python results
+# Results
 
 ## Tables
-
-```{r Make traces frame in R}
-traces <- py$traces
-best_rep <- py$LL_frame$index[[1]]
-traces <- traces |>
-    rename(rep = replicate, iter = iteration) |>
-    pivot_longer(
-        cols = c(-rep, -iter, -logLik, -method),
-        names_to = "quantity",
-        values_to = "param_value"
-    )
-```
-
 
 ### Summary
 ```{python}
 pomp_obj.print_summary()
-print(pomp_obj.results(ignore_nan=True).sort_values(by="logLik", ascending=False))
-```
-
-### Top results for each method call
-```{python}
-for i in range(len(pomp_obj.results_history)):
-    print(pomp_obj.results(index=i).sort_values(by="logLik", ascending=False).head())
 ```
 
 ## Plot traces
 
-```{r Set best_rep}
-# Set best_rep to the rep with the largest logLik on the last iteration
-last_iter <- max(traces$iter)
-best_rep <- traces |>
-    filter(iter == last_iter, method == "pfilter") |>
-    group_by(rep) |>
-    summarise(final_logLik = logLik[1]) |>
-    arrange(desc(final_logLik)) |>
-    slice(1) |>
-    pull(rep)
+```{python Set best_rep}
+last_iter = traces["iter"].max()
+best_df = traces[(traces["iter"] == last_iter) & (traces["method"] == "pfilter")]
+if not best_df.empty:
+    best_rep = best_df.sort_values("logLik", ascending=False)["rep"].iloc[0]
+    print(f"Best replicate: {best_rep}")
 ```
 
-```{r Plot traces, fig.width = 10, fig.height = 10}
-ggplot(
-    traces,
-    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
-) +
-    geom_line(show.legend = FALSE) +
-    facet_wrap(vars(quantity), scales = "free")
+```{python Plot traces}
+#| fig-width: 10
+#| fig-height: 10
+(
+    ggplot(
+        traces_long, aes(x="iter", y="param_value", group="rep", color="factor(rep)")
+    )
+    + geom_line(show_legend=False)
+    + facet_wrap("~quantity", scales="free_y")
+    + labs(title="Parameter Traces", x="Iteration", y="Value")
+)
 ```
 
-```{r Plot traces (natural scale), fig.width = 10, fig.height = 10}
-traces_pertubation_scale <- traces |>
-    mutate(
-        param_value = case_when(
-            quantity == "logLik" ~ param_value,
-            quantity == "R0" ~ log(param_value),
-            quantity == "sigma" ~ log(param_value),
-            quantity == "gamma" ~ log(param_value),
-            quantity == "iota" ~ log(param_value),
-            quantity == "rho" ~ logit(param_value),
-            quantity == "sigmaSE" ~ log(param_value),
-            quantity == "psi" ~ log(param_value),
-            quantity == "cohort" ~ logit(param_value),
-            quantity == "amplitude" ~ logit(param_value),
-            quantity == "S_0" ~ log(param_value),
-            quantity == "E_0" ~ log(param_value),
-            quantity == "I_0" ~ log(param_value),
-            quantity == "R_0" ~ log(param_value),
-            TRUE ~ param_value
-        )
+```{python Plot traces (natural scale)}
+#| fig-width: 10
+#| fig-height: 10
+def transform_params(df):
+    df_transformed = df.copy()
+
+    log_params = [
+        "R0", "sigma", "gamma", "iota", "sigmaSE", "psi",
+        "S_0", "E_0", "I_0", "R_0",
+    ]
+    logit_params = ["rho", "cohort", "amplitude"]
+
+    mask_log = df_transformed["quantity"].isin(log_params)
+    df_transformed.loc[mask_log, "param_value"] = np.log(
+        df_transformed.loc[mask_log, "param_value"].astype(float)
     )
 
-ggplot(
-    traces_pertubation_scale,
-    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
-) +
-    geom_line(show.legend = FALSE) +
-    facet_wrap(vars(quantity), scales = "free")
+    mask_logit = df_transformed["quantity"].isin(logit_params)
+    df_transformed.loc[mask_logit, "param_value"] = logit(
+        df_transformed.loc[mask_logit, "param_value"].astype(float)
+    )
+
+    return df_transformed
+
+
+traces_pertubation_scale = transform_params(traces_long)
+
+(
+    ggplot(
+        traces_pertubation_scale,
+        aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
+    )
+    + geom_line(show_legend=False)
+    + facet_wrap("~quantity", scales="free_y")
+    + labs(
+        title="Parameter Traces (perturbation scale)",
+        x="Iteration",
+        y="Value (transformed)",
+    )
+)
 ```
 
-
-```{r Final parameter values}
-traces |>
-    filter(method == "pfilter") |>
-    ggplot(aes(y = param_value, x = quantity)) +
-    geom_violin() +
-    facet_wrap(vars(quantity), scales = "free")
+```{python Final parameter values}
+#| fig-width: 10
+#| fig-height: 10
+final_params = traces_long[traces_long["method"] == "pfilter"]
+(
+    ggplot(final_params, aes(x="param_value"))
+    + geom_density()
+    + facet_wrap("~quantity", scales="free")
+    + labs(title="Final Parameter Values", x="Parameter", y="Value")
+)
 ```
 
-
-```{r Plot LL traces, eval = TRUE}
-ggplot(
-    traces,
-    aes(x = iter, y = logLik, group = rep, color = as.factor(rep))
-) +
-    geom_line(show.legend = FALSE)
+```{python Plot LL traces}
+# | fig-width: 10
+# | fig-height: 6
+(
+    ggplot(traces, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+    + geom_line(show_legend=False)
+    + labs(title="Log Likelihood Traces", x="Iteration", y="Log Likelihood")
+)
 ```
 
-
-### CLL plots
+### CLL and Observations
 
 ```{python}
+# | fig-width: 16
+# | fig-height: 6
+cll_df = pomp_obj.CLL()
+cll_col = "CLL" if "CLL" in cll_df.columns else "cll"
+rep_col = "replicate" if "replicate" in cll_df.columns else "rep"
 
+ys = pomp_obj.ys.reset_index()
+time_col_in_ys = "time" if "time" in ys.columns else "index"
+ys = ys.rename(columns={time_col_in_ys: "time_val"})
+ys["time_idx"] = range(len(ys))
 
-# Extract the CLL array: shape (replicates, time index)
-CLL_array = pomp_obj.results_history[-1].CLL[0]
+cll_with_ys = cll_df.merge(ys, left_on="time", right_on="time_idx")
 
-# Compute statistics across replicates for each time index
-mean_CLL = np.mean(CLL_array, axis=0)
-q10 = np.percentile(CLL_array, 10, axis=0)
-q90 = np.percentile(CLL_array, 90, axis=0)
-time_idx = np.arange(CLL_array.shape[1])
+exclude_cols = ["time", "time_val", "time_idx", cll_col, "replicate", "rep"]
+obs_col = [c for c in cll_with_ys.columns if c not in exclude_cols][0]
 
-plt.figure(figsize=(10, 5))
-plt.plot(time_idx, mean_CLL, label="Mean CLL", color="C0")
-plt.fill_between(time_idx, q10, q90, color="C0", alpha=0.5, label="10%-90% quantile")
-plt.xlabel("Time Index")
-plt.ylabel("Conditional Log Likelihood")
-plt.title("Conditional Log Likelihoods (Mean and 10%-90% Quantiles)")
-plt.legend()
-plt.tight_layout()
-plt.show()
+cll_with_ys[obs_col] = np.log(cll_with_ys[obs_col] + 1)
 
-# Second plot: Show individual replicate CLLs
-plt.figure(figsize=(10, 5))
-colors = plt.cm.tab20(np.linspace(0, 1, CLL_array.shape[0]))
-for i in range(CLL_array.shape[0]):
-    plt.plot(time_idx, CLL_array[i], color=colors[i], alpha=0.7)
-plt.xlabel("Time Index")
-plt.ylabel("Conditional Log Likelihood (individual reps)")
-plt.title("Conditional Log Likelihoods for All Replicates")
-plt.tight_layout()
-plt.show()
+cll_with_ys[cll_col] = -cll_with_ys[cll_col]
+
+plot_df = cll_with_ys.rename(
+    columns={cll_col: "-CLL", obs_col: f"log({obs_col.capitalize()}+1)"}
+).melt(
+    id_vars=["time_val", "replicate", "rep"],
+    value_vars=["-CLL", f"log({obs_col.capitalize()}+1)"],
+    var_name="measure",
+    value_name="val",
+)
+
+plot_df["group_id"] = plot_df["measure"] + "_" + plot_df["replicate"].astype(str)
+
+(
+    ggplot(plot_df, aes(x="time_val", y="val", group="group_id", color="measure"))
+    + geom_line(alpha=0.5)
+    + labs(
+        title="-CLL and Log-Observations over Time",
+        x="Time",
+        y="Value",
+        color="Measure",
+    )
+)
 ```

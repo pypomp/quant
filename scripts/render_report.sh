@@ -12,10 +12,10 @@ module load R/4.4.0
 # Path to the .qmd file
 REPORT=$1
 
-if [ -z "$REPORT" ]; then
-    echo "No path provided. Defaulting to tests/spx/report.qmd"
-    REPORT="tests/spx/report.qmd"
-fi
+# if [ -z "$REPORT" ]; then
+#     echo "No path provided. Defaulting to tests/spx/report.qmd"
+#     REPORT="tests/spx/report.qmd"
+# fi
 
 # Basic check if it exists
 if [ ! -f "$REPORT" ]; then

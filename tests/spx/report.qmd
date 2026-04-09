@@ -7,20 +7,20 @@ format:
 engine: knitr
 ---
 
+# Setup
+::: {.callout-note collapse="true"}
 ```{r Load R libraries, echo = FALSE}
 library(reticulate)
 library(tidyverse)
 library(pomp)
 
 setwd(file.path(here::here(),"tests", "spx", "performance"))
-sessionInfo()
-
 knitr::opts_chunk$set(echo = FALSE)
-```
 
-```{r}
+sessionInfo()
 print(Sys.time())
 ```
+:::
 
 ```{python Import python modules}
 import os
@@ -38,49 +38,68 @@ import jax
 ```
 
 ```{python Load data in python}
-PKL_PATH = "performance/gpu_results/spx_results_rl4.pkl"
-pkl_in = pickle.load(open(PKL_PATH, "rb"))
+GPU_PKL_PATH = "performance/gpu_results/spx_results_rl4.pkl"
+CPU_PKL_PATH = "performance/cpu_results/spx_results_rl4.pkl"
+
+gpu_pkl = pickle.load(open(GPU_PKL_PATH, "rb"))
+cpu_pkl = pickle.load(open(CPU_PKL_PATH, "rb"))
 ```
+
 
 ```{python Make basic frame}
-LL_frame = pkl_in.results()
-LL_frame = (
-    pd.DataFrame(
-        {
-            "LL": LL_frame["logLik"],
-            "sd": LL_frame["se"],
-        }
+def process_pkl(pkl):
+    res = pkl.results()
+    ll_frame = (
+        pd.DataFrame(
+            {
+                "LL": res["logLik"],
+                "sd": res["se"],
+            }
+        )
+        .sort_values(by="LL", ascending=False)
+        .reset_index(drop=True)
     )
-    .sort_values(by="LL", ascending=False)
-    .reset_index(drop=True)
-)
+    traces = pkl.traces()
+    return ll_frame, traces
 
-traces = pkl_in.traces()
+LL_frame_gpu, traces_gpu = process_pkl(gpu_pkl)
+LL_frame_cpu, traces_cpu = process_pkl(cpu_pkl)
 ```
+
 
 # Python results
 
-## Process results
+## Execution time
+
+```{python}
+print("GPU:")
+print(gpu_pkl.time())
+print("CPU:")
+print(cpu_pkl.time())
+```
 
 ```{r Make traces frame in R}
-traces <- py$traces
-LL_frame <- py$LL_frame
-best_rep <- LL_frame$index[[1]]
-traces <- traces |>
-    rename(rep = replicate, iter = iteration) |>
-    pivot_longer(
-        cols = c(-rep, -iter, -logLik, -method),
-        names_to = "quantity",
-        values_to = "param_value"
-    )
+process_traces <- function(tr) {
+    tr |>
+        rename(rep = replicate, iter = iteration) |>
+        pivot_longer(
+            cols = c(-rep, -iter, -logLik, -method),
+            names_to = "quantity",
+            values_to = "param_value"
+        )
+}
+
+traces_gpu <- process_traces(py$traces_gpu)
+traces_cpu <- process_traces(py$traces_cpu)
 ```
+
 
 ## Plot traces
 
 ```{r Set best_rep}
-# Set best_rep to the rep with the largest logLik on the last iteration
-last_iter <- max(traces$iter)
-best_rep <- traces |>
+# Set best_rep to the rep with the largest logLik on the last iteration for GPU
+last_iter <- max(traces_gpu$iter)
+best_rep <- traces_gpu |>
     filter(iter == last_iter, method == "pfilter") |>
     group_by(rep) |>
     summarise(final_logLik = logLik[1]) |>
@@ -89,14 +108,17 @@ best_rep <- traces |>
     pull(rep)
 ```
 
+
 ```{r Plot traces}
 ggplot(
-    filter(traces, quantity != "logLik"),
+    filter(traces_gpu, quantity != "logLik"),
     aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
 ) +
     geom_line(show.legend = FALSE) +
-    facet_wrap(vars(quantity), scales = "free")
+    facet_wrap(vars(quantity), scales = "free") +
+    ggtitle("Python (GPU) Parameter Traces")
 ```
+
 
 ```{r Plot LL traces, eval = FALSE}
 ggplot(
@@ -125,7 +147,19 @@ traces_long <- lapply(seq_along(if.box), function(x) {
     as.data.frame(tr) |>
         mutate(iter = 1:nrow(tr), rep = x)
 }) |>
-    bind_rows()
+    bind_rows() -> traces_long
+
+transform_traces <- function(df) {
+    df |>
+        mutate(
+            value_T = case_when(
+                quantity == "logLik" ~ param_value,
+                quantity %in% c("mu", "kappa", "theta", "xi", "V_0") ~ log(if_else(param_value > 0, param_value, NA_real_)),
+                quantity == "rho" ~ log(if_else(abs(param_value) < 1, (1 + param_value) / (1 - param_value), NA_real_)),
+                TRUE ~ param_value
+            )
+        )
+}
 
 traces_long <- traces_long |>
     pivot_longer(
@@ -134,41 +168,24 @@ traces_long <- traces_long |>
         cols = c(-iter, -rep)
     ) |>
     mutate(language = "R") |>
-    mutate(
-        value_T = case_when(
-            quantity == "logLik" ~ param_value,
-            quantity == "mu" ~ log(param_value),
-            quantity == "kappa" ~ log(param_value),
-            quantity == "theta" ~ log(param_value),
-            quantity == "xi" ~ log(param_value),
-            quantity == "rho" ~ log((1 + param_value) / (1 - param_value)),
-            quantity == "V_0" ~ log(param_value)
-        )
-    )
+    transform_traces()
 
 # Memory management
 rm(if.box)
-gc()
+invisible(gc())
 
 
 traces_pyr <- bind_rows(
-    traces |>
-        mutate(language = "python") |>
-        mutate(
-            value_T = case_when(
-                quantity == "logLik" ~ param_value,
-                quantity == "mu" ~ log(param_value),
-                quantity == "kappa" ~ log(param_value),
-                quantity == "theta" ~ log(param_value),
-                quantity == "xi" ~ log(param_value),
-                quantity == "rho" ~ log((1 + param_value) / (1 - param_value)),
-                quantity == "V_0" ~ log(param_value),
-                TRUE ~ param_value
-            )
-        ),
+    traces_gpu |>
+        mutate(language = "python (GPU)") |>
+        transform_traces(),
+    traces_cpu |>
+        mutate(language = "python (CPU)") |>
+        transform_traces(),
     traces_long
 )
 ```
+
 
 ```{r Compare python and R traces}
 traces_pyr |>
@@ -252,11 +269,18 @@ traces_pyr |>
 
 ## LL comparison
 
-### Python LL summary:
+### Python (GPU) LL summary:
 ```{r}
-print(summary(py$LL_frame$LL))
-head(arrange(py$LL_frame, desc(LL)), 10)
+print(summary(py$LL_frame_gpu$LL))
+head(arrange(py$LL_frame_gpu, desc(LL)), 10)
 ```
+
+### Python (CPU) LL summary:
+```{r}
+print(summary(py$LL_frame_cpu$LL))
+head(arrange(py$LL_frame_cpu, desc(LL)), 10)
+```
+
 
 ### R LL summary:
 ```{r}
@@ -268,15 +292,13 @@ head(arrange(LL_df_R, desc(est)), 10)
 
 ```{r}
 data.frame(
-    python = py$LL_frame$LL,
-    R = LL_df_R$est
+    GPU = py$LL_frame_gpu$LL,
+    CPU = py$LL_frame_cpu$LL
 ) |>
-    filter(python > 11000, R > 11000) |>
-    pivot_longer(
-        names_to = "language",
-        values_to = "LL",
-        cols = c(python, R)
-    ) |>
+    pivot_longer(everything(), names_to = "language", values_to = "LL") |>
+    mutate(language = paste0("python (", language, ")")) |>
+    bind_rows(data.frame(LL = LL_df_R$est, language = "R")) |>
+    filter(LL > 11800) |>
     ggplot(aes(x = LL, fill = language)) +
     geom_density(alpha = 0.5) +
     labs(
@@ -285,6 +307,7 @@ data.frame(
         fill = "Language"
     )
 ```
+
 
 # Compare python and R LL estimates at Weizhe's estimates
 
@@ -316,13 +339,13 @@ data.frame(
     )
 ```
 
-# Weizhe's estimates
+<!-- # Weizhe's estimates
 
 This table compares the parameter estimates reported by Weizhe in his thesis to our best python parameter estimates.
 
 ```{r Weizhe estimates}
 rho_transform <- function(x) {
-    out <- log((1 + x) / (1 - x))
+    out <- log(if_else(abs(x) < 1, (1 + x) / (1 - x), NA_real_))
     return(out)
 }
 
@@ -347,12 +370,8 @@ traces |>
     mutate(
         param_value_T = case_when(
             quantity == "logLik" ~ param_value,
-            quantity == "mu" ~ log(param_value),
-            quantity == "kappa" ~ log(param_value),
-            quantity == "theta" ~ log(param_value),
-            quantity == "xi" ~ log(param_value),
-            quantity == "rho" ~ log((1 + param_value) / (1 - param_value)),
-            quantity == "V_0" ~ log(param_value),
+            quantity %in% c("mu", "kappa", "theta", "xi", "V_0") ~ log(if_else(param_value > 0, param_value, NA_real_)),
+            quantity == "rho" ~ log(if_else(abs(param_value) < 1, (1 + param_value) / (1 - param_value), NA_real_)),
             TRUE ~ param_value
         )
     ) |>
@@ -360,4 +379,4 @@ traces |>
     mutate(difference = param_value_T - Value) |>
     rename(Weizhe_value = Value, python_value = param_value_T) |>
     print()
-```
+``` -->

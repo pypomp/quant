@@ -1,3 +1,11 @@
+"""
+This script runs the performance test for IF2 + train (IFAD) as the only fitting algorithm. The goal is to see how well IFAD can maximize the likelihood, as well as check how fast it runs. This can be compared with the IFAD Dacca script.
+
+This script can use either the GPU or CPU.
+
+The Dacca model has a very fast rproc, but many steps between observations, so this test can help determine if the overhead from interpolation steps is too high.
+"""
+
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "pypomp dacca test (train)"
@@ -18,25 +26,18 @@
 #     sbatch_args: { time: "00:30:00" }
 # --- END SLURM CONFIG ---
 
-"""
-This script runs the performance test for IF2 + train (IFAD) as the only fitting algorithm. The goal is to see how well IFAD can maximize the likelihood, as well as check how fast it runs. This can be compared with the IFAD Dacca script.
-
-This script can use either the GPU or CPU. 
-
-The Dacca model has a very fast rproc, but many steps between observations, so this test can help determine if the overhead from interpolation steps is too high.
-"""
-
 import pickle
+
+import jax
 from prep import (
-    dacca_obj,
-    key,
-    subkey,
-    initial_params_list,
-    RW_SD,
     COOLING_RATE,
     RUN_LEVEL,
+    RW_SD,
+    dacca_obj,
+    initial_params_list,
+    key,
+    subkey,
 )
-import jax
 
 NP_FITR = (2, 500, 1000, 5000)[RUN_LEVEL - 1]
 NFITR = (2, 5, 100, 100)[RUN_LEVEL - 1]
