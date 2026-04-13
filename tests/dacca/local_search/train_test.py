@@ -1,11 +1,3 @@
-"""
-This script runs the performance test for IF2 + train (IFAD) as the only fitting algorithm. The goal is to see how well IFAD can maximize the likelihood, as well as check how fast it runs. This can be compared with the IFAD Dacca script.
-
-This script can use either the GPU or CPU.
-
-The Dacca model has a very fast rproc, but many steps between observations, so this test can help determine if the overhead from interpolation steps is too high.
-"""
-
 # --- SLURM CONFIG ---
 # sbatch_args:
 #   job-name: "pypomp dacca test (train)"
@@ -28,20 +20,15 @@ The Dacca model has a very fast rproc, but many steps between observations, so t
 
 import pickle
 
-import jax
 from prep import (
-    COOLING_RATE,
     RUN_LEVEL,
-    RW_SD,
     dacca_obj,
     initial_params_list,
     key,
-    subkey,
 )
 
 NP_FITR = (2, 500, 1000, 5000)[RUN_LEVEL - 1]
-NFITR = (2, 5, 100, 100)[RUN_LEVEL - 1]
-NTRAIN = (2, 20, 40, 40)[RUN_LEVEL - 1]
+NTRAIN = (2, 20, 40, 100)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 
@@ -60,20 +47,17 @@ eta = {
     **{f"omegas{i + 1}": DEFAULT_ETA for i in range(6)},
 }
 
-# MIF step
-key, subkey = jax.random.split(key)
-dacca_obj.mif(
-    theta=initial_params_list,
-    rw_sd=RW_SD,
-    M=NFITR,
-    a=COOLING_RATE,
-    J=NP_FITR,
-    key=subkey,
-)
-print(dacca_obj.results())
-
 # Train step
-dacca_obj.train(J=NP_FITR, M=NTRAIN, eta=eta, optimizer="Adam", n_monitors=1)
+dacca_obj.train(
+    J=NP_FITR,
+    M=NTRAIN,
+    theta=initial_params_list,
+    eta=eta,
+    optimizer="Adam",
+    n_monitors=1,
+    key=key,
+    eta_cooling=0.05,
+)
 print(dacca_obj.results())
 
 # # PFILTER round 2
