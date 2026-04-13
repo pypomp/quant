@@ -69,6 +69,15 @@ LL_frame_cpu, traces_cpu = process_pkl(cpu_pkl)
 
 # Python results
 
+## Metadata
+
+```{python}
+print("GPU:")
+gpu_pkl.print_metadata()
+print("CPU:")
+cpu_pkl.print_metadata()
+```
+
 ## Execution time
 
 ```{python}
@@ -81,7 +90,7 @@ print(cpu_pkl.time())
 ```{r Make traces frame in R}
 process_traces <- function(tr) {
     tr |>
-        rename(rep = replicate, iter = iteration) |>
+        rename(rep = theta_idx, iter = iteration) |>
         pivot_longer(
             cols = c(-rep, -iter, -logLik, -method),
             names_to = "quantity",

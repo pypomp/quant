@@ -96,7 +96,7 @@ RW_SD = pp.RWSigma(
         "theta": 0.02,
         "xi": 0.02,
         "rho": 0.02,
-        "V_0": 0.01,
+        "V_0": 0.1,
     },
     init_names=["V_0"],
 )
