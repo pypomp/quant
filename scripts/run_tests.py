@@ -275,7 +275,7 @@ def find_tests(target_path):
     if target_path.is_file():
         test_files.append(str(target_path))
     elif target_path.is_dir():
-        for ext in ["*.py", "*.R", "*.r"]:
+        for ext in ["*.py", "*.R", "*.r", "*.qmd"]:
             for file in target_path.rglob(ext):
                 with open(file, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read(2000)
