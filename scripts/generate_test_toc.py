@@ -46,7 +46,7 @@ def main():
         dirs[:] = [d for d in dirs if d not in all_exclude and not d.startswith(".")]
 
         for file in files:
-            if file == "report.html":
+            if file in ("report.html", "test.html"):
                 path = Path(root) / file
                 if is_ignored(path):
                     continue

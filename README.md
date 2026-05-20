@@ -10,13 +10,9 @@ Some of them are of an exploratory nature, such as code profiling investigations
 The quant tests also provide additional examples of pypomp, focused on technical issues that extend the
  simpler examples in [pypomp:tutorials](https://pypomp.github.io/tutorials)
 
-## Existing tests
+## Existing Quantitative Tests
 
-* [Testing log-likelihood calculations on a linear Gaussian model](pfilter_LG/report.html). This is a test of correctness of pfilter and MOP(alpha) against a Kalman filter.
-
-* Other quant tests are available in [draft form](https://github.com/pypomp/quant).
-These test timing, memory, and iterated filtering for the linear Gaussian model.
-Also, a Dacca cholera model and a daphnia mesocosm model.
+Primary quantitative test reports are compiled and indexed in the central **[Test Index Dashboard](TESTS_INDEX.html)** (Research Library).
 
 ## Proposed structure of the tests
 

@@ -1,6 +1,5 @@
 ---
 title: "Random Number Generators Benchmark & Comparison"
-author: "Aaron"
 date: now
 jupyter: python3
 embed-resources: true
