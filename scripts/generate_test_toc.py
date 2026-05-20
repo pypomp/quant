@@ -69,76 +69,45 @@ def main():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quant Portfolio</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
     <style>
-        :root {{
-            --bg: #0f172a;
-            --card: #1e293b;
-            --primary: #6366f1;
-            --hover: #242f44;
-            --text: #f1f5f9;
-            --muted: #94a3b8;
-        }}
-        * {{ margin:0; padding:0; box-sizing:border-box; }}
         body {{
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            padding: 5rem 2rem;
-            min-height: 100vh;
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.5;
         }}
-        .container {{ max-width: 1100px; margin: 0 auto; }}
-        header {{ margin-bottom: 4rem; border-left: 5px solid var(--primary); padding-left: 2rem; }}
-        h1 {{ font-family: 'Outfit', sans-serif; font-size: 3.5rem; letter-spacing: -0.04em; margin-bottom: 0.5rem; }}
-        .subtitle {{ color: var(--muted); font-size: 1.25rem; font-weight: 300; }}
-        .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; }}
-        .card {{
-            background: var(--card);
-            border-radius: 20px;
-            padding: 2.5rem;
-            border: 1px solid #334155;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: block; box-shadow: 0 4px 6px -1px #000;
+        ul {{
+            padding-left: 1.5rem;
         }}
-        .card:hover {{ transform: translateY(-10px); border-color: var(--primary); background: var(--hover); box-shadow: 0 25px 30px -10px #000; }}
-        .tag {{ color: var(--primary); font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.1em; display: block; margin-bottom: 1.5rem; }}
-        h2 {{ font-family: 'Outfit', sans-serif; font-size: 1.75rem; margin-bottom: 1.5rem; line-height: 1.1; }}
-        .cta {{ display: flex; align-items: center; font-weight: 600; color: #818cf8; font-size: 0.95rem; }}
-        .cta svg {{ width: 18px; height: 18px; margin-left: 0.5rem; transition: transform 0.2s; }}
-        .card:hover .cta svg {{ transform: translateX(6px); }}
+        li {{
+            margin-bottom: 0.75rem;
+        }}
+        .tag {{
+            font-size: 0.85em;
+            color: #666;
+            margin-left: 0.5rem;
+        }}
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Research Library</h1>
-            <p class="subtitle">Research output across the quant repository.</p>
-        </header>
-
-        <main class="grid">
-            {
+    <h1>Research Library</h1>
+    <p>Research output across the quant repository.</p>
+    <hr>
+    <ul>
+        {
         "".join(
             [
                 f'''
-            <a href="{r['path']}" class="card">
-                <span class="tag">{r['folder']}</span>
-                <h2>{r['title']}</h2>
-                <div class="cta">
-                    Open Report
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-                </div>
-            </a>
-            '''
+        <li>
+            <a href="{r['path']}">{r['title']}</a>
+            <span class="tag">({r['folder']})</span>
+        </li>'''
                 for r in reports
             ]
         )
     }
-        </main>
-    </div>
+    </ul>
 </body>
 </html>"""
 
