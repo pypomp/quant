@@ -1,0 +1,57 @@
+name: Deploy Docs and LFS Reports
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps:deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true # Force the runner to fetch the actual HTML files from LFS, not just the LFS pointers
+
+      - name: Prepare site files
+        run: |
+          mkdir -p _site
+          find . -name "*.html" \
+            -not -path "./_site/*" \
+            -not -path "./.git/*" \
+            -not -path "./.github/*" \
+            -not -path "./.venv/*" \
+            -not -path "./.renv/*" \
+            -exec sh -c '
+            for file; do
+              relpath="${file#./}"
+              dir=$(dirname "$relpath")
+              mkdir -p "_site/$dir"
+              cp "$file" "_site/$relpath"
+            done
+          ' _ {} +
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
