@@ -1,0 +1,44 @@
+{
+  "stage": "all",
+  "outdir": "/home/hkunyang/bif_private/code/results/sir_bif_pmcmc",
+  "run_name": "sir-T100-fourparam-gpu-J1000-20260605",
+  "T": 100,
+  "seed": 20260604,
+  "active_params": [
+    "gamma",
+    "beta1",
+    "beta2",
+    "beta3"
+  ],
+  "J": 1000,
+  "J_grid": [
+    1000
+  ],
+  "pilot_reps": 10,
+  "var_target": 1.0,
+  "pmcmc_chains": 4,
+  "pmcmc_nmcmc_sweep": 1000,
+  "pmcmc_nmcmc_final": 5000,
+  "pmcmc_final_scale": null,
+  "proposal_scales": [
+    2.0
+  ],
+  "proposal_gamma_sd": 0.35,
+  "proposal_beta1_sd": 6.0,
+  "proposal_beta2_sd": 7.2,
+  "proposal_beta3_sd": 4.8,
+  "proposal_rel_sd": 0.015,
+  "burn_frac": 0.5,
+  "bif_J": 1000,
+  "bif_starts": 8,
+  "bif_M_grid": [
+    100,
+    150
+  ],
+  "bif_perturb_grid": [
+    0.02,
+    0.03
+  ],
+  "start_log_sd": 0.02,
+  "smoke": false
+}

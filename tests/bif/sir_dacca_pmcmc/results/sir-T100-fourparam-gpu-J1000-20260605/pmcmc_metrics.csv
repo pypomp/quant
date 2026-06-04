@@ -1,0 +1,3 @@
+method,T,J,Nmcmc,chains,scale,accept_mean,accept_min,accept_max,reject_mean,elapsed_sec,trace_path,msjd,iat_gamma,iat_beta1,iat_beta2,iat_beta3
+pmcmc_sweep,100,1000,1000,4,2.0,0.27975,0.257,0.329,0.7202500000000001,106.75666205398738,/home/hkunyang/bif_private/code/results/sir_bif_pmcmc/sir-T100-fourparam-gpu-J1000-20260605/pmcmc_sweep_scale_2_trace.csv,89.9374371613075,122.91690042123426,84.21601670042705,98.98265092715349,122.6304553949281
+pmcmc_final,100,1000,5000,4,2.0,0.27575,0.2674,0.285,0.7242500000000001,511.4728518689517,/home/hkunyang/bif_private/code/results/sir_bif_pmcmc/sir-T100-fourparam-gpu-J1000-20260605/pmcmc_final_scale_2_trace.csv,86.67293132868059,346.002253208713,219.34462082080128,303.8766440380643,344.0308990646028

@@ -1,0 +1,5 @@
+method,T,J,M,starts,weighted_samples,perturb,ess,ess_frac,elapsed_sec,sample_path
+bif,100,1000,100,8,8000,0.02,1312.4261474609375,0.1640532684326172,11.342512987030204,/home/hkunyang/bif_private/code/results/sir_bif_pmcmc/sir-T100-fourparam-gpu-J1000-20260605/bif_M_100_perturb_0.02_samples.csv
+bif,100,1000,100,8,8000,0.03,2412.265869140625,0.3015332336425781,7.252795987995341,/home/hkunyang/bif_private/code/results/sir_bif_pmcmc/sir-T100-fourparam-gpu-J1000-20260605/bif_M_100_perturb_0.03_samples.csv
+bif,100,1000,150,8,8000,0.02,1934.6463623046875,0.24183079528808593,13.966198991052806,/home/hkunyang/bif_private/code/results/sir_bif_pmcmc/sir-T100-fourparam-gpu-J1000-20260605/bif_M_150_perturb_0.02_samples.csv
+bif,100,1000,150,8,8000,0.03,1203.6944580078125,0.15046180725097658,10.846690854988992,/home/hkunyang/bif_private/code/results/sir_bif_pmcmc/sir-T100-fourparam-gpu-J1000-20260605/bif_M_150_perturb_0.03_samples.csv

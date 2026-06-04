@@ -1,0 +1,8 @@
+quantity,value
+PMCMC config,"J=1000, Nmcmc=5000, scale=6, accept=0.190"
+BIF config,"J=1000, M=150, perturb=0.1, ESS fraction=0.601"
+Runtime,PMCMC 156.7s; BIF selected 5.4s; PMCMC total 220.5s; BIF grid total 13.4s; selected speedup 28.8x; tuning-included speedup 16.4x
+gamma posterior mean,PMCMC 25.09; BIF 24.32
+m posterior mean,PMCMC 0.1162; BIF 0.1109
+epsilon posterior mean,PMCMC 22.36; BIF 19.94
+sigma posterior mean,PMCMC 2.814; BIF 2.821
