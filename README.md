@@ -1,15 +1,8 @@
 # quant: Quantitative tests of pypomp
 
-We are concerned with accuracy tests to make sure that the code gives correct answers (up to small Monte Carlo error) in situations where this is knowable.
-We are also concerned with performance benchmark tests. 
-This can involve measuring time, memory requirement, or iterations to convergence for a maximization algorithm.
-Put together, we call these __quantitative tests__, or simply __quant tests__, to distinguish them from unit tests.
-Our unit tests, in [pypomp:pypomp/test](https://github.com/pypomp/pypomp/tree/main/test), are quick tests designed to check that the code is not broken, and to ensure we are told if numerical results change.
-The quant tests sit in their own repository, since they are not necessarily run often.
-Some of them are of an exploratory nature, such as code profiling investigations.
+These __quantitative tests__, or simply __quant tests__, are designed to assess the accuracy and performance of pypomp for problems existing on a scale too large to be run on a laptop within the unit tests in [pypomp:pypomp/test](https://github.com/pypomp/pypomp/tree/main/test). 
 
-The quant tests also provide additional examples of pypomp, focused on technical issues that extend the
- simpler examples in [pypomp:tutorials](https://pypomp.github.io/tutorials)
+The quant tests also provide additional examples of pypomp, focused on technical issues that extend the simpler examples in [pypomp:tutorials](https://pypomp.github.io/tutorials)
 
 ## Existing Quantitative Tests
 
