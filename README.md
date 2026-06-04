@@ -22,8 +22,11 @@ Below is a list of quantitative test reports available in this repository:
 * **[Continuous Panel Measles Report](tests/panel_measles/continuous/report.html)** (`tests/panel_measles/continuous`): Evaluates multi-unit panel model fitting comparing IF2 and IFAD on a continuous panel measles model.
 * **[Panel Measles Report](tests/panel_measles/performance/report.html)** (`tests/panel_measles/performance`): Benchmarks panel parameter estimation via IF2 on a panel measles dataset.
 
-### 4. Random Number Generators
+### 4. Differentiated Process Off-Parameter Filtering
+* **[DPOP London Measles Benchmark](tests/dpop/london_measles/report.html)** (`tests/dpop/london_measles`): Compares DPOP training against an IF2 baseline on the single-unit London measles model, including likelihood distribution, elapsed-time trace, and runtime summaries.
+
+### 5. Random Number Generators
 * **[Random Number Generators Benchmark & Comparison](tests/samplers/test.html)** (`tests/samplers`): Benchmarks the execution speed and validates the statistical accuracy of `pypomp`'s fast approximate inverse CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
 
-### 5. SPX (S&P 500) Model
+### 6. SPX (S&P 500) Model
 * **[SPX Report](tests/spx/report.html)** (`tests/spx`): Compares parameter estimation traces and log-likelihood estimates on the SPX index dataset using `pypomp` (CPU/GPU) and R's `pomp`.

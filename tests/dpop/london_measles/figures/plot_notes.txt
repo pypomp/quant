@@ -1,0 +1,8 @@
+Raincloud plot notes
+Visualization threshold: plotLogLik >= -3825.0
+Filtered rows: 10
+
+Filtered by model:
+DPOP-80+80: 5
+DPOP-175+175: 4
+IF2-650: 1
