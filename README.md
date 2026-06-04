@@ -1,7 +1,8 @@
 # quant: Quantitative tests of pypomp
 
 We are concerned with accuracy tests to make sure that the code gives correct answers (up to small Monte Carlo error) in situations where this is knowable.
-We are also concerned with performance benchmark tests. This can involve measuring time, memory requirement, or iterations to convergence for a maximization algorithm.
+We are also concerned with performance benchmark tests. 
+This can involve measuring time, memory requirement, or iterations to convergence for a maximization algorithm.
 Put together, we call these __quantitative tests__, or simply __quant tests__, to distinguish them from unit tests.
 Our unit tests, in [pypomp:pypomp/test](https://github.com/pypomp/pypomp/tree/main/test), are quick tests designed to check that the code is not broken, and to ensure we are told if numerical results change.
 The quant tests sit in their own repository, since they are not necessarily run often.
@@ -12,62 +13,24 @@ The quant tests also provide additional examples of pypomp, focused on technical
 
 ## Existing Quantitative Tests
 
-Primary quantitative test reports are compiled and indexed in the central **[Test Index Dashboard](TESTS_INDEX.html)** (Research Library).
+Below is a list of quantitative test reports available in this repository:
 
-## Proposed structure of the tests
+### 1. Dacca Cholera Model
+* **[Dacca Report (Local Search)](tests/dacca/local_search/report.html)** (`tests/dacca/local_search`): Compares Iterated Filtering (IF2 on GPU) and Iterated Filtering with Automatic Differentiation (IFAD/train) on a local parameter search.
+* **[Dacca Report](tests/dacca/performance/report.html)** (`tests/dacca/performance`): Analyzes the performance, runtime, and parameter convergence of IF2 versus IFAD for the Dacca cholera model.
 
-__These are aspirational suggestions rather than requirements. In practice, we post the best available quant tests whether or not they conform to this structure.__
+### 2. Measles Model
+* **[LogLik Comparison: Pypomp vs R](tests/measles/R_comparison/report.html)** (`tests/measles/R_comparison`): Verifies log-likelihood evaluation accuracy by comparing `pypomp` (both exact and approximate implementations) against R's `pomp` package.
+* **[Parameter Comparison: Pypomp vs R](tests/measles/R_comparison/parameter_comparison/report.html)** (`tests/measles/R_comparison/parameter_comparison`): Compares the parameter estimates obtained via `pypomp` versus R's `pomp`.
+* **[Continuous Measles Report](tests/measles/continuous/report.html)** (`tests/measles/continuous`): Compares parameter and log-likelihood traces, densities, and runtimes of IF2 and IFAD on a continuous measles model.
+* **[Measles Report](tests/measles/performance/report.html)** (`tests/measles/performance`): Benchmarks parameter estimation via Iterated Filtering (IF2) on a discrete measles model.
 
-We propose many different short tests, each of which can be run independently.
-Each test produces an html report.
-An index links these results.
-At a later date, some of these tests could be selected for a tutorial or a software announcement publication.
+### 3. Panel Measles Model (Multi-Unit / Spatiotemporal)
+* **[Continuous Panel Measles Report](tests/panel_measles/continuous/report.html)** (`tests/panel_measles/continuous`): Evaluates multi-unit panel model fitting comparing IF2 and IFAD on a continuous panel measles model.
+* **[Panel Measles Report](tests/panel_measles/performance/report.html)** (`tests/panel_measles/performance`): Benchmarks spatiotemporal/panel parameter estimation via IF2 on a panel measles dataset.
 
-Each test has its own directory, within which we have a standard file structure. We don't have to follow this exactly. For example, it may be helpful to include R code (to compare against R-pomp), or it may make sense to have various py code files, some of which get run on greatlakes and others on a laptop.
+### 4. Random Number Generators (RNG)
+* **[Random Number Generators Benchmark & Comparison](tests/samplers/test.html)** (`tests/samplers`): Benchmarks the execution speed and validates the statistical accuracy of `pypomp`'s fast approximate inverse CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
 
-* report.qmd. A report presenting and discussing the results pulled in from the results directory. qmd is currently the preferred format, since it plays nicely with git and facilitates cross-testing against [R-pomp](https://kingaa.github.io/pomp/). report.ipynb is also acceptable.
-
-* There may be other qmd or ipynb files, for exploratory or supplementary analysis, but `report.qmd` should be the main one. Supplementary analysis may be less frequently updated for new pypomp versions.
-
-* code.py. The test code, which can be run on greatlakes, or wherever
-
-* code.sbat. A slurm batch file for running code.py on greatlakes
-
-* results. A directory with saved results from code.py
-
-* report.html. The rendering of report.ipynb
-
-* Makefile. To help automate the building of report.html
-
-* README. A brief overview of the test
-
-Each test should report on the following, if this is feasible:
-
-1. The pypomp/Python/Jax versions used
-
-2. The run time for each calculation. Can we split this into compilation vs calculation? We'd need a special facility for this since JIT carries out compilation as needed. It might be useful to get GPU vs CPU run time for all the tests, since we may start to see patterns in efficiency of GPU usage. Comparing with the R-pomp time across these tests would also help to discover where we are quicker or slower, and give ideas for areas that can use more code optimization. Some code profiling may be useful to see where the code bottlenecks are.
-
-3. The memory requirement. I'm currently sure how to obtain this. Perhaps only a specific set of tests could investigat this, but probably once we've figured out how to do it, we can easily do it for all tests. For R-pomp, calculations have generally been CPU-limited, but the AD requires storing a potentially large graph.
-
-4. Numerical results
-
-## Some proposed tests
-
-Much of this is similar to tests that Kevin already has in his ipynb files. 
-
-**LG1**. Compare pfilter on the LG model with a Kalman filter. For this, it would be ideal to have a basic KF in pypomp, similar to the one in pomp. As a stop-gap, one could use the R-pomp kalman function.
-
-**LG2**. pfilter at various values of N and J. Check that the scaling is as expected. 
-
-**LG3**. mop-alpha at the same values of N and J. Check that the scaling is as expected. 
-
-**LG4**. IFAD. 
-
-**Dacca1.** Compare pfilter on the Dacca cholera model with the R-pomp version, with a fixed set of parameters, presumably the same that are used in the dacca R-pomp object.
-
-**Dacca2.** Test IFAD using a pypomp version of the code used for the IFAD arXiv paper.
-
-
--------------------
-
-
+### 5. SPX (S&P 500) Model
+* **[SPX Report](tests/spx/report.html)** (`tests/spx`): Compares parameter estimation traces and log-likelihood estimates on the SPX index dataset using `pypomp` (CPU/GPU) and R's `pomp`.
