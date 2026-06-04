@@ -214,6 +214,33 @@ through the Euler process-ratio correction and the `logw` process-weight state.
 Future benchmarks should separate algorithmic performance from implementation
 cost by including a per-iteration runtime and memory profile.
 
+## Process-score coverage
+
+The current `001d` London measles implementation should be interpreted as a
+benchmark of the DPOP training machinery rather than a final accounting of every
+process-density contribution in the model.  The `logw` state used by
+`dpop_train` contains the Euler multinomial transition contribution along the
+simulated epidemic path.  This is the main DPOP-specific process-ratio term and
+is the part that distinguishes these runs from the measurement-only IFAD/DMOP
+style correction.
+
+There are several model components whose process-score contribution is not yet
+fully represented in this benchmark.  The Poisson birth mechanism is tied to
+`cohort`, so an incomplete birth log probability means the DPOP process score
+for `cohort` is only partial.  The environmental gamma noise affects
+`sigmaSE`, and its density contribution is also not fully represented in the
+current `logw` accumulator.  Finally, the initial-value parameters
+`S_0`, `E_0`, `I_0`, and `R_0` are sampled through the initial-state
+construction, but this benchmark does not include an explicit initial-state
+density or initial-state ratio in the DPOP objective.
+
+For this reason, the likelihood comparisons above are valid comparisons of the
+completed runs, but parameter-level interpretation for `cohort`, `sigmaSE`, and
+the initial-value parameters should be conservative.  A follow-up benchmark
+should add the missing birth, environmental-noise, and initial-state
+contributions to `logw`, then repeat the same IF2/DPOP comparison to isolate
+the effect of a fully specified process score.
+
 # Source Files
 
 The experiment scripts in this directory can be submitted with
