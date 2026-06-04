@@ -1,4 +1,12 @@
-# quant: Quantitative tests of pypomp
+---
+title: "quant: Quantitative tests of pypomp"
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    embed-resources: true
+---
 
 These __quantitative tests__, or simply __quant tests__, are designed to assess the accuracy and performance of pypomp for problems existing on a scale too large to be run on a laptop within the unit tests in [pypomp:pypomp/test](https://github.com/pypomp/pypomp/tree/main/test). 
 
@@ -18,11 +26,11 @@ Below is a list of quantitative test reports available in this repository:
 * **[Continuous Measles Report](tests/measles/continuous/report.html)** (`tests/measles/continuous`): Compares parameter and log-likelihood traces, densities, and runtimes of IF2 and IFAD on a continuous measles model.
 * **[Measles Report](tests/measles/performance/report.html)** (`tests/measles/performance`): Benchmarks parameter estimation via Iterated Filtering (IF2) on a discrete measles model.
 
-### 3. Panel Measles Model (Multi-Unit / Spatiotemporal)
+### 3. Panel Measles Model
 * **[Continuous Panel Measles Report](tests/panel_measles/continuous/report.html)** (`tests/panel_measles/continuous`): Evaluates multi-unit panel model fitting comparing IF2 and IFAD on a continuous panel measles model.
 * **[Panel Measles Report](tests/panel_measles/performance/report.html)** (`tests/panel_measles/performance`): Benchmarks spatiotemporal/panel parameter estimation via IF2 on a panel measles dataset.
 
-### 4. Random Number Generators (RNG)
+### 4. Random Number Generators
 * **[Random Number Generators Benchmark & Comparison](tests/samplers/test.html)** (`tests/samplers`): Benchmarks the execution speed and validates the statistical accuracy of `pypomp`'s fast approximate inverse CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
 
 ### 5. SPX (S&P 500) Model

@@ -26,6 +26,12 @@ jobs:
         with:
           lfs: true # Force the runner to fetch the actual HTML files from LFS, not just the LFS pointers
 
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Compile README to index.html using Quarto
+        run: quarto render README.md --to html --output index.html
+
       - name: Prepare site files
         run: |
           mkdir -p _site
