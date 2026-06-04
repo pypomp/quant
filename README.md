@@ -25,8 +25,11 @@ Below is a list of quantitative test reports available in this repository:
 ### 4. Differentiated Process Off-Parameter Filtering
 * **[DPOP London Measles Benchmark](tests/dpop/london_measles/report.html)** (`tests/dpop/london_measles`): Compares DPOP training against an IF2 baseline on the single-unit London measles model, including likelihood distribution, elapsed-time trace, and runtime summaries.
 
-### 5. Random Number Generators
+### 5. Bayesian Iterated Filtering
+* **[BIF versus PMCMC Benchmarks](tests/bif/sir_dacca_pmcmc/report.html)** (`tests/bif/sir_dacca_pmcmc`): Compares BIF against PMCMC on a four-parameter SIR model and a four-parameter, 100-observation Dacca cholera benchmark, including runtime, posterior marginal, interval, and PMCMC diagnostic summaries.
+
+### 6. Random Number Generators
 * **[Random Number Generators Benchmark & Comparison](tests/samplers/test.html)** (`tests/samplers`): Benchmarks the execution speed and validates the statistical accuracy of `pypomp`'s fast approximate inverse CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
 
-### 6. SPX (S&P 500) Model
+### 7. SPX (S&P 500) Model
 * **[SPX Report](tests/spx/report.html)** (`tests/spx`): Compares parameter estimation traces and log-likelihood estimates on the SPX index dataset using `pypomp` (CPU/GPU) and R's `pomp`.
