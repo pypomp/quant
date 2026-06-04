@@ -30,7 +30,7 @@ jobs:
         uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Compile README to index.html using Quarto
-        run: quarto render README.md --to html --output index.html
+        run: quarto render README.md --to html --output index.html -M theme:cosmo -M toc:false -M embed-resources:true
 
       - name: Prepare site files
         run: |
