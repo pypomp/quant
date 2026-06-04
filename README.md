@@ -1,3 +1,5 @@
+# quant: Quantitative tests of pypomp
+
 These __quantitative tests__, or simply __quant tests__, are designed to assess the accuracy and performance of pypomp for problems existing on a scale too large to be run on a laptop within the unit tests in [pypomp:pypomp/test](https://github.com/pypomp/pypomp/tree/main/test). 
 
 The quant tests also provide additional examples of pypomp, focused on technical issues that extend the simpler examples in [pypomp:tutorials](https://pypomp.github.io/tutorials)
