@@ -53,9 +53,9 @@ This script tests the performance of the panel POMP implementation, running mif 
 #   2:
 #     sbatch_args: { time: "01:00:00" }
 #   3:
-#     sbatch_args: { time: "12:00:00" }
+#     sbatch_args: { time: "01:30:00" }
 #   4:
-#     sbatch_args: { time: "12:00:00" }
+#     sbatch_args: { time: "01:30:00" }
 # --- END SLURM CONFIG ---
 
 import importlib.util
@@ -67,7 +67,6 @@ import jax
 import numpy as np
 import pypomp as pp
 import session_info
-import utils
 
 session_info.show(dependencies=True)
 
@@ -151,7 +150,7 @@ initial_params = pp.PanelPomp.sample_params(
 # ----- Create pomp objects -----
 
 pomp_dict = {
-    unit: pp.UKMeasles.Pomp(
+    unit: pp.models.UKMeasles.Pomp(
         unit=[unit],
         theta=dummy_initial_params_list,
         model="001b",
@@ -175,10 +174,10 @@ panel_measles_obj.mif(
 
 # ----- PFILTER round 1 -----
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
-# panel_measles_obj.prune(n=1, refill=True)
+panel_measles_obj.prune(n=1, refill=True)
 
 # ---- MIF round 2 -----
-RW_SD.cool(0.5)
+RW_SD.cool(0.25)
 for param in SHARED_PARAMS:
     RW_SD[param] = 0.0
 panel_measles_obj.mif(
@@ -199,7 +198,8 @@ panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 
 # ---- Save results ----
 
-out_dir = "u" + str(N_UNITS)
+out_dir = "u" + str(N_UNITS) + "_results"
+os.makedirs(out_dir, exist_ok=True)
 
 with open(f"{out_dir}/panel_measles_results.pkl", "wb") as f:
     pickle.dump(panel_measles_obj, f)
@@ -213,20 +213,3 @@ print(panel_measles_obj.time())
 
 execution_time = time.time() - start_time
 print(f"Total execution time: {execution_time:.2f} seconds")
-
-# ---- Save performance history ----
-run_config = {
-    "test": "panel_measles",
-    "N_UNITS": N_UNITS,
-    "RUN_LEVEL": RUN_LEVEL,
-    "partition": os.environ.get("SLURM_JOB_PARTITION", "local"),
-}
-
-metrics = utils.get_pomp_metrics(
-    panel_measles_obj,
-    execution_time=execution_time,
-    run_config=run_config,
-    history_index=-2,
-)
-utils.append_history(metrics, f"{out_dir}/performance_history.jsonl")
-print(f"Performance metrics saved to {out_dir}/performance_history.jsonl")
