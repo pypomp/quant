@@ -1,4 +1,4 @@
-.PHONY: install_requirements install_pypi install_git install_git_latest
+.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all
 
 install_pypi: install_requirements
 	pip install pypomp
@@ -14,4 +14,16 @@ install_requirements: .venv
 
 .venv:
 	python3.12 -m venv .venv
+
+list:
+	.venv/bin/python scripts/run_tests.py list tests
+
+test-interactive:
+	.venv/bin/python scripts/run_tests.py run tests --interactive
+
+test-high:
+	.venv/bin/python scripts/run_tests.py run tests --importance high
+
+test-all:
+	.venv/bin/python scripts/run_tests.py run tests
 

@@ -53,9 +53,9 @@ This script tests the performance of the panel POMP implementation, running mif 
 #   2:
 #     sbatch_args: { time: "01:00:00" }
 #   3:
-#     sbatch_args: { time: "12:00:00" }
+#     sbatch_args: { time: "01:30:00" }
 #   4:
-#     sbatch_args: { time: "12:00:00" }
+#     sbatch_args: { time: "01:30:00" }
 # --- END SLURM CONFIG ---
 
 import importlib.util
@@ -156,7 +156,7 @@ initial_params = pp.PanelPomp.sample_params(
 # ----- Create pomp objects -----
 
 pomp_dict = {
-    unit: pp.UKMeasles.Pomp(
+    unit: pp.models.UKMeasles.Pomp(
         unit=[unit],
         theta=dummy_initial_params_list,
         model="001b",
@@ -189,6 +189,7 @@ panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 # ---- Save results ----
 
 out_dir = "u" + str(N_UNITS) + "_results"
+os.makedirs(out_dir, exist_ok=True)
 
 with open(f"{out_dir}/panel_measles_results.pkl", "wb") as f:
     pickle.dump(panel_measles_obj, f)

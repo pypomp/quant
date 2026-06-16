@@ -4,6 +4,9 @@
 #'script.
 
 # --- SLURM CONFIG ---
+# importance: low
+# description: "Speed, parameter, and likelihood estimation benchmark on S&P 500 index (R-pomp baseline)"
+# tags: [performance, spx, R-pomp, CPU]
 # sbatch_args:
 #   job-name: "SPX test (R)"
 #   partition: standard
@@ -13,6 +16,7 @@
 #   mem-per-cpu: 2GB
 #   output: "R_results/logs/slurm-%j.out"
 #   account: "ionides0"
+#   time: "03:00:00"
 # setup: |
 #   module load R/4.4.0
 # --- END SLURM CONFIG ---

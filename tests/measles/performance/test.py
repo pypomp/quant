@@ -1,4 +1,7 @@
 # --- SLURM CONFIG ---
+# importance: high
+# description: "Benchmarks parameter estimation via IF2 on discrete measles model"
+# tags: [performance, measles, gpu, cpu]
 # jobs:
 #   gpu:
 #     sbatch_args:
@@ -24,7 +27,6 @@
 
 import os
 import sys
-import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -38,12 +40,11 @@ if USE_CPU:
             + f" --xla_force_host_platform_device_count={os.environ['SLURM_CPUS_PER_TASK']}"
         )
 
-import jax
-import pickle
-import jax.numpy as jnp
-import pypomp as pp
-import numpy as np
-import time
+import pickle  # noqa
+
+import jax  # noqa
+import numpy as np  # noqa
+import pypomp as pp  # noqa
 
 print(jax.devices())
 
@@ -80,8 +81,7 @@ RW_SD = pp.RWSigma(
         "R_0": DEFAULT_IVP_SD,
     },
     init_names=["S_0", "E_0", "I_0", "R_0"],
-)
-COOLING_RATE = 0.5
+).geometric_cooling(a=0.5)
 
 measles_box = {
     "R0": (10.0, 60.0),
@@ -102,7 +102,7 @@ measles_box = {
 key, subkey = jax.random.split(key)
 initial_params_list = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
 
-measles_obj = pp.UKMeasles.Pomp(
+measles_obj = pp.models.UKMeasles.Pomp(
     unit=["Halesworth"],
     theta=initial_params_list,
     model="001b",
@@ -114,7 +114,6 @@ key, subkey = jax.random.split(key)
 measles_obj.mif(
     rw_sd=RW_SD,
     M=NFITR,
-    a=COOLING_RATE,
     J=NP_FITR,
     key=subkey,
 )

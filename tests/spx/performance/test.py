@@ -12,6 +12,9 @@ Particular points of comparison:
 """
 
 # --- SLURM CONFIG ---
+# importance: high
+# description: "Speed, parameter, and likelihood estimation benchmark on S&P 500 data (CPU & GPU)"
+# tags: [performance, spx, gpu, cpu]
 # jobs:
 #   gpu:
 #     sbatch_args:
@@ -99,7 +102,7 @@ RW_SD = pp.RWSigma(
         "V_0": 0.1,
     },
     init_names=["V_0"],
-)
+).geometric_cooling(a=COOLING_RATE)
 
 sp500_box = {
     "mu": [1e-6, 1e-4],
@@ -114,26 +117,21 @@ key, subkey = jax.random.split(key)
 initial_params_list = pp.Pomp.sample_params(sp500_box, NREPS_FITR, key=subkey)
 
 # implement Feller's condition
-for params in initial_params_list:
+initial_params_dicts = initial_params_list.params()
+for params in initial_params_dicts:
     params["xi"] = float(
         np.random.uniform(
             low=0,
             high=np.sqrt(params["kappa"] * params["theta"] * 2),
         )
     )
+initial_params_list.set_params(initial_params_dicts)
 
-spx_obj = pp.spx()
+spx_obj = pp.models.spx()
 
 # ----- MIF and PFILTER -----
 key, subkey = jax.random.split(key)
-spx_obj.mif(
-    theta=initial_params_list,
-    rw_sd=RW_SD,
-    M=NFITR,
-    a=COOLING_RATE,
-    J=NP_FITR,
-    key=subkey,
-)
+spx_obj.mif(theta=initial_params_list, rw_sd=RW_SD, M=NFITR, J=NP_FITR, key=subkey)
 print(spx_obj.results())
 spx_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 print(spx_obj.results())

@@ -2,6 +2,7 @@
 This script tests the performance of the panel POMP implementation, running mif and pfilter on models with a mix of shared and unit-specific parameters.
 """
 # --- SLURM CONFIG ---
+# importance: high
 # jobs:
 #   u20:
 #     sbatch_args:
@@ -11,7 +12,6 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       cpus-per-gpu: 1
 #       mem: 6GB
 #       output: "u20_results/logs/slurm-%j.out"
-#       account: "ionides0"
 #     env:
 #       N_UNITS: "20"
 #   u100:
@@ -22,7 +22,6 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       cpus-per-gpu: 1
 #       mem: 6GB
 #       output: "u100_results/logs/slurm-%j.out"
-#       account: "ionides0"
 #     env:
 #       N_UNITS: "100"
 #   u200:
@@ -33,7 +32,6 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       cpus-per-gpu: 1
 #       mem: 12GB
 #       output: "u200_results/logs/slurm-%j.out"
-#       account: "ionides0"
 #     env:
 #       N_UNITS: "200"
 #   u800:
@@ -44,7 +42,6 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       cpus-per-gpu: 1
 #       mem: 30GB
 #       output: "u800_results/logs/slurm-%j.out"
-#       account: "ionides0"
 #     env:
 #       N_UNITS: "800"
 # run_levels:
@@ -53,9 +50,9 @@ This script tests the performance of the panel POMP implementation, running mif 
 #   2:
 #     sbatch_args: { time: "01:00:00" }
 #   3:
-#     sbatch_args: { time: "01:30:00" }
+#     sbatch_args: { time: "01:00:00" }
 #   4:
-#     sbatch_args: { time: "01:30:00" }
+#     sbatch_args: { time: "02:30:00" }
 # --- END SLURM CONFIG ---
 
 import importlib.util
@@ -80,7 +77,7 @@ RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 
 NP_FITR = (2, 500, 5000, 10000)[RUN_LEVEL - 1]
 NFITR = (2, 10, 100, 100)[RUN_LEVEL - 1]
-NREPS_FITR = (2, 3, 36, 12)[RUN_LEVEL - 1]
+NREPS_FITR = (2, 3, 36, 36)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 5000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 36, 36)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
@@ -97,7 +94,7 @@ CHOSEN_UNITS = units.UNITS[:N_UNITS]
 
 DEFAULT_SD = 0.02
 DEFAULT_IVP_SD = DEFAULT_SD * 12
-RW_SD = pp.RWSigma(
+rw_sd = pp.RWSigma(
     sigmas={
         "R0": DEFAULT_SD * 0.25,
         "sigma": DEFAULT_SD * 0.25,
@@ -114,8 +111,7 @@ RW_SD = pp.RWSigma(
         "R_0": DEFAULT_IVP_SD,
     },
     init_names=["S_0", "E_0", "I_0", "R_0"],
-)
-COOLING_RATE = 0.5
+).geometric_cooling(0.5)
 
 measles_box = {
     "R0": (10.0, 60.0),
@@ -168,25 +164,17 @@ start_time = time.time()
 
 # ----- MIF round 1 -----
 key, subkey = jax.random.split(key)
-panel_measles_obj.mif(
-    rw_sd=RW_SD, M=NFITR, a=COOLING_RATE, J=NP_FITR, key=subkey, vmap_chunk_size=16
-)
+panel_measles_obj.mif(rw_sd=rw_sd, M=NFITR, J=NP_FITR, key=subkey)
 
 # ----- PFILTER round 1 -----
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
 panel_measles_obj.prune(n=1, refill=True)
 
 # ---- MIF round 2 -----
-RW_SD.cool(0.25)
+rw_sd = rw_sd.cool(0.25)
 for param in SHARED_PARAMS:
-    RW_SD[param] = 0.0
-panel_measles_obj.mif(
-    rw_sd=RW_SD,
-    M=NFITR,
-    a=COOLING_RATE,
-    J=NP_FITR,
-    key=subkey,
-)
+    rw_sd[param] = 0.0
+panel_measles_obj.mif(rw_sd=rw_sd, M=NFITR, J=NP_FITR)
 
 # ----- PFILTER round 2 -----
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)

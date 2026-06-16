@@ -84,40 +84,13 @@ pomp_obj.print_summary()
 
 ### Natural scale traces
 
-```{python Plot traces}
+```{python}
 MAX_UNITS = 20
 unique_units = [u for u in traces_melted["unit"].unique() if u != "shared"][:MAX_UNITS]
 traces_filtered = traces_melted[traces_melted["unit"].isin(unique_units)]
 
 unique_params = traces_melted["quantity"].unique()
 shared_params = pomp_obj.canonical_shared_param_names
-
-for param in unique_params:
-    if param in shared_params:
-        param_data = traces_melted[(traces_melted["quantity"] == param) & (traces_melted["unit"] == "shared")]
-        p = (
-            ggplot(
-                param_data,
-                aes(x="iter", y="param_value", group="theta_idx", color="theta_idx"),
-            )
-            + geom_line(show_legend=False)
-            + facet_wrap("unit")
-            + ggtitle(f"Shared Parameter: {param}")
-            + theme(figure_size=(8, 5))
-        )
-    else:
-        param_data = traces_filtered[traces_filtered["quantity"] == param]
-        p = (
-            ggplot(
-                param_data,
-                aes(x="iter", y="param_value", group="theta_idx", color="theta_idx"),
-            )
-            + geom_line(show_legend=False)
-            + facet_wrap("unit", scales="free_y")
-            + ggtitle(f"Unit-Specific Parameter: {param}")
-            + theme(figure_size=(16, 12))
-        )
-    p.show()
 ```
 
 ### Transformed scale traces
@@ -222,4 +195,33 @@ p_units = (
     + theme(figure_size=(16, 12))
 )
 p_units.show()
+```
+
+### LogLik density
+
+```{python Plot LL density}
+df_second_to_last = pomp_obj.results(-2)
+
+# Overall (shared) LogLik density
+df_shared_ll = df_second_to_last[["theta_idx", "shared logLik"]].drop_duplicates()
+p_density_shared = (
+    ggplot(df_shared_ll, aes(x="shared logLik"))
+    + geom_density(fill="#4F46E5", color="#4F46E5", alpha=0.4)
+    + ggtitle("Overall LogLik Density (Before Prune)")
+    + theme(figure_size=(8, 5))
+)
+p_density_shared.show()
+
+# Unit-specific LogLik densities
+p_density_units = (
+    ggplot(
+        df_second_to_last[df_second_to_last["unit"].isin(unique_units)],
+        aes(x="unit logLik"),
+    )
+    + geom_density(fill="#0D9488", color="#0D9488", alpha=0.4)
+    + facet_wrap("unit", scales="free")
+    + ggtitle("Unit-Specific LogLik Densities (Before Prune)")
+    + theme(figure_size=(16, 12))
+)
+p_density_units.show()
 ```

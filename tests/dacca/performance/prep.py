@@ -4,13 +4,19 @@ This script prepares the environment for the performance tests.
 
 import os
 
+# Set JAX platform before importing JAX
+USE_CPU = os.environ.get("USE_CPU", "false").lower() == "true"
+if USE_CPU:
+    os.environ["JAX_PLATFORMS"] = "cpu"
+
 import jax  # noqa: E402
 import jax.numpy as jnp  # noqa: E402
 import numpy as np  # noqa: E402
 import pypomp as pp  # noqa: E402
-import session_info
+import session_info  # noqa: E402
 
 print(jax.devices())
+print("Using CPU:", USE_CPU)
 
 session_info.show(dependencies=True)
 
@@ -30,8 +36,8 @@ RW_SD = pp.RWSigma(
         "m": 0.02,
         "rho": 0.0,
         "epsilon": 0.02,
-        "omega": 0.02,
-        "c": 0.02,
+        "omega": 0.0,
+        "c": 0.0,
         "beta_trend": 0.02,
         "sigma": 0.02,
         "tau": 0.02,
@@ -49,10 +55,9 @@ RW_SD = pp.RWSigma(
         "omegas6": 0.02,
     },
     init_names=[],
-)
-COOLING_RATE = 0.5
+).geometric_cooling(a=0.5)
 
-dacca_obj = pp.dacca(dt=None, nstep=20)
+dacca_obj = pp.models.dacca(dt=None, nstep=20)
 
 # params_box = {k: [v * 0.5, v * 1.5] for k, v in dacca_obj.theta[0].items()}
 # params_box["rho"] = [0.0, 0.0]

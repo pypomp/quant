@@ -15,6 +15,7 @@ format:
 #| label: slurm-config
 #| echo: false
 # --- SLURM CONFIG ---
+# importance: high
 # jobs:
 #   gpu:
 #     sbatch_args:

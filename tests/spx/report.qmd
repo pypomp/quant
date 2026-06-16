@@ -87,8 +87,33 @@ print("CPU:")
 print(cpu_pkl.time())
 ```
 
+```{r R Execution time}
+load(here::here(
+    "tests",
+    "spx",
+    "performance",
+    "R_results",
+    "search360_hidden",
+    "1d_global_search360.rda"
+))
+cat("R:\n")
+if (exists("t.if.box") && exists("t.L.box") && exists("t.box")) {
+    r_time <- data.frame(
+        method = c("mif", "pfilter", "total"),
+        time = c(t.if.box["elapsed"], t.L.box["elapsed"], t.box["elapsed"]),
+        row.names = NULL
+    )
+    print(r_time)
+} else {
+    cat("Timing variables not found in the loaded .rda file.\n")
+}
+```
+
 ```{r Make traces frame in R}
 process_traces <- function(tr) {
+    if ("se" %in% colnames(tr)) {
+        tr <- tr |> select(-se)
+    }
     tr |>
         rename(rep = theta_idx, iter = iteration) |>
         pivot_longer(

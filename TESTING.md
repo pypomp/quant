@@ -58,6 +58,27 @@ If a single script tests both CPU and GPU execution methods, you can group them 
 ```
 In this example, running the file creates two distinct SLURM jobs named "gpu" and "cpu". The "cpu" job injects `USE_CPU=true` into the environment dynamically. The `run_levels` section at the bottom defines overrides—if run level `2` is used, the jobs will run using `time: "00:04:00"`, overriding the base job configurations if necessary.
 
+### Test Metadata (Description, Importance, Tags)
+
+You can enrich the SLURM config block with metadata about the test to make it easier to discover and filter:
+- **importance**: The priority/importance level of the test (`low`, `medium`, `high`, or `critical`). Defaults to `low` if not specified.
+- **description**: A short, single-line description of the test. (If missing, the script will fall back to using the Python module-level docstring or the Roxygen comments at the top of the file.)
+- **tags**: A list of tags to categorize the test (e.g. `[performance, spx, gpu]`).
+
+**Example with Metadata:**
+```python
+# --- SLURM CONFIG ---
+# importance: high
+# description: "Benchmarks performance and convergence for S&P 500 model on CPU/GPU"
+# tags: [performance, spx, gpu, cpu]
+# jobs:
+#   gpu:
+#     sbatch_args:
+#       partition: gpu
+#       ...
+# --- END SLURM CONFIG ---
+```
+
 ### Global User Configuration (`test_config.yaml`)
 
 Because personal SLURM arguments (like your email address for job completion notifications) should not be committed to the repository, you can create a `test_config.yaml` file at the exact root of your repository (e.g. `/home/user/research/quant/test_config.yaml`).
@@ -75,16 +96,13 @@ sbatch_args:
 
 ---
 
-## Usage
+## 2. Usage and Execution
 
-The runner takes a command (either `run` or `list`) and a target, which can be a single file or an entire directory. If you provide a directory, it recursively finds every `.py` or `.R` script containing a `--- SLURM CONFIG ---` block.
+The runner takes a command (either `run` or `list`) and a target (which can be a single file or a directory). If a directory is provided, it recursively scans for files containing a `--- SLURM CONFIG ---` block.
 
 ```bash
 # List all tests anywhere in the repository:
 python scripts/run_tests.py list
-
-# The above command is a bit slow, so maybe limit it to a specific folder, e.g.,:
-python scripts/run_tests.py list tests/
 
 # Run a single test:
 python scripts/run_tests.py run tests/spx/performance/test.py
@@ -93,11 +111,23 @@ python scripts/run_tests.py run tests/spx/performance/test.py
 python scripts/run_tests.py run tests/spx/
 ```
 
+### Filtering Tests
+
+You can filter tests by their `importance` level or specific `tags` during both `list` and `run` actions:
+
+```bash
+# List only tests of high (or critical) importance:
+python scripts/run_tests.py list --importance high
+
+# Run only tests tagged with 'performance':
+python scripts/run_tests.py run --tag performance
+```
+
 ### Setting the Run Level
 
 Run levels dynamically modify the execution time (and potentially other args) using the `run_levels` lookup in your YAML config. 
 
-You can set the run level via an environment variable (similar to traditional Makefiles) or via an explicit CLI argument:
+You can set the run level via an environment variable or via an explicit CLI argument:
 
 **Method 1: CLI Argument**
 ```bash
@@ -113,16 +143,9 @@ RUN_LEVEL=2 python scripts/run_tests.py run tests/spx/performance/test.py
 
 If a test file has multiple target setups (for example, comparing `cpu` vs `gpu` under a `jobs:` block), running the script targets ALL of those jobs simultaneously.
 
-If you ONLY want to test one configuration without spinning up the other:
+If you ONLY want to test one configuration:
 ```bash
 python scripts/run_tests.py run tests/spx/performance/test.py --run-level 2 --job cpu
-```
-This tells the tool to exclusively run the job named `cpu` and to ignore the `gpu` job definition in that file.
-
-### Running All Tests in a Directory
-If you want to run every test script within a directory (that has a `SLURM CONFIG` block), simply point the script to the directory:
-```bash
-python scripts/run_tests.py run tests/spx/performance/
 ```
 
 ### Testing a Run (`--dry-run`)
@@ -131,18 +154,25 @@ If you want to view the `sbatch` script that the python runner dynamically const
 python scripts/run_tests.py run tests/spx/performance/test.py --run-level 2 --dry-run
 ```
 
----
+### Interactive Mode
 
-## 3. Generating the Test Index
-
-To generate a structured Markdown table of contents for all tests (which includes descriptions and job lists), use the `generate_test_toc.py` script:
+You can run the tool in interactive mode pointing at the `tests` directory using the `--interactive` (or `-i`) flag:
 
 ```bash
-python scripts/generate_test_toc.py tests --output TESTS_INDEX.md
+python scripts/run_tests.py run tests --interactive
+# Or using the Makefile shortcut:
+make test-interactive
 ```
 
-This will crawl the `tests/` directory, create/update `TESTS_INDEX.md` at the project root, and **automatically render it to `TESTS_INDEX.html` using Quarto** (if installed).
+This will display a structured menu of available tests in the `tests` directory, prompt you to input a `RUN_LEVEL` if not specified, and let you select which tests to run by typing numbers or ranges (e.g. `1`, `1,3`, `1-3`, `all`).
 
-The script automatically extracts descriptions for the index:
-- **Python**: Uses the module-level docstring (the triple-quoted string at the top of the file).
-- **R**: Uses consecutive lines starting with `#'` (Roxygen style) at the top of the file.
+---
+
+## 3. Makefile Targets
+
+For convenience, several target shortcuts are defined in the root `makefile` to run and list tests using the virtual environment environment automatically:
+
+- `make list`: Beautifully format and list all discovered tests.
+- `make test-interactive` / `make test-i`: Start the interactive test selection runner.
+- `make test-high`: Run all high (or critical) importance tests.
+- `make test-all`: Run all tests in the repository.

@@ -52,7 +52,7 @@ traces_raw = pd.concat([traces_raw_gpu, traces_raw_train], ignore_index=True)
 # | echo: false
 # Build long-format traces (equivalent to R pivot_longer)
 traces = traces_raw.rename(
-    columns={"replicate": "rep", "iteration": "iter", "loglik": "logLik"}
+    columns={"theta_idx": "rep", "iteration": "iter", "loglik": "logLik"}
 )
 id_cols = ["rep", "iter", "logLik", "method", "source"]
 param_cols = [c for c in traces.columns if c not in id_cols]
@@ -70,14 +70,16 @@ traces_long = traces.melt(
 ```{python}
 # | label: summary-if2
 # | echo: false
-print(pomp_obj.print_summary())
+pomp_obj.print_metadata()
+pomp_obj.print_summary()
 ```
 
 ### IF2 + train
 ```{python}
 # | label: summary-if2-train
 # | echo: false
-print(pomp_obj_train.print_summary())
+pomp_obj_train.print_metadata()
+pomp_obj_train.print_summary()
 ```
 
 ## LogLik Summary Statistics
@@ -218,7 +220,7 @@ final_loglik = pfilter_traces.loc[
     + geom_density(alpha=0.4)
     + labs(x="logLik", title="Final logLik: IF2 only vs IFAD")
     # + coord_cartesian(xlim=(-4000, None))
-    + scale_x_continuous(limits=(-4000, None))
+    + scale_x_continuous(limits=(-3800, None))
 )
 ```
 

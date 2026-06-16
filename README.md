@@ -9,7 +9,6 @@ The quant tests also provide additional examples of pypomp, focused on technical
 Below is a list of quantitative test reports available in this repository:
 
 ### 1. Dacca Cholera Model
-* **[Dacca Report (Local Search)](tests/dacca/local_search/report.html)** (`tests/dacca/local_search`): Compares Iterated Filtering 2 (IF2) and Iterated Filtering with Automatic Differentiation (IFAD/train) on a local parameter search.
 * **[Dacca Report](tests/dacca/performance/report.html)** (`tests/dacca/performance`): Analyzes the performance, runtime, and parameter convergence of IF2 versus IFAD for the Dacca cholera model.
 
 ### 2. Measles Model

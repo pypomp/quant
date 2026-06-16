@@ -7,6 +7,7 @@ The Dacca model has a very fast rproc, but many steps between observations, so t
 """
 
 # --- SLURM CONFIG ---
+# importance: high
 # jobs:
 #   gpu:
 #     sbatch_args:
@@ -40,15 +41,12 @@ The Dacca model has a very fast rproc, but many steps between observations, so t
 
 import pickle
 
-import jax
 from prep import (
-    COOLING_RATE,
     RUN_LEVEL,
     RW_SD,
     USE_CPU,
     dacca_obj,
     initial_params_list,
-    key,
     subkey,
 )
 
@@ -58,12 +56,10 @@ NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 
 # MIF round 1
-key, subkey = jax.random.split(key)
 dacca_obj.mif(
     theta=initial_params_list,
     rw_sd=RW_SD,
-    M=60 + 40 * 3 + 50,
-    a=COOLING_RATE,
+    M=NFITR,
     J=NP_FITR,
     key=subkey,
 )
