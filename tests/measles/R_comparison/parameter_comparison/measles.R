@@ -1,13 +1,12 @@
 # --- SLURM CONFIG ---
 # sbatch_args:
-#   job-name: "R POMP London measles"
+#   job-name: "measles parameter comparison (R pomp)"
 #   partition: standard
 #   nodes: 1
 #   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
-#   output: "slurm-%j.out"
-#   account: "ionides0"
+#   output: "results/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:02:00" }
@@ -17,6 +16,8 @@
 #     sbatch_args: { time: "28:00:00" }
 # setup: |
 #   module load R/4.4.0
+# command: |
+#   R CMD BATCH --no-restore --no-save measles.R results/logs/measles.Rout
 # --- END SLURM CONFIG ---
 
 ## ----prelims,include=FALSE,cache=FALSE-----------------------------------
@@ -287,7 +288,8 @@ registerDoParallel(cores)
 registerDoRNG(594709947L)
 
 ## ----run-pfilter-for-all-units-------------------------------------------------
-bake(file = sprintf("mif_coefs.rds"), {
+dir.create("results/logs", recursive = TRUE, showWarnings = FALSE)
+bake(file = "results/mif_coefs.rds", {
     time0 <- Sys.time()
 
     # Initialize list to store results

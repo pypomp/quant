@@ -1,0 +1,129 @@
+---
+title: "Pypomp vs R LogLik Comparison"
+format:
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+    code-summary: "View Code"
+engine: python3  
+---
+
+```{python}
+#| label: setup
+#| echo: false
+import logging
+import os
+import pickle
+import numpy as np
+import pandas as pd
+import pyreadr
+from scipy.special import logsumexp
+from plotnine import *
+
+# Hide the noisy JAX CUDA initialization error on machines without a GPU
+logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
+```
+
+
+```{python}
+#| label: logLik-comparison-data
+#| echo: false
+
+
+def load_pkl(filename):
+    paths = [f"results/{filename}", f"{filename}"]
+    for p in paths:
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                return pickle.load(f)
+    raise FileNotFoundError(
+        f"Could not find {filename} in any of the expected locations: {paths}"
+    )
+
+
+def load_rds(filename):
+    paths = [f"results/{filename}"]
+    for p in paths:
+        if os.path.exists(p):
+            r_data = pyreadr.read_r(p)
+            return r_data[None]
+    raise FileNotFoundError(
+        f"Could not find {filename} in any of the expected locations: {paths}"
+    )
+
+
+# Load pfilter logLik results (pf_ prefix to avoid collision with parameter comparison)
+pf_py_results = load_pkl("pfilter_logliks_f32.pkl")
+pf_py_results["source"] = "pypomp (32-bit)"
+
+pf_py_exact_results = load_pkl("pfilter_logliks_f64.pkl")
+pf_py_exact_results["source"] = "pypomp (64-bit)"
+
+pf_r_results = load_rds("pfilter_logliks_f64.rds")
+pf_r_results["source"] = "R"
+```
+
+# Particle filter comparison
+
+## Summary statistics
+```{python}
+#| label: pfilter-summary-stats
+cols = ["unit", "replicate", "logLik", "source"]
+
+pf_combined = pd.concat(
+    [pf_py_results[cols], pf_py_exact_results[cols], pf_r_results[cols]], ignore_index=True
+)
+
+pf_python_combined = pd.concat(
+    [pf_py_exact_results[cols], pf_py_results[cols]], ignore_index=True
+)
+
+
+# Stable logmeanexp definition matching pomp's behavior
+def logmeanexp(x):
+    return logsumexp(x) - np.log(len(x))
+
+
+summary_stats = (
+    pf_combined.groupby(["unit", "source"])["logLik"]
+    .agg(
+        mean_logLik="mean",
+        sd_logLik="std",
+        min_logLik="min",
+        max_logLik="max",
+        logmeanexp_logLik=logmeanexp,
+    )
+    .reset_index()
+)
+
+pd.set_option("display.precision", 7)
+print(summary_stats.to_string(index=False))
+```
+
+## Density plot
+```{python}
+#| label: comparison-plot
+#| fig-width: 10
+#| fig-height: 6
+#| warning: false
+
+# Toggle to filter outliers (London with very small logLik values)
+filter_outliers = False
+outlier_threshold = -3850
+
+plot_data = pf_combined.copy()
+if filter_outliers:
+    plot_data = plot_data[
+        ~((plot_data["unit"] == "London") & (plot_data["logLik"] < outlier_threshold))
+    ]
+
+p1 = (
+    ggplot(plot_data, aes(x="logLik", fill="source"))
+    + geom_density(alpha=0.6)
+    + facet_wrap("~unit", scales="free")
+    + labs(title="LogLik Comparison: Pypomp vs R", x="Log-Likelihood", fill="Source")
+    + theme_minimal()
+)
+p1.show()
+```

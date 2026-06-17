@@ -1,123 +1,115 @@
 ---
-title: "Pypomp vs R LogLik Comparison"
+title: "Pypomp vs R Parameter Comparison"
 format:
   html:
     toc: true
     embed-resources: true
-engine: knitr
+    code-fold: true
+    code-summary: "View Code"
+jupyter: python3
 ---
 
-```{r Load R libraries, echo = FALSE}
-library(tidyverse)
-library(reticulate)
-library(pomp)
-setwd(paste0(here::here(), "/measles/R/parameter_comparison"))
-knitr::opts_chunk$set(echo = FALSE)
-```
-
-```{python Load Python results}
+```{python}
+#| label: setup
+#| echo: false
 import logging
+import pickle
+import numpy as np
+import pandas as pd
+import pyreadr
+from scipy.special import logit
+from plotnine import *
 
 # Hide the noisy JAX CUDA initialization error on machines without a GPU
 logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
-import pickle
-import pandas as pd
 
+# Load Python results
+with open("results/mif_coefs.pkl", "rb") as f:
+    py_results = pickle.load(f)
 
-py_results = pickle.load(open("mif_coefs.pkl", "rb"))
 py_results["source"] = "pypomp"
-py_results = py_results.drop(columns=["logLik", "se"]).melt(
-    id_vars=["source", "unit"], var_name="param", value_name="value"
+py_results = py_results.drop(
+    columns=["logLik", "se", "theta_idx"], errors="ignore"
+).melt(id_vars=["source", "unit"], var_name="param", value_name="value")
+
+# Load R results directly using pyreadr
+r_data = pyreadr.read_r("results/mif_coefs.rds")
+r_results = r_data[None]
+r_results["source"] = "R"
+r_results = r_results[["source", "unit", "coef", "names"]].rename(
+    columns={"coef": "value", "names": "param"}
 )
-```
-
-```{r Load R results}
-r_results <- readRDS("mif_coefs.rds")
-r_results$source <- "R"
-
-r_results <- r_results[c("source", "unit", "coef", "names")]
-r_results <- r_results |>
-    rename(value = coef, param = names)
 ```
 
 
 # Compare results
 
-## Summary statistics
-```{r Combine results}
-py_results <- py$py_results
-combined <- bind_rows(py_results, r_results)
+<!-- ## Summary statistics -->
+```{python}
+#| label: summary-stats
+#| include: False
 
-combined <- combined |>
-    mutate(
-        value = case_when(
-            param %in% c("gamma", "sigma", "iota", "R0", "sigmaSE") ~ log(
-                value
-            ),
-            param %in% c("S_0", "E_0", "I_0", "R_0") ~ qlogis(value),
-            TRUE ~ value
-        ),
-        param = case_when(
-            param == "gamma" ~ "log(gamma)",
-            param == "sigma" ~ "log(sigma)",
-            param == "iota" ~ "log(iota)",
-            param == "R0" ~ "log(R0)",
-            param == "sigmaSE" ~ "log(sigmaSE)",
-            param == "S_0" ~ "logit(S_0)",
-            param == "E_0" ~ "logit(E_0)",
-            param == "I_0" ~ "logit(I_0)",
-            param == "R_0" ~ "logit(R_0)",
-            TRUE ~ param
-        )
-    )
+# Combine for the plotting transformations
+combined = pd.concat([py_results, r_results], ignore_index=True)
 
-# Summarize pypomp and R results
+log_params = ["gamma", "sigma", "iota", "R0", "sigmaSE"]
+logit_params = ["S_0", "E_0", "I_0", "R_0"]
 
-# For py_results
-summary_py <- py_results |>
-    group_by(param) |>
-    summarise(
-        n = n(),
-        mean = mean(value, na.rm = TRUE),
-        sd = sd(value, na.rm = TRUE),
-        min = min(value, na.rm = TRUE),
-        max = max(value, na.rm = TRUE)
-    ) |>
-    mutate(source = "pypomp")
+# Apply mathematical transformations matching R's log and qlogis
+combined["value"] = np.where(
+    combined["param"].isin(log_params),
+    np.log(combined["value"]),
+    np.where(
+        combined["param"].isin(logit_params),
+        logit(combined["value"]),
+        combined["value"],
+    ),
+)
 
-# For r_results
-summary_r <- r_results |>
-    group_by(param) |>
-    summarise(
-        n = n(),
-        mean = mean(value, na.rm = TRUE),
-        sd = sd(value, na.rm = TRUE),
-        min = min(value, na.rm = TRUE),
-        max = max(value, na.rm = TRUE)
-    ) |>
-    mutate(source = "R")
+# Update parameter labels to reflect transformations
+param_mapping = {p: f"log({p})" for p in log_params}
+param_mapping.update({p: f"logit({p})" for p in logit_params})
+combined["param"] = combined["param"].replace(param_mapping)
 
 
-print(summary_py)
-print(summary_r)
+# Generate summaries (matching the original R logic mapping from untransformed frames)
+summary_py = (
+    py_results.groupby("param")["value"]
+    .agg(n="count", mean="mean", sd="std", min="min", max="max")
+    .reset_index()
+)
+summary_py["source"] = "pypomp"
+
+summary_r = (
+    r_results.groupby("param")["value"]
+    .agg(n="count", mean="mean", sd="std", min="min", max="max")
+    .reset_index()
+)
+summary_r["source"] = "R"
+
+print("--- Pypomp Summary ---")
+print(summary_py.to_string(index=False))
+print("\n--- R Summary ---")
+print(summary_r.to_string(index=False))
 ```
 
 ## Density plot
-```{r Comparison plot, fig.width = 10, fig.height = 6}
-# Plot a density curve for each parameter comparing pypomp vs R
+```{python}
+#| label: comparison-plots
+#| fig-width: 10
+#| fig-height: 6
+#| warning: false
 
-for (unit_val in unique(combined$unit)) {
-    gg <- combined |>
-        filter(unit == unit_val) |>
-        ggplot(aes(x = value, fill = source)) +
-        geom_density(alpha = 0.6) +
-        facet_wrap(vars(param), scales = "free") +
-        labs(
-            title = paste("Unit:", unit_val),
-            x = "Parameter Value",
-            fill = "Source"
-        ) +
-        theme_minimal()
-    print(gg)
-}
+# Loop through unique units and print a density grid for each
+for unit_val in combined["unit"].unique():
+    unit_data = combined[combined["unit"] == unit_val]
+
+    gg = (
+        ggplot(unit_data, aes(x="value", fill="source"))
+        + geom_density(alpha=0.6)
+        + facet_wrap("~param", scales="free")
+        + labs(title=f"Unit: {unit_val}", x="Parameter Value", fill="Source")
+        + theme_minimal()
+    )
+    gg.show()
 ```

@@ -1,12 +1,12 @@
 # --- SLURM CONFIG ---
+# importance: medium
 # sbatch_args:
-#   job-name: "pypomp measles R comparison"
-#   partition: gpu
-#   gpus: "v100:1"
+#   job-name: "measles parameter comparison (pypomp)"
+#   partition: gpu-rtx6000
+#   gpus: "rtx_pro_6000_blackwell:1"
 #   cpus-per-gpu: 1
 #   mem: 6GB
-#   output: "slurm-%j.out"
-#   account: "ionides0"
+#   output: "results/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:04:00" }
@@ -19,11 +19,12 @@
 # --- END SLURM CONFIG ---
 
 import os
-import pandas as pd
-import jax
 import pickle
-import pypomp as pp
+
+import jax
 import numpy as np
+import pandas as pd
+import pypomp as pp
 
 print(jax.devices())
 
@@ -59,8 +60,7 @@ RW_SD = pp.RWSigma(
         "R_0": DEFAULT_IVP_SD,
     },
     init_names=["S_0", "E_0", "I_0", "R_0"],
-)
-COOLING_RATE = 0.5
+).geometric_cooling(a=0.5)
 
 # measles_box = {
 #     "R0": [10.0, 60.0],
@@ -82,7 +82,9 @@ key, subkey = jax.random.split(key)
 
 # Use the same starting parameters as the R search
 starting_parameters_in = pd.read_csv("starting_parameters.csv", index_col=0)
-starting_parameters = starting_parameters_in.to_dict(orient="records")
+starting_parameters = pp.PompParameters(
+    starting_parameters_in.iloc[:NREPS_FITR].to_dict(orient="records")
+)
 # starting_parameters = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
 
 print(f"Processing {len(units)} units: {units}")
@@ -94,7 +96,7 @@ for unit_name in units:
     print(f"Processing unit: {unit_name}")
 
     # Create pomp object for this unit
-    measles_obj = pp.UKMeasles.Pomp(
+    measles_obj = pp.models.UKMeasles.Pomp(
         unit=[unit_name],
         theta=starting_parameters,
         model="001b",
@@ -102,7 +104,7 @@ for unit_name in units:
     )
 
     key, subkey = jax.random.split(key)
-    measles_obj.mif(J=NP_FITR, M=NFITR, a=COOLING_RATE, key=subkey, rw_sd=RW_SD)
+    measles_obj.mif(J=NP_FITR, M=NFITR, key=subkey, rw_sd=RW_SD)
 
     results_list.append(measles_obj.results())
     results_list[-1]["unit"] = unit_name
@@ -110,5 +112,6 @@ for unit_name in units:
 
 parameters_df = pd.concat(results_list)
 
-with open("mif_coefs.pkl", "wb") as f:
+os.makedirs("results/logs", exist_ok=True)
+with open("results/mif_coefs.pkl", "wb") as f:
     pickle.dump(parameters_df, f)

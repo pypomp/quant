@@ -8,8 +8,8 @@ The quant tests also provide additional examples of pypomp, focused on technical
 
 Below is a list of quantitative test reports available in this repository:
 
-### 1. Dacca Cholera Model
-* **[Dacca Report](tests/dacca/report.html)** (`tests/dacca`): Analyzes the performance, runtime, and parameter convergence of IF2 versus IFAD for the Dacca cholera model.
+### 1. Dhaka Cholera Model
+* **[Dhaka Report](tests/dacca/report.html)** (`tests/dacca`): Analyzes the performance, runtime, and parameter convergence of IF2 versus IFAD for the Dhaka cholera model.
 Also checks that the particle filter yields the same distribution of log likelihoods in both `pypomp` and `pomp`.
 
 ### 2. Measles Model

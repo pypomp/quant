@@ -1,36 +1,63 @@
 # --- SLURM CONFIG ---
+# importance: medium
 # sbatch_args:
-#   job-name: "pypomp measles pfilter comparison against R"
-#   partition: gpu
-#   gpus: "v100:1"
+#   partition: gpu-rtx6000
+#   gpus: "rtx_pro_6000_blackwell:1"
 #   cpus-per-gpu: 1
 #   mem: 6GB
-#   output: "slurm-%j.out"
-#   account: "ionides0"
+# jobs:
+#   float32:
+#     sbatch_args:
+#       job-name: "measles loglik comparison (pypomp 32-bit)"
+#       output: "results/logs/slurm-32-%j.out"
+#     env:
+#       USE_64BIT: "false"
+#   float64:
+#     sbatch_args:
+#       job-name: "measles loglik comparison (pypomp 64-bit)"
+#       output: "results/logs/slurm-64-%j.out"
+#     env:
+#       USE_64BIT: "true"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:04:00" }
+#   2:
+#     sbatch_args: { time: "00:15:00" }
+#   3:
+#     sbatch_args: { time: "00:15:00" }
+#   4:
+#     sbatch_args: { time: "08:00:00" }
 # --- END SLURM CONFIG ---
 
 import os
-import pandas as pd
+import pickle
 
-# Set JAX platform before importing JAX
+import jax
+import numpy as np
+import pandas as pd
+import pypomp as pp
+
+# Set JAX platform before JAX operations
 if os.environ.get("USE_CPU", "false").lower() == "true":
     os.environ["JAX_PLATFORMS"] = "cpu"
 
-import jax
-import pickle
-import pypomp as pp
-import numpy as np
-
-# jax.config.update("jax_enable_x64", True)
+# Configure float precision based on environment variable
+USE_64BIT = os.environ.get("USE_64BIT", "false").lower() == "true"
+if USE_64BIT:
+    jax.config.update("jax_enable_x64", True)
 
 print(jax.devices())
 
 MAIN_SEED = 594709947
 key = jax.random.key(MAIN_SEED)
 np.random.seed(MAIN_SEED)
+
+RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
+NP_EVAL = (2, 1000, 5000, 5000)[RUN_LEVEL - 1]
+NREPS_EVAL = (2, 300, 300, 3600)[RUN_LEVEL - 1]
+
+print(f"Running at level {RUN_LEVEL}")
+print(f"USE_64BIT: {USE_64BIT} (Precision: {'64-bit' if USE_64BIT else '32-bit'})")
 
 # Units to process
 units = ["London", "Halesworth"]
@@ -72,23 +99,24 @@ for unit_name in units:
         "R_0": float(row["R_0"]),
     }
 
-    # Create pomp object for this unit
-    measles_obj = pp.UKMeasles.Pomp(
+    # Create pomp object for this unit using PompParameters
+    measles_obj = pp.models.UKMeasles.Pomp(
         unit=[unit_name],
-        theta=unit_params,
+        theta=pp.PompParameters(unit_params),
         model="001b",
         clean=False,
     )
 
-    # Run pfilter 3600 times
-    print("  Running 3600 pfilters with J=5000...")
+    # Run pfilter
+    print(f"  Running {NREPS_EVAL} pfilters with J={NP_EVAL}...")
     key, subkey = jax.random.split(key)
-    measles_obj.pfilter(J=5000, reps=3600, key=subkey)
+    measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
 
     # Extract logLiks from results_history
     if len(measles_obj.results_history) > 0:
         # Get logLiks from the last pfilter result
-        logliks_data = measles_obj.results_history[-1].logLiks
+        last_res = measles_obj.results_history[-1]
+        logliks_data = getattr(last_res, "logLiks")
 
         # Convert xarray to numpy array and flatten
         if hasattr(logliks_data, "values"):
@@ -106,10 +134,12 @@ for unit_name in units:
     else:
         print(f"  Warning: No results in results_history for {unit_name}")
 
-# Save logLiks to file
+# Save logLiks to file indicating precision
 if all_logliks:
+    os.makedirs("results/logs", exist_ok=True)
     results_df = pd.DataFrame(all_logliks)
-    output_file = "pfilter_logliks.pkl"
+    precision_str = "64" if USE_64BIT else "32"
+    output_file = f"results/pfilter_logliks_f{precision_str}.pkl"
     with open(output_file, "wb") as f:
         pickle.dump(results_df, f)
 

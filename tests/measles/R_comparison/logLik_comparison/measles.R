@@ -1,25 +1,34 @@
 # --- SLURM CONFIG ---
 # sbatch_args:
-#   job-name: "R POMP London measles"
+#   job-name: "measles loglik comparison (R pomp)"
 #   partition: standard
 #   nodes: 1
 #   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
-#   output: "slurm-%j.out"
-#   account: "ionides0"
+#   output: "results/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:02:00" }
+#   2:
+#     sbatch_args: { time: "00:30:00" }
 #   3:
-#     sbatch_args: { time: "28:00:00" }
+#     sbatch_args: { time: "02:00:00" }
+#   4:
+#     sbatch_args: { time: "08:00:00" }
 # setup: |
 #   module load R/4.4.0
+# command: |
+#   R CMD BATCH --no-restore --no-save measles.R results/logs/measles.Rout
 # --- END SLURM CONFIG ---
 
 ## ----prelims,include=FALSE,cache=FALSE-----------------------------------
 stopifnot(getRversion() >= "4.1")
 stopifnot(packageVersion("pomp") >= "4.6")
+
+run_level <- as.numeric(Sys.getenv("RUN_LEVEL", unset = "1"))
+NP_EVAL <- c(2, 1000, 5000, 5000)[run_level]
+NREPS_EVAL <- c(2, 300, 300, 3600)[run_level]
 
 set.seed(594709947L)
 library(tidyverse)
@@ -266,18 +275,20 @@ starting_parameters = runif_design(
 print(starting_parameters)
 
 ## ----load-mle-parameters-------------------------------------------------
-mle_params <- read.csv("measles/R/data/AK_mles.csv", stringsAsFactors = FALSE)
+mle_params <- read.csv("../data/AK_mles.csv", stringsAsFactors = FALSE)
 
 ## ----setup-parallel-------------------------------------------------
 cores <- as.numeric(Sys.getenv("SLURM_NTASKS_PER_NODE", unset = NA))
 if (is.na(cores)) {
-  cores <- 36
+  cores <- detectCores()
+  if (is.na(cores)) cores <- 1
 }
 registerDoParallel(cores)
 registerDoRNG(594709947L)
 
 ## ----run-pfilter-for-all-units-------------------------------------------------
-bake(file = sprintf("measles/R/pfilter_logliks.rds"), {
+dir.create("results/logs", recursive = TRUE, showWarnings = FALSE)
+bake(file = "results/pfilter_logliks_f64.rds", {
   time0 <- Sys.time()
 
   # Initialize list to store results
@@ -317,23 +328,23 @@ bake(file = sprintf("measles/R/pfilter_logliks.rds"), {
     unit_params <- as.numeric(unit_mle[1, param_names])
     names(unit_params) <- param_names
 
-    # Run pfilter 3600 times in batches of 36 (10 batches)
-    cat(sprintf("  Running 3600 pfilters (36 in parallel at a time)...\n"))
+    # Run pfilter
+    cat(sprintf("  Running %d pfilters with Np = %d...\n", NREPS_EVAL, NP_EVAL))
 
     unit_logliks <- foreach(
-      i = 1:3600,
+      i = 1:NREPS_EVAL,
       .packages = "pomp",
       .combine = c,
       .options.multicore = list(set.seed = TRUE)
     ) %dopar%
       {
-        logLik(pfilter(pomp_obj, params = unit_params, Np = 5000))
+        logLik(pfilter(pomp_obj, params = unit_params, Np = NP_EVAL))
       }
 
     # Store results
     all_logliks[[unit_name]] <- data.frame(
       unit = unit_name,
-      replicate = 1:3600,
+      replicate = 1:NREPS_EVAL,
       logLik = unit_logliks
     )
 

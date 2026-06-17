@@ -1,13 +1,13 @@
 # --- SLURM CONFIG ---
 # sbatch_args:
-#   job-name: "R POMP London measles"
+#   job-name: "measles speed comparison (R pomp)"
 #   partition: gpu-rtx6000
 #   gpus: "rtx_pro_6000_blackwell:1"
 #   nodes: 1
 #   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
-#   output: "slurm-%j.out"
+#   output: "results/logs/slurm-%j.out"
 #   account: "ionides0"
 # run_levels:
 #   1:
@@ -18,6 +18,8 @@
 #     sbatch_args: { time: "2:00:00" }
 # setup: |
 #   module load R/4.4.0
+# command: |
+#   R CMD BATCH --no-restore --no-save measles.R results/logs/measles.Rout
 # --- END SLURM CONFIG ---
 
 ## ----prelims,include=FALSE,cache=FALSE-----------------------------------
@@ -288,7 +290,8 @@ registerDoParallel(cores)
 registerDoRNG(594709947L)
 
 ## ----run-pfilter-for-all-units-------------------------------------------------
-bake(file = sprintf("mif_speed_results.rds"), {
+dir.create("results/logs", recursive = TRUE, showWarnings = FALSE)
+bake(file = "results/mif_speed_results.rds", {
     all_mifs <- list()
     all_unit_results <- list()
 
@@ -302,17 +305,18 @@ bake(file = sprintf("mif_speed_results.rds"), {
             i = 1:NREPS_FITR,
             .packages = "pomp",
             .options.multicore = list(set.seed = TRUE)
-        ) %dopar% {
-            unit_params <- unlist(starting_parameters[i, ])
-            mif2(
-                pomp_obj,
-                params = unit_params,
-                Np = NP_FITR,
-                Nmif = NFITR,
-                rw.sd = INITIAL_RW_SD,
-                cooling.fraction.50 = 0.5
-            )
-        }
+        ) %dopar%
+            {
+                unit_params <- unlist(starting_parameters[i, ])
+                mif2(
+                    pomp_obj,
+                    params = unit_params,
+                    Np = NP_FITR,
+                    Nmif = NFITR,
+                    rw.sd = INITIAL_RW_SD,
+                    cooling.fraction.50 = 0.5
+                )
+            }
     }
     t_mif_end <- Sys.time()
     mif_time_total <- t_mif_end - t_mif_start
@@ -328,11 +332,15 @@ bake(file = sprintf("mif_speed_results.rds"), {
             .packages = "pomp",
             .combine = rbind,
             .options.multicore = list(set.seed = TRUE)
-        ) %dopar% {
-            rep_id <- (idx - 1) %/% 36 + 1
-            mf <- unit_mifs[[rep_id]]
-            data.frame(replicate = rep_id, logLik = logLik(pfilter(mf, Np = NP_FITR)))
-        }
+        ) %dopar%
+            {
+                rep_id <- (idx - 1) %/% 36 + 1
+                mf <- unit_mifs[[rep_id]]
+                data.frame(
+                    replicate = rep_id,
+                    logLik = logLik(pfilter(mf, Np = NP_FITR))
+                )
+            }
 
         pf_stats <- pf_results %>%
             group_by(replicate) %>%
