@@ -8,26 +8,13 @@ The Dacca model has a very fast rproc, but many steps between observations, so t
 
 # --- SLURM CONFIG ---
 # importance: high
-# jobs:
-#   gpu:
-#     sbatch_args:
-#       job-name: "pypomp dacca test (gpu)"
-#       partition: gpu
-#       gpus: "v100:1"
-#       cpus-per-gpu: 1
-#       mem: 6GB
-#       output: "gpu_results/logs/slurm-%j.out"
-#       account: "ionides0"
-#   cpu:
-#     sbatch_args:
-#       job-name: "pypomp dacca test (cpu)"
-#       partition: standard
-#       cpus-per-task: 1
-#       mem: 6GB
-#       output: "cpu_results/logs/slurm-%j.out"
-#       account: "ionides0"
-#     env:
-#       USE_CPU: "true"
+# sbatch_args:
+#   job-name: "pypomp dacca test (mif)"
+#   partition: gpu-rtx6000
+#   gpus: "rtx_pro_6000_blackwell:1"
+#   cpus-per-gpu: 1
+#   mem: 6GB
+#   output: "mif_results/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:01:00" }
@@ -44,14 +31,13 @@ import pickle
 from prep import (
     RUN_LEVEL,
     RW_SD,
-    USE_CPU,
     dacca_obj,
     initial_params_list,
     subkey,
 )
 
 NP_FITR = (2, 500, 1000, 5000)[RUN_LEVEL - 1]
-NFITR = (2, 5, 100, 250)[RUN_LEVEL - 1]
+NFITR = (2, 5, 100, 650)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 
@@ -77,7 +63,5 @@ print(dacca_obj.results())
 dacca_obj.print_summary()
 print(dacca_obj.time())
 
-# Save results
-out_dir = "cpu_results" if USE_CPU else "gpu_results"
-with open(f"{out_dir}/dacca_results_rl{RUN_LEVEL}.pkl", "wb") as f:
+with open(f"mif_results/dacca_results_rl{RUN_LEVEL}.pkl", "wb") as f:
     pickle.dump(dacca_obj, f)

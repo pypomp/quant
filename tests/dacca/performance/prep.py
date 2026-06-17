@@ -4,19 +4,12 @@ This script prepares the environment for the performance tests.
 
 import os
 
-# Set JAX platform before importing JAX
-USE_CPU = os.environ.get("USE_CPU", "false").lower() == "true"
-if USE_CPU:
-    os.environ["JAX_PLATFORMS"] = "cpu"
-
-import jax  # noqa: E402
-import jax.numpy as jnp  # noqa: E402
-import numpy as np  # noqa: E402
-import pypomp as pp  # noqa: E402
-import session_info  # noqa: E402
+import jax
+import numpy as np
+import pypomp as pp
+import session_info
 
 print(jax.devices())
-print("Using CPU:", USE_CPU)
 
 session_info.show(dependencies=True)
 
@@ -26,36 +19,45 @@ np.random.seed(MAIN_SEED)
 
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 
-NREPS_FITR = (2, 3, 20, 36)[RUN_LEVEL - 1]
+NREPS_FITR = (2, 3, 20, 100)[RUN_LEVEL - 1]
 
 print(f"Running at level {RUN_LEVEL}")
 
+DEFAULT_SD = 0.02
+DEFAULT_IVP_SD = DEFAULT_SD * 8
 RW_SD = pp.RWSigma(
     sigmas={
-        "gamma": 0.02,
-        "m": 0.02,
+        "gamma": DEFAULT_SD,
+        "m": DEFAULT_SD,
         "rho": 0.0,
-        "epsilon": 0.02,
-        "omega": 0.0,
+        "epsilon": DEFAULT_SD,
         "c": 0.0,
-        "beta_trend": 0.02,
-        "sigma": 0.02,
-        "tau": 0.02,
-        "bs1": 0.02,
-        "bs2": 0.02,
-        "bs3": 0.02,
-        "bs4": 0.02,
-        "bs5": 0.02,
-        "bs6": 0.02,
-        "omegas1": 0.02,
-        "omegas2": 0.02,
-        "omegas3": 0.02,
-        "omegas4": 0.02,
-        "omegas5": 0.02,
-        "omegas6": 0.02,
+        "alpha": 0.0,
+        "delta": 0.0,
+        "beta_trend": DEFAULT_SD,
+        "sigma": DEFAULT_SD,
+        "tau": DEFAULT_SD,
+        "bs1": DEFAULT_SD,
+        "bs2": DEFAULT_SD,
+        "bs3": DEFAULT_SD,
+        "bs4": DEFAULT_SD,
+        "bs5": DEFAULT_SD,
+        "bs6": DEFAULT_SD,
+        "omegas1": DEFAULT_SD,
+        "omegas2": DEFAULT_SD,
+        "omegas3": DEFAULT_SD,
+        "omegas4": DEFAULT_SD,
+        "omegas5": DEFAULT_SD,
+        "omegas6": DEFAULT_SD,
+        "S_0": DEFAULT_IVP_SD,
+        "I_0": DEFAULT_IVP_SD,
+        "Y_0": 0.0,
+        "R1_0": DEFAULT_IVP_SD,
+        "R2_0": DEFAULT_IVP_SD,
+        "R3_0": DEFAULT_IVP_SD,
     },
-    init_names=[],
-).geometric_cooling(a=0.5)
+    init_names=["S_0", "I_0", "Y_0", "R1_0", "R2_0", "R3_0"],
+).geometric_cooling(a=0.8)
 
 dacca_obj = pp.models.dacca(dt=None, nstep=20)
 
@@ -67,8 +69,9 @@ params_box = {
     "m": (0.03, 0.60),
     "rho": (0.0, 0.0),
     "epsilon": (0.20, 30.0),
-    "omega": (float(jnp.exp(-4.5)), float(jnp.exp(-4.5))),
-    "c": (1.0, 1.0),
+    "c": (1.0, 1.0),  # fixed
+    "alpha": (1.0, 1.0),  # fixed
+    "delta": (0.02, 0.02),  # fixed
     "beta_trend": (-0.01, 0.00),
     "sigma": (1.0, 5.0),
     "tau": (0.10, 0.50),
@@ -84,6 +87,12 @@ params_box = {
     "omegas4": (-10.0, 0.0),
     "omegas5": (-10.0, 0.0),
     "omegas6": (-10.0, 0.0),
+    "S_0": (0.0, 1.0),
+    "I_0": (0.0, 1.0),
+    "Y_0": (0.0, 0.0),  # fixed
+    "R1_0": (0.0, 1.0),
+    "R2_0": (0.0, 1.0),
+    "R3_0": (0.0, 1.0),
 }
 
 key, subkey = jax.random.split(key)

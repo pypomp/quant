@@ -5,18 +5,16 @@ This script can use either the GPU or CPU.
 
 The Dacca model has a very fast rproc, but many steps between observations, so this test can help determine if the overhead from interpolation steps is too high.
 """
-# TODO: update this file with approach similar to manuscript
 
 # --- SLURM CONFIG ---
 # importance: high
 # sbatch_args:
 #   job-name: "pypomp dacca test (train)"
-#   partition: gpu
-#   gpus: "v100:1"
+#   partition: gpu-rtx6000
+#   gpus: "rtx_pro_6000_blackwell:1"
 #   cpus-per-gpu: 1
 #   mem: 10GB
 #   output: "train_results/logs/slurm-%j.out"
-#   account: "ionides0"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:01:00" }
@@ -30,6 +28,7 @@ The Dacca model has a very fast rproc, but many steps between observations, so t
 
 import pickle
 
+import numpy as np
 import pypomp as pp
 from prep import (
     RUN_LEVEL,
@@ -40,25 +39,43 @@ from prep import (
 )
 
 NP_FITR = (2, 500, 1000, 5000)[RUN_LEVEL - 1]
-NFITR = (2, 5, 100, 250)[RUN_LEVEL - 1]
-NTRAIN = (2, 20, 40, 100)[RUN_LEVEL - 1]
+NFITR = (2, 5, 100, 175)[RUN_LEVEL - 1]
+NTRAIN = (2, 20, 40, 175)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 5000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
+warmup = (1, 5, 10, 10)[RUN_LEVEL - 1]
 
-DEFAULT_ETA = 0.2
+
+def w(v):
+    if v == 0.0:
+        return 0.0
+    return np.concatenate(
+        [np.linspace(v * 0.1, v, warmup), np.full(NTRAIN - warmup, v)]
+    )
+
+
+DEFAULT_ETA = 0.1
+DEFAULT_IVP_ETA = DEFAULT_ETA / 2
 eta = pp.LearningRate(
     {
-        "gamma": DEFAULT_ETA,
-        "epsilon": DEFAULT_ETA,
+        "gamma": w(DEFAULT_ETA * 0.5),
+        "epsilon": w(DEFAULT_ETA),
         "rho": 0.0,
-        "m": DEFAULT_ETA,
+        "m": w(DEFAULT_ETA),
         "c": 0.0,
-        "beta_trend": DEFAULT_ETA,
-        **{f"bs{i + 1}": DEFAULT_ETA for i in range(6)},
-        "sigma": DEFAULT_ETA,
-        "tau": DEFAULT_ETA,
-        "omega": DEFAULT_ETA,
-        **{f"omegas{i + 1}": DEFAULT_ETA for i in range(6)},
+        "alpha": 0.0,
+        "delta": 0.0,
+        "beta_trend": w(DEFAULT_ETA * 0.5),
+        **{f"bs{i + 1}": w(DEFAULT_ETA) for i in range(6)},
+        "sigma": w(DEFAULT_ETA * 0.5),
+        "tau": w(DEFAULT_ETA * 0.5),
+        **{f"omegas{i + 1}": w(DEFAULT_ETA) for i in range(6)},
+        "S_0": w(DEFAULT_IVP_ETA),
+        "I_0": w(DEFAULT_IVP_ETA),
+        "Y_0": 0.0,
+        "R1_0": w(DEFAULT_IVP_ETA),
+        "R2_0": w(DEFAULT_IVP_ETA),
+        "R3_0": w(DEFAULT_IVP_ETA),
     }
 ).cosine_decay(final_factor=0.05, M=NTRAIN)
 
@@ -71,9 +88,6 @@ dacca_obj.mif(
     key=subkey,
 )
 print(dacca_obj.results())
-
-dacca_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
-dacca_obj.prune(n=3, refill=True)
 
 # Train step
 dacca_obj.train(

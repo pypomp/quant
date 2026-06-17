@@ -28,21 +28,22 @@ from plotnine import *
 import pypomp as pp
 import jax
 
-# When rendering, run from dacca/performance so PKL_PATH resolves
 print(datetime.now())
 ```
 
 ```{python}
 # | label: load-data
 # | echo: false
-pomp_obj = pickle.load(open("gpu_results/dacca_results_rl4.pkl", "rb"))
-pomp_obj_train = pickle.load(open("train_results/dacca_results_rl4.pkl", "rb"))
+pomp_obj = pickle.load(open("performance/mif_results/dacca_results_rl4.pkl", "rb"))
+pomp_obj_train = pickle.load(
+    open("performance/train_results/dacca_results_rl4.pkl", "rb")
+)
 LL_frame = pomp_obj.results()
-traces_raw_gpu = pomp_obj.traces()
-traces_raw_gpu["source"] = "gpu"
+traces_raw_mif = pomp_obj.traces()
+traces_raw_mif["source"] = "mif"
 traces_raw_train = pomp_obj_train.traces()
 traces_raw_train["source"] = "train"
-traces_raw = pd.concat([traces_raw_gpu, traces_raw_train], ignore_index=True)
+traces_raw = pd.concat([traces_raw_mif, traces_raw_train], ignore_index=True)
 ```
 
 # Individual results
@@ -133,10 +134,10 @@ print("Total time: ", time_df["time"].sum())
 # | fig-width: 12
 # | fig-height: 12
 # | echo: false
-traces_long_gpu = traces_long[traces_long["source"] == "gpu"].copy()
+traces_long_mif = traces_long[traces_long["source"] == "mif"].copy()
 (
     ggplot(
-        traces_long_gpu,
+        traces_long_mif,
         aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
     )
     + geom_line(show_legend=False)
@@ -150,7 +151,7 @@ traces_long_gpu = traces_long[traces_long["source"] == "gpu"].copy()
 # | fig-width: 10
 # | fig-height: 6
 # | echo: false
-traces_ll = traces[traces["source"] == "gpu"][["rep", "iter", "logLik"]].copy()
+traces_ll = traces[traces["source"] == "mif"][["rep", "iter", "logLik"]].copy()
 (
     ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
     + geom_line(show_legend=False)
@@ -193,7 +194,7 @@ traces_ll = traces[traces["source"] == "train"][["rep", "iter", "logLik"]].copy(
 )
 ```
 
-# Comparison: GPU vs train
+# Comparison: MIF vs train
 
 ## LogLik (density)
 
@@ -214,7 +215,7 @@ final_loglik = pfilter_traces.loc[
 # | echo: false
 (
     ggplot(
-        final_loglik.replace({"source": {"gpu": "IF2", "train": "IFAD"}}),
+        final_loglik.replace({"source": {"mif": "IF2", "train": "IFAD"}}),
         aes(x="logLik", fill="source", color="source"),
     )
     + geom_density(alpha=0.4)
@@ -240,7 +241,7 @@ final_params = traces_long[traces_long["iter"] == last_iter_by_source].copy()
 # | echo: false
 (
     ggplot(
-        final_params.replace({"source": {"gpu": "IF2", "train": "IFAD"}}),
+        final_params.replace({"source": {"mif": "IF2", "train": "IFAD"}}),
         aes(x="param_value", fill="source", color="source"),
     )
     + geom_density(alpha=0.4)
@@ -248,3 +249,76 @@ final_params = traces_long[traces_long["iter"] == last_iter_by_source].copy()
     + labs(x="estimate", title="Final parameter estimates: IF2 only vs IFAD")
 )
 ```
+
+# Comparison: Python vs R (pfilter check)
+
+## LogLik (density)
+
+```{python}
+# | label: load-pfilter-check
+# | echo: false
+import subprocess
+
+# Load python pfilter_check logLiks
+try:
+    py_pfilter_check = pickle.load(open("pfilter_check/py_results/dacca_results_eval.pkl", "rb"))
+    py_logliks = getattr(py_pfilter_check.results_history[-1], "logLiks").values.flatten()
+except Exception as e:
+    print(f"Error loading Python pfilter_check results: {e}")
+    py_logliks = []
+
+# Load R pfilter_check logLiks using Rscript
+try:
+    r_code = 'load("pfilter_check/R_results/dacca_results_eval.rda"); cat(L_box, sep=",")'
+    result = subprocess.run(["Rscript", "-e", r_code], capture_output=True, text=True, check=True)
+    r_logliks = [float(x) for x in result.stdout.strip().split(",") if x]
+except Exception as e:
+    print(f"Error loading R pfilter_check results: {e}")
+    r_logliks = []
+
+# Build comparison DataFrame
+check_data = []
+for ll in py_logliks:
+    check_data.append({"logLik": float(ll), "source": "Python (pypomp)"})
+for ll in r_logliks:
+    check_data.append({"logLik": float(ll), "source": "R (pomp)"})
+
+check_df = pd.DataFrame(check_data)
+```
+
+```{python}
+# | label: plot-check-density
+# | fig-width: 8
+# | fig-height: 5
+# | echo: false
+if not check_df.empty:
+    plot = (
+        ggplot(check_df, aes(x="logLik", fill="source", color="source"))
+        + geom_density(alpha=0.4)
+        + labs(
+            x="logLik", title="Log-Likelihood Density Comparison at MLE: Python vs R"
+        )
+    )
+    plot.show()
+else:
+    print("No pfilter check data available to plot.")
+```
+
+## LogLik Summary Statistics
+
+```{python}
+# | label: check-summary-stats
+# | echo: false
+if not check_df.empty:
+    check_summary = (
+        check_df.groupby("source")["logLik"]
+        .agg(["count", "mean", "std", "min", "median", "max"])
+        .round(2)
+        .reset_index()
+    )
+    check_summary.columns = ["Source", "N", "Mean", "Std", "Min", "Median", "Max"]
+    print(check_summary.to_string(index=False))
+else:
+    print("No pfilter check data available to summarize.")
+```
+

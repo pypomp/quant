@@ -3,7 +3,7 @@ This script is used to test that pfilter in pypomp generates logLiks with the pr
 """
 
 # --- SLURM CONFIG ---
-# importance: high
+# importance: medium
 # sbatch_args:
 #   job-name: "SPX pfilter check (pypomp)"
 #   partition: gpu

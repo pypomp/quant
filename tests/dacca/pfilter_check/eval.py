@@ -1,4 +1,5 @@
 # --- SLURM CONFIG ---
+# importance: medium
 # sbatch_args:
 #   job-name: "dacca pfilter check"
 #   partition: gpu
@@ -6,8 +7,7 @@
 #   cpus-per-gpu: 1
 #   time: "00:20:00"
 #   mem: 6GB
-#   output: "eval_results/slurm-%j.out"
-#   account: "ionides0"
+#   output: "py_results/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:20:00" }
@@ -24,12 +24,11 @@ import time
 if os.environ.get("USE_CPU", "false").lower() == "true":
     os.environ["JAX_PLATFORMS"] = "cpu"
 
-import jax
 import pickle
-import jax.numpy as jnp
-import pypomp as pp
-import numpy as np
 
+import jax
+import numpy as np
+import pypomp as pp
 
 print(jax.devices())
 
@@ -45,7 +44,7 @@ NREPS_EVAL = (2, 300, 300, 3600)[RUN_LEVEL - 1]
 print(f"Running at level {RUN_LEVEL}")
 
 # Parameters from AK
-dacca_obj = pp.dacca()
+dacca_obj = pp.models.dacca()
 
 key, subkey = jax.random.split(key)
 start_time = time.time()
@@ -54,5 +53,6 @@ print(f"pfilter time taken: {time.time() - start_time} seconds")
 
 print(dacca_obj.results())
 
-with open("dacca_results_eval.pkl", "wb") as f:
+os.makedirs("py_results", exist_ok=True)
+with open("py_results/dacca_results_eval.pkl", "wb") as f:
     pickle.dump(dacca_obj, f)
