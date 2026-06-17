@@ -8,7 +8,7 @@ The quant tests also provide additional examples of pypomp, focused on technical
 
 Below is a list of quantitative test reports available in this repository:
 
-### 7. SPX (S&P 500) Model
+### 1. SPX (S&P 500) Model
 * **[SPX Report](tests/spx/report.html)** (`tests/spx`): Compares parameter estimation traces and log-likelihood estimates on the SPX index dataset using `pypomp` (CPU/GPU) and R's `pomp`.
 
 ### 2. Dhaka Cholera Model
