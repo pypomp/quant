@@ -24,7 +24,9 @@ Also checks that the particle filter yields the same distribution of log likelih
 * **[Measles Report](tests/measles/performance/report.html)** (`tests/measles/performance`): Benchmarks parameter estimation via IF2 on a discrete measles model.
 
 ### 5. Panel Measles Model
-* **[Panel Measles Report](tests/panel_measles/performance/report.html)** (`tests/panel_measles/performance`): Benchmarks panel parameter estimation via IF2 on a panel measles dataset.
+* **[Panel Measles (only unit-specific parameters)](tests/panel_measles/performance/report.html)** (`tests/panel_measles/performance`): Benchmarks panel parameter estimation via MPIF on a panel measles dataset using only unit-specific parameters.
+
+* **[Panel Measles (mixed parameters)](tests/panel_measles/performance_mixed/report.html)** (`tests/panel_measles/performance_mixed`): Benchmarks panel parameter estimation via MPIF on a panel measles dataset using both unit-specific and shared parameters.
 
 ### 6. Differentiated Process Off-Parameter Filtering
 * **[DPOP London Measles Benchmark](tests/dpop/london_measles/report.html)** (`tests/dpop/london_measles`): Compares DPOP training against an IF2 baseline on the single-unit London measles model, including likelihood distribution, elapsed-time trace, and runtime summaries.

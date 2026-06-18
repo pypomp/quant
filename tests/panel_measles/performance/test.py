@@ -11,7 +11,6 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       cpus-per-gpu: 1
 #       mem: 6GB
 #       output: "u20_results/logs/slurm-%j.out"
-#       account: "ionides0"
 #     env:
 #       N_UNITS: "20"
 #   u100:
@@ -22,7 +21,6 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       cpus-per-gpu: 1
 #       mem: 6GB
 #       output: "u100_results/logs/slurm-%j.out"
-#       account: "ionides0"
 #     env:
 #       N_UNITS: "100"
 #   u200:
@@ -33,7 +31,6 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       cpus-per-gpu: 1
 #       mem: 12GB
 #       output: "u200_results/logs/slurm-%j.out"
-#       account: "ionides0"
 #     env:
 #       N_UNITS: "200"
 #   u800:
@@ -44,7 +41,6 @@ This script tests the performance of the panel POMP implementation, running mif 
 #       cpus-per-gpu: 1
 #       mem: 30GB
 #       output: "u800_results/logs/slurm-%j.out"
-#       account: "ionides0"
 #     env:
 #       N_UNITS: "800"
 # run_levels:
@@ -120,8 +116,7 @@ RW_SD = pp.RWSigma(
         "R_0": DEFAULT_IVP_SD,
     },
     init_names=["S_0", "E_0", "I_0", "R_0"],
-)
-COOLING_RATE = 0.5
+).geometric_cooling(a=0.5)
 
 measles_box = {
     "R0": (10.0, 60.0),
@@ -174,9 +169,7 @@ start_time = time.time()
 
 # ----- MIF round 1 -----
 key, subkey = jax.random.split(key)
-panel_measles_obj.mif(
-    rw_sd=RW_SD, M=NFITR, a=COOLING_RATE, J=NP_FITR, key=subkey, vmap_chunk_size=16
-)
+panel_measles_obj.mif(rw_sd=RW_SD, M=NFITR, J=NP_FITR, key=subkey, vmap_chunk_size=16)
 
 # ----- PFILTER round 1 -----
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)
