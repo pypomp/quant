@@ -20,15 +20,14 @@ format:
 #   gpu:
 #     sbatch_args:
 #       job-name: "pypomp sampler speed test qmd"
-#       partition: gpu
-#       gpus: "v100:1"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
-#       mem: 8GB
-#       time: "00:03:00"
+#       mem: 16GB
+#       time: "00:12:00"
 #       output: "gpu_logs/slurm_%j.out"
-#       account: "ionides0"
 #     setup: "source ../../.venv/bin/activate"
-#     command: "quarto render test.qmd --to html"
+#     command: "quarto render test.qmd --output test_gpu.html --to html"
 #   cpu:
 #     sbatch_args:
 #       job-name: "pypomp sampler speed test qmd"
@@ -37,11 +36,10 @@ format:
 #       mem: 8GB
 #       time: "00:06:00"
 #       output: "cpu_logs/slurm_%j.out"
-#       account: "ionides0"
 #     env:
 #       USE_CPU: "true"
 #     setup: "source ../../.venv/bin/activate"
-#     command: "quarto render test.qmd --to html"
+#     command: "quarto render test.qmd --output test_cpu.html --to html"
 # --- END SLURM CONFIG ---
 ```
 
@@ -303,13 +301,14 @@ We validate the statistical accuracy of the fast approximate samplers using hist
 #| code-fold: true
 #| fig-cap: "Poisson Distribution comparison: Histogram and Q-Q Plot across rates."
 
+
 def compare_rpoisson_and_jax_poisson(
     seed=42,
     lam_vals=[0.0001, 0.1, 1.0, 4.0, 4.01, 8.0, 15, 19.9, 20.1, 25, 30, 100.0, 500.0],
     show_labels=True,
 ):
     key = jax.random.key(seed)
-    n_samples = 100000
+    n_samples = 1000000
 
     fig, axes = plt.subplots(2, len(lam_vals), figsize=(4 * len(lam_vals), 8))
     if len(lam_vals) == 1:
@@ -383,6 +382,7 @@ def compare_rpoisson_and_jax_poisson(
     plt.tight_layout()
     plt.show()
 
+
 compare_rpoisson_and_jax_poisson()
 ```
 
@@ -403,7 +403,7 @@ def compare_rbinom2(
     show_labels=True,
 ):
     key = jax.random.key(seed)
-    n_samples = 100000
+    n_samples = 1000000
 
     n_rows = len(n_trials_list)
     n_cols = len(prob_vals)
@@ -559,13 +559,14 @@ compare_rbinom2()
 #| code-fold: true
 #| fig-cap: "Gamma Distribution comparison: Histogram and Q-Q Plot."
 
+
 def compare_rgamma_and_jax_gamma(
     seed=42,
     alpha_vals=[0.01, 0.5, 1.0, 1.5, 2.0, 5.0, 10.0, 50.0, 100.0],
     show_labels=True,
 ):
     key = jax.random.key(seed)
-    n_samples = 100000
+    n_samples = 1000000
 
     fig, axes = plt.subplots(2, len(alpha_vals), figsize=(4 * len(alpha_vals), 8))
     if len(alpha_vals) == 1:
@@ -638,6 +639,7 @@ def compare_rgamma_and_jax_gamma(
     plt.tight_layout()
     plt.show()
 
+
 compare_rgamma_and_jax_gamma()
 ```
 
@@ -648,6 +650,7 @@ compare_rgamma_and_jax_gamma()
 #| code-fold: true
 #| fig-cap: "Negative Binomial Distribution comparison: Histogram and Q-Q Plot against SciPy exact."
 
+
 def compare_rnbinom_and_scipy(
     seed=42,
     n_vals=[1.0, 5.0, 20.0, 100.0],
@@ -655,7 +658,7 @@ def compare_rnbinom_and_scipy(
     show_labels=True,
 ):
     key = jax.random.key(seed)
-    n_samples = 100000
+    n_samples = 1000000
 
     fig, axes = plt.subplots(
         2, len(n_vals) * len(p_vals), figsize=(3.5 * len(n_vals) * len(p_vals), 8)
@@ -723,6 +726,7 @@ def compare_rnbinom_and_scipy(
 
     plt.tight_layout()
     plt.show()
+
 
 compare_rnbinom_and_scipy()
 ```

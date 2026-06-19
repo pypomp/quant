@@ -16,7 +16,7 @@ Below is a list of quantitative test reports available in this repository:
 Also checks that the particle filter yields the same distribution of log likelihoods in both `pypomp` and `pomp`.
 
 ### 3. Random Number Generators
-* **[Random Number Generators Benchmark & Comparison](tests/samplers/test.html)** (`tests/samplers`): Benchmarks the execution speed and validates the statistical accuracy of `pypomp`'s fast approximate inverse CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
+* **[Random Number Generators Benchmark & Comparison](tests/samplers/test_gpu.html)** (`tests/samplers`): Benchmarks the execution speed and validates the statistical accuracy of `pypomp`'s fast approximate inverse CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
 
 ### 4. Measles Model
 * **[LogLik Comparison: Pypomp vs R](tests/measles/R_comparison/logLik_comparison/report.html)** (`tests/measles/R_comparison`): Verifies log-likelihood evaluation accuracy by comparing `pypomp` (both exact and approximate implementations) against R's `pomp` package.
