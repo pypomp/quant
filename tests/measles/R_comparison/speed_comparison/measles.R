@@ -8,7 +8,6 @@
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
 #   output: "results/logs/slurm-%j.out"
-#   account: "ionides0"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:02:00" }
@@ -231,9 +230,9 @@ m1 <- pomp_objects[[1]] # For backward compatibility
 
 ## ----run-methods-----------------------------------------------
 
-DEFAULT_SD = 0.02
-IVP_DEFAULT_SD = DEFAULT_SD * 12
-INITIAL_RW_SD = rw_sd(
+DEFAULT_SD <- 0.02
+IVP_DEFAULT_SD <- DEFAULT_SD * 12
+INITIAL_RW_SD <- rw_sd(
     S_0 = ivp(IVP_DEFAULT_SD),
     E_0 = ivp(IVP_DEFAULT_SD),
     I_0 = ivp(IVP_DEFAULT_SD),
@@ -266,20 +265,21 @@ specific_bounds = tibble::tribble(
   "cohort",        0.1,           0.7,
   "gamma",          25,           320
 )
-lower = specific_bounds$lower
-upper = specific_bounds$upper
-names(lower) = specific_bounds$param
-names(upper) = specific_bounds$param
+lower <- specific_bounds$lower
+upper <- specific_bounds$upper
+names(lower) <- specific_bounds$param
+names(upper) <- specific_bounds$param
 
-starting_parameters = runif_design(
+starting_parameters <- runif_design(
     lower = lower,
     upper = upper,
     nseq = NREPS_FITR
 )
-# write.csv(
-#     starting_parameters,
-#     file = "starting_parameters.csv"
-# )
+write.csv(
+    starting_parameters,
+    file = "starting_parameters.csv",
+    row.names = FALSE
+)
 
 ## ----setup-parallel-------------------------------------------------
 cores <- as.numeric(Sys.getenv("SLURM_NTASKS_PER_NODE", unset = NA))
@@ -377,5 +377,16 @@ bake(file = "results/mif_speed_results.rds", {
     cat("----------------------\n\n")
 
     results_df <- do.call(rbind, all_unit_results)
+
+    timings_df <- data.frame(
+        phase = c("mif", "pfilter"),
+        time_seconds = c(
+            as.numeric(mif_time_total, units = "secs"),
+            as.numeric(pf_time_total, units = "secs")
+        )
+    )
+    write.csv(timings_df, "results/r_pomp_timings.csv", row.names = FALSE)
+    write.csv(results_df, "results/r_pomp_results.csv", row.names = FALSE)
+
     results_df
 })

@@ -1,0 +1,341 @@
+---
+title: "Measles London Model Speed Comparison"
+subtitle: "R pomp (CPU) vs. pypomp (GPU) vs. pypomp JAX Samplers (GPU)"
+date: now
+format:
+  html:
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    theme: cosmo
+    embed-resources: true
+    code-fold: true
+    code-summary: "Show Code"
+jupyter: python3
+---
+
+## Introduction
+
+This report compares the runtime speed and statistical accuracy of the London measles model using three different setups:
+
+1. **R pomp** running in parallel on a CPU (36 cores).
+2. **pypomp** running on a GPU using the default fast approximate inverse CDF samplers (`fast_poisson`, `fast_gamma`, `fast_multinomial`).
+3. **pypomp** running on a GPU using the standard built-in JAX samplers (replacing the fast samplers).
+
+Both models were run under identical conditions:
+
+- **IF2**: 5,000 particles, 100 iterations, 36 replicates.
+- **Pfilter**: 5,000 particles, 36 replications per final parameter set.
+
+```{python}
+#| label: setup
+#| include: false
+import os
+import pickle
+import pandas as pd
+import numpy as np
+from scipy.special import logit
+import warnings
+from plotnine import *
+
+warnings.filterwarnings("ignore")
+
+# Load R results
+r_timings = pd.read_csv("results/r_pomp_timings.csv")
+r_results = pd.read_csv("results/r_pomp_results.csv")
+
+# Extract R times
+r_mif_time = r_timings[r_timings["phase"] == "mif"]["time_seconds"].values[0]
+r_pf_time = r_timings[r_timings["phase"] == "pfilter"]["time_seconds"].values[0]
+r_total_time = r_mif_time + r_pf_time
+
+# Load pypomp fast results
+with open("results/pypomp_speed_results_fast.pkl", "rb") as f:
+    py_fast = pickle.load(f)
+
+# Load pypomp JAX results
+with open("results/pypomp_speed_results_jax.pkl", "rb") as f:
+    py_jax = pickle.load(f)
+
+# Extract pypomp times
+py_fast_mif = py_fast["mif_time"]
+py_fast_pf = py_fast["pfilter_time"]
+py_fast_total = py_fast_mif + py_fast_pf
+
+py_jax_mif = py_jax["mif_time"]
+py_jax_pf = py_jax["pfilter_time"]
+py_jax_total = py_jax_mif + py_jax_pf
+```
+
+## Timing Comparison
+
+The table below presents the execution runtimes and the speedup factors relative to R pomp.
+
+```{python}
+#| label: timing-table
+#| echo: false
+from IPython.display import Markdown, HTML
+
+timing_data = {
+    "Method": [
+        "R pomp (CPU, 36 Cores)",
+        "pypomp (GPU, Fast Samplers)",
+        "pypomp (GPU, JAX Samplers)",
+    ],
+    "MIF2 Time": [
+        f"{r_mif_time:.2f} s ({r_mif_time / 60:.2f} m)",
+        f"{py_fast_mif:.2f} s ({py_fast_mif / 60:.2f} m)",
+        f"{py_jax_mif:.2f} s ({py_jax_mif / 60:.2f} m)",
+    ],
+    "MIF2 Speedup": [
+        "1.00x",
+        f"{r_mif_time / py_fast_mif:.2f}x",
+        f"{r_mif_time / py_jax_mif:.2f}x",
+    ],
+    "Pfilter Time": [
+        f"{r_pf_time:.2f} s ({r_pf_time / 60:.2f} m)",
+        f"{py_fast_pf:.2f} s ({py_fast_pf / 60:.2f} m)",
+        f"{py_jax_pf:.2f} s ({py_jax_pf / 60:.2f} m)",
+    ],
+    "Pfilter Speedup": [
+        "1.00x",
+        f"{r_pf_time / py_fast_pf:.2f}x",
+        f"{r_pf_time / py_jax_pf:.2f}x",
+    ],
+    "Total Time": [
+        f"{r_total_time:.2f} s ({r_total_time / 60:.2f} m)",
+        f"{py_fast_total:.2f} s ({py_fast_total / 60:.2f} m)",
+        f"{py_jax_total:.2f} s ({py_jax_total / 60:.2f} m)",
+    ],
+    "Total Speedup": [
+        "1.00x",
+        f"{r_total_time / py_fast_total:.2f}x",
+        f"{r_total_time / py_jax_total:.2f}x",
+    ],
+}
+
+df_timing = pd.DataFrame(timing_data)
+HTML(df_timing.to_html(classes="table table-striped table-hover", index=False))
+```
+
+## Log-Likelihood Comparison
+
+Let's compare the final estimated log-likelihoods across the 36 replicates. Running a particle filter evaluates the quality of the final parameters found by IF2.
+
+```{python}
+#| label: loglik-comparison
+#| fig-width: 8
+#| fig-height: 5
+#| warning: false
+
+# Extract logLiks
+# For R, it is mean_logLik per replicate
+r_logliks = r_results.groupby("replicate")["mean_logLik"].first().values
+
+# For pypomp, the results_df contains logLik
+py_fast_logliks = py_fast["results"]["logLik"].values
+py_jax_logliks = py_jax["results"]["logLik"].values
+
+loglik_df = pd.DataFrame({
+    "Method": (["R pomp"] * len(r_logliks)) + (["pypomp (Fast)"] * len(py_fast_logliks)) + (["pypomp (JAX)"] * len(py_jax_logliks)),
+    "LogLik": np.concatenate([r_logliks, py_fast_logliks, py_jax_logliks])
+})
+
+p_loglik = (
+    ggplot(loglik_df, aes(x="Method", y="LogLik", fill="Method"))
+    + geom_boxplot()
+    + theme_minimal()
+    + labs(
+        title="Comparison of Final Log-Likelihood Estimates across 36 Replicates",
+        x="Method",
+        y="Log-Likelihood"
+    )
+    + theme(legend_position="none")
+)
+p_loglik
+```
+
+```{python}
+# Print summary table
+summary_loglik = pd.DataFrame(
+    {
+        "Method": ["R pomp", "pypomp (Fast)", "pypomp (JAX)"],
+        "Mean LogLik": [
+            np.mean(r_logliks),
+            np.mean(py_fast_logliks),
+            np.mean(py_jax_logliks),
+        ],
+        "Max LogLik": [
+            np.max(r_logliks),
+            np.max(py_fast_logliks),
+            np.max(py_jax_logliks),
+        ],
+        "Min LogLik": [
+            np.min(r_logliks),
+            np.min(py_fast_logliks),
+            np.min(py_jax_logliks),
+        ],
+        "Std Dev": [np.std(r_logliks), np.std(py_fast_logliks), np.std(py_jax_logliks)],
+    }
+)
+
+HTML(summary_loglik.to_html(classes="table table-striped table-hover", index=False))
+```
+
+## Parameter Estimate Comparisons
+
+Finally, we compare the distribution of the estimated parameters across the 36 replicates to verify that all three implementations converge to similar parameter space regions.
+
+```{python}
+#| label: param-densities
+#| fig-width: 10
+#| fig-height: 12
+#| warning: false
+
+# Extract parameter names and values
+# R results are in long format: unit, replicate, names (param), coef (value)
+r_params = r_results[["replicate", "names", "coef"]].copy()
+r_params["source"] = "R pomp"
+r_params = r_params.rename(columns={"names": "param", "coef": "value"})
+
+# pypomp results are in wide format
+py_fast_df = py_fast["results"].copy()
+py_fast_df["source"] = "pypomp (Fast)"
+py_fast_df["replicate"] = py_fast_df.index + 1
+py_fast_melt = py_fast_df.drop(
+    columns=["logLik", "se", "theta_idx", "unit"], errors="ignore"
+).melt(id_vars=["source", "replicate"], var_name="param", value_name="value")
+
+py_jax_df = py_jax["results"].copy()
+py_jax_df["source"] = "pypomp (JAX)"
+py_jax_df["replicate"] = py_jax_df.index + 1
+py_jax_melt = py_jax_df.drop(
+    columns=["logLik", "se", "theta_idx", "unit"], errors="ignore"
+).melt(id_vars=["source", "replicate"], var_name="param", value_name="value")
+
+# Combine all results
+combined_params = pd.concat([r_params, py_fast_melt, py_jax_melt], ignore_index=True)
+
+# Select a subset of key parameters to display
+key_params = ["R0", "rho", "sigmaSE", "amplitude", "gamma", "sigma", "psi", "cohort"]
+combined_key_params = combined_params[combined_params["param"].isin(key_params)]
+
+p_params = (
+    ggplot(combined_key_params, aes(x="value", fill="source"))
+    + geom_density(alpha=0.4)
+    + facet_wrap("~param", scales="free", ncol=2)
+    + theme_minimal()
+    + labs(
+        title="Parameter Estimate Distributions across 36 Replicates",
+        x="Parameter Value",
+        y="Density",
+        fill="Method"
+    )
+    + theme(figure_size=(10, 12))
+)
+p_params
+```
+
+## Extrapolation to 1,422 Cities
+
+Based on the runtimes measured for a single city (London) under each of the three setups, we can project the time required to scale the estimation across a larger dataset of 1,422 cities under two scenarios:
+
+1. **Config 1 (Same configuration)**: Running IF2 with 5,000 particles, 100 iterations, 36 replicates per city, and Pfilter with 5,000 particles, 36 replications per parameter set.
+2. **Config 2 (Twice particles/iterations)**: Running IF2 with 10,000 particles, 200 iterations (scaling IF2 computation by a factor of 4), 36 replicates per city, and Pfilter with 10,000 particles (scaling Pfilter computation by a factor of 2), 36 replications per parameter set.
+
+Assuming linear scaling with respect to the number of cities, particles, and iterations:
+
+```{python}
+#| label: extrapolation
+#| echo: false
+
+n_cities = 1422
+
+# R timings extrapolation (1 city -> 1422 cities)
+r_mif_1 = r_mif_time * n_cities
+r_pf_1 = r_pf_time * n_cities
+r_total_1 = r_mif_1 + r_pf_1
+
+# Config 2: MIF2 scales by 4x (2x particles, 2x iterations), Pfilter scales by 2x (2x particles)
+r_mif_2 = r_mif_time * n_cities * 4
+r_pf_2 = r_pf_time * n_cities * 2
+r_total_2 = r_mif_2 + r_pf_2
+
+# pypomp fast timings extrapolation
+py_fast_mif_1 = py_fast_mif * n_cities
+py_fast_pf_1 = py_fast_pf * n_cities
+py_fast_total_1 = py_fast_mif_1 + py_fast_pf_1
+
+py_fast_mif_2 = py_fast_mif * n_cities * 4
+py_fast_pf_2 = py_fast_pf * n_cities * 2
+py_fast_total_2 = py_fast_mif_2 + py_fast_pf_2
+
+# pypomp JAX timings extrapolation
+py_jax_mif_1 = py_jax_mif * n_cities
+py_jax_pf_1 = py_jax_pf * n_cities
+py_jax_total_1 = py_jax_mif_1 + py_jax_pf_1
+
+py_jax_mif_2 = py_jax_mif * n_cities * 4
+py_jax_pf_2 = py_jax_pf * n_cities * 2
+py_jax_total_2 = py_jax_mif_2 + py_jax_pf_2
+
+
+def format_time(seconds):
+    days = seconds / 86400
+    months = days / 30.44
+    return f"{days:.2f} days<br>({months:.2f} months)"
+
+
+extrap_data = {
+    "Method": [
+        "R pomp (CPU, 36 Cores)",
+        "pypomp (GPU, Fast Samplers)",
+        "pypomp (GPU, JAX Samplers)",
+    ],
+    "Config 1: MIF2 Time": [
+        format_time(r_mif_1),
+        format_time(py_fast_mif_1),
+        format_time(py_jax_mif_1),
+    ],
+    "Config 1: Pfilter Time": [
+        format_time(r_pf_1),
+        format_time(py_fast_pf_1),
+        format_time(py_jax_pf_1),
+    ],
+    "Config 1: Total Time": [
+        format_time(r_total_1),
+        format_time(py_fast_total_1),
+        format_time(py_jax_total_1),
+    ],
+    "Config 2: MIF2 Time": [
+        format_time(r_mif_2),
+        format_time(py_fast_mif_2),
+        format_time(py_jax_mif_2),
+    ],
+    "Config 2: Pfilter Time": [
+        format_time(r_pf_2),
+        format_time(py_fast_pf_2),
+        format_time(py_jax_pf_2),
+    ],
+    "Config 2: Total Time": [
+        format_time(r_total_2),
+        format_time(py_fast_total_2),
+        format_time(py_jax_total_2),
+    ],
+}
+
+df_extrap = pd.DataFrame(extrap_data)
+HTML(
+    df_extrap.to_html(
+        classes="table table-striped table-hover", index=False, escape=False
+    )
+)
+```
+
+## Conclusion
+
+This speed comparison benchmarks the performance advantages of GPU-accelerated JAX-based parameter estimation:
+
+- **pypomp with Fast Samplers** achieves a massive speedup over R pomp due to custom GPU approximations.
+- **pypomp with standard JAX samplers** serves as a baseline to highlight the benefits of the optimized inverse CDF approximations.
+
