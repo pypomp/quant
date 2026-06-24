@@ -1,23 +1,54 @@
 ---
-title: "SPX Report"
+title: "SPX Comparison"
+subtitle: "Performance, Convergence, and Likelihood Validation: R pomp vs. pypomp"
+date: now
 format:
   html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
     toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
     embed-resources: true
+bibliography: references.bib
 engine: knitr
 ---
 
 **GPU Model Used:** NVIDIA Tesla V100
 
-# Setup
+## Introduction
+
+This report compares the performance, parameter convergence, and likelihood evaluation of the S&P 500 (SPX) stochastic volatility model used in @sun2024 using the `pypomp` package (on CPU and GPU) and the R `pomp` package (on CPU).
+
+The SPX model is a stochastic volatility model with the following parameter set:
+
+- $\mu$: Expected rate of return of the asset.
+- $\kappa$: Mean rate of reversion in variance.
+- $\theta$: Long term average variance.
+- $\xi$: Volatility coefficient of volatility.
+- $\rho$: Leverage effect parameter (correlation between return and volatility shocks).
+- $V_0$: Initial variance.
+
+Because the SPX model uses simple random number generation (sampling from a normal distribution) and features a single `rproc` step per observation, it is highly sensitive to framework overhead in the IF2 optimization and particle filter (`pfilter`) algorithms. 
+This benchmark compares runtimes, convergence trajectories, and likelihood distributions to verify the mathematical correctness and efficiency of `pypomp`.
+
+---
+
+## Setup
+
 ::: {.callout-note collapse="true"}
+### System & Session Information (R)
 ```{r Load R libraries, echo = FALSE}
 library(reticulate)
 library(tidyverse)
 library(pomp)
 
-setwd(file.path(here::here(),"tests", "spx", "performance"))
-knitr::opts_chunk$set(echo = FALSE)
+setwd(file.path(here::here(), "tests", "spx", "performance"))
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 sessionInfo()
 print(Sys.time())
@@ -29,6 +60,7 @@ import os
 
 os.environ["JAX_PLATFORMS"] = "cpu"
 import logging
+
 # Hide the noisy JAX CUDA initialization error on machines without a GPU
 logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
 
@@ -46,7 +78,6 @@ CPU_PKL_PATH = "performance/cpu_results/spx_results_rl4.pkl"
 gpu_pkl = pickle.load(open(GPU_PKL_PATH, "rb"))
 cpu_pkl = pickle.load(open(CPU_PKL_PATH, "rb"))
 ```
-
 
 ```{python Make basic frame}
 def process_pkl(pkl):
@@ -68,49 +99,6 @@ LL_frame_gpu, traces_gpu = process_pkl(gpu_pkl)
 LL_frame_cpu, traces_cpu = process_pkl(cpu_pkl)
 ```
 
-
-# Python results
-
-## Metadata
-
-```{python}
-print("GPU:")
-gpu_pkl.print_metadata()
-print("CPU:")
-cpu_pkl.print_metadata()
-```
-
-## Execution time
-
-```{python}
-print("GPU:")
-print(gpu_pkl.time())
-print("CPU:")
-print(cpu_pkl.time())
-```
-
-```{r R Execution time}
-load(here::here(
-    "tests",
-    "spx",
-    "performance",
-    "R_results",
-    "search360_hidden",
-    "1d_global_search360.rda"
-))
-cat("R:\n")
-if (exists("t.if.box") && exists("t.L.box") && exists("t.box")) {
-    r_time <- data.frame(
-        method = c("mif", "pfilter", "total"),
-        time = c(t.if.box["elapsed"], t.L.box["elapsed"], t.box["elapsed"]),
-        row.names = NULL
-    )
-    print(r_time)
-} else {
-    cat("Timing variables not found in the loaded .rda file.\n")
-}
-```
-
 ```{r Make traces frame in R}
 process_traces <- function(tr) {
     if ("se" %in% colnames(tr)) {
@@ -129,8 +117,203 @@ traces_gpu <- process_traces(py$traces_gpu)
 traces_cpu <- process_traces(py$traces_cpu)
 ```
 
+```{r Set custom ggplot theme}
+# Define premium plot styles
+theme_premium <- function() {
+    theme_minimal(base_size = 11) +
+        theme(
+            plot.title = element_text(
+                face = "bold",
+                size = 13,
+                color = "#2c3e50",
+                margin = margin(b = 10)
+            ),
+            plot.subtitle = element_text(
+                size = 10,
+                color = "#7f8c8d",
+                margin = margin(b = 15)
+            ),
+            axis.title = element_text(
+                face = "bold",
+                size = 10,
+                color = "#34495e"
+            ),
+            axis.text = element_text(size = 9, color = "#2c3e50"),
+            legend.title = element_text(
+                face = "bold",
+                size = 9,
+                color = "#34495e"
+            ),
+            legend.text = element_text(size = 9, color = "#2c3e50"),
+            legend.position = "bottom",
+            strip.background = element_rect(fill = "#f8f9fa", color = NA),
+            strip.text = element_text(
+                face = "bold",
+                size = 9,
+                color = "#2c3e50"
+            ),
+            panel.grid.major = element_line(color = "#eaeded"),
+            panel.grid.minor = element_line(color = "#f4f6f6")
+        )
+}
 
-## Plot traces
+scale_color_premium <- function(...) {
+    scale_color_manual(
+        values = c(
+            "python (GPU)" = "#1abc9c",
+            "python (CPU)" = "#3498db",
+            "R" = "#e74c3c",
+            "python" = "#1abc9c"
+        ),
+        ...
+    )
+}
+scale_fill_premium <- function(...) {
+    scale_fill_manual(
+        values = c(
+            "python (GPU)" = "#1abc9c",
+            "python (CPU)" = "#3498db",
+            "R" = "#e74c3c",
+            "python" = "#1abc9c"
+        ),
+        ...
+    )
+}
+```
+
+---
+
+## Metadata & Execution Runtimes
+
+::: {.callout-note collapse="true"}
+### System Configurations
+
+```{python}
+print("GPU Pomp Object Metadata:")
+gpu_pkl.print_metadata()
+print("\nCPU Pomp Object Metadata:")
+cpu_pkl.print_metadata()
+```
+
+:::
+
+### Performance & Throughput Comparison
+
+The table below presents the execution runtimes, speedup factors, and throughput of each configuration relative to R pomp.
+
+```{r R Execution time}
+load(here::here(
+    "tests",
+    "spx",
+    "performance",
+    "R_results",
+    "search360_hidden",
+    "1d_global_search360.rda"
+))
+
+# Extract times
+r_mif <- t.if.box["elapsed"]
+r_pf <- t.L.box["elapsed"]
+r_total <- t.box["elapsed"]
+
+gpu_time <- py$gpu_pkl$time()
+gpu_mif <- gpu_time$time[gpu_time$method == "mif"]
+gpu_pf <- gpu_time$time[gpu_time$method == "pfilter"]
+gpu_total <- sum(gpu_time$time)
+
+cpu_time <- py$cpu_pkl$time()
+cpu_mif <- cpu_time$time[cpu_time$method == "mif"]
+cpu_pf <- cpu_time$time[cpu_time$method == "pfilter"]
+cpu_total <- sum(cpu_time$time)
+
+# Speedups (relative to R pomp)
+gpu_mif_speedup <- r_mif / gpu_mif
+gpu_pf_speedup <- r_pf / gpu_pf
+gpu_total_speedup <- r_total / gpu_total
+
+cpu_mif_speedup <- r_mif / cpu_mif
+cpu_pf_speedup <- r_pf / cpu_pf
+cpu_total_speedup <- r_total / cpu_total
+
+# Throughput vs 1 CPU core
+# R uses 36 cores
+r_throughput <- 36.0
+gpu_throughput <- gpu_total_speedup * 36.0
+cpu_throughput <- cpu_total_speedup * 36.0
+
+timing_df <- data.frame(
+    Configuration = c(
+        "R pomp (CPU, 36 Cores)",
+        "pypomp (CPU, 36 Cores)",
+        "pypomp (GPU, 1 V100 GPU)"
+    ),
+    IF2_Time = c(
+        sprintf("%.2fs (%.2fm)", r_mif, r_mif / 60),
+        sprintf("%.2fs (%.2fm)", cpu_mif, cpu_mif / 60),
+        sprintf("%.2fs (%.2fm)", gpu_mif, gpu_mif / 60)
+    ),
+    IF2_Speedup = c(
+        "1.00x",
+        sprintf("%.2fx", cpu_mif_speedup),
+        sprintf("%.2fx", gpu_mif_speedup)
+    ),
+    Pfilter_Time = c(
+        sprintf("%.2fs (%.2fm)", r_pf, r_pf / 60),
+        sprintf("%.2fs (%.2fm)", cpu_pf, cpu_pf / 60),
+        sprintf("%.2fs (%.2fm)", gpu_pf, gpu_pf / 60)
+    ),
+    Pfilter_Speedup = c(
+        "1.00x",
+        sprintf("%.2fx", cpu_pf_speedup),
+        sprintf("%.2fx", gpu_pf_speedup)
+    ),
+    Total_Time = c(
+        sprintf("%.2fs (%.2fm)", r_total, r_total / 60),
+        sprintf("%.2fs (%.2fm)", cpu_total, cpu_total / 60),
+        sprintf("%.2fs (%.2fm)", gpu_total, gpu_total / 60)
+    ),
+    Total_Speedup = c(
+        "1.00x",
+        sprintf("%.2fx", cpu_total_speedup),
+        sprintf("%.2fx", gpu_total_speedup)
+    ),
+    Throughput_vs_1_Core = c(
+        "36.00x",
+        sprintf("%.2fx", cpu_throughput),
+        sprintf("%.2fx", gpu_throughput)
+    )
+)
+
+colnames(timing_df) <- c(
+    "Configuration",
+    "IF2 Time",
+    "IF2 Speedup",
+    "Pfilter Time",
+    "Pfilter Speedup",
+    "Total Time",
+    "Total Speedup",
+    "Throughput (vs 1 Core)"
+)
+
+knitr::kable(
+    timing_df,
+    format = "html",
+    table.attr = "class='table table-striped table-hover'"
+)
+```
+
+::: {.callout-note}
+### Performance Expectations
+- **GPU Acceleration**: We expect `pypomp` on the V100 GPU to achieve at least a 16x speedup over the 36-core CPU reference R run.
+- **CPU JAX Overhead**: `pypomp` on the CPU (using JAX) achieve at least a 2x speedup over the R run.
+- **Throughput**: Throughput measures the equivalent serial CPU core count required to match the execution speed. A GPU run should demonstrate throughput equivalent to hundreds of CPU cores.
+:::
+
+---
+
+## Parameter Convergence & Traces (IF2)
+
+### Comparison of Python and R Parameter Traces
 
 ```{r Set best_rep}
 # Set best_rep to the rep with the largest logLik on the last iteration for GPU
@@ -144,29 +327,7 @@ best_rep <- traces_gpu |>
     pull(rep)
 ```
 
-
-```{r Plot traces}
-ggplot(
-    filter(traces_gpu, quantity != "logLik"),
-    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
-) +
-    geom_line(show.legend = FALSE) +
-    facet_wrap(vars(quantity), scales = "free") +
-    ggtitle("Python (GPU) Parameter Traces")
-```
-
-
-```{r Plot LL traces, eval = FALSE}
-ggplot(
-    filter(traces, quantity == "logLik"),
-    aes(x = iter, y = param_value, group = rep, color = as.factor(rep))
-) +
-    geom_line() +
-    facet_wrap(vars(quantity), scales = "free") +
-    coord_cartesian(ylim = c(11000, 11850))
-```
-
-#  Compare python and R traces
+Here, we overlay the trajectories from R, Python (CPU), and Python (GPU) to compare the search paths directly.
 
 ```{r Load R estimates}
 load(here::here(
@@ -190,8 +351,17 @@ transform_traces <- function(df) {
         mutate(
             value_T = case_when(
                 quantity == "logLik" ~ param_value,
-                quantity %in% c("mu", "kappa", "theta", "xi", "V_0") ~ log(if_else(param_value > 0, param_value, NA_real_)),
-                quantity == "rho" ~ log(if_else(abs(param_value) < 1, (1 + param_value) / (1 - param_value), NA_real_)),
+                quantity %in%
+                    c("mu", "kappa", "theta", "xi", "V_0") ~ log(if_else(
+                    param_value > 0,
+                    param_value,
+                    NA_real_
+                )),
+                quantity == "rho" ~ log(if_else(
+                    abs(param_value) < 1,
+                    (1 + param_value) / (1 - param_value),
+                    NA_real_
+                )),
                 TRUE ~ param_value
             )
         )
@@ -210,7 +380,6 @@ traces_long <- traces_long |>
 rm(if.box)
 invisible(gc())
 
-
 traces_pyr <- bind_rows(
     traces_gpu |>
         mutate(language = "python (GPU)") |>
@@ -222,8 +391,7 @@ traces_pyr <- bind_rows(
 )
 ```
 
-
-```{r Compare python and R traces}
+```{r Compare python and R traces, fig.width = 11, fig.height = 8}
 traces_pyr |>
     filter(quantity != "logLik") |>
     filter(value_T >= -12, value_T <= 12) |>
@@ -232,15 +400,35 @@ traces_pyr |>
             x = iter,
             y = value_T,
             group = interaction(rep, language),
-            color = as.factor(language)
+            color = language
         )
     ) +
-    geom_line(alpha = 0.2) +
+    geom_line(alpha = 0.15) +
     facet_wrap(vars(quantity), scales = "free") +
-    ggtitle("Comparison of Python and R Parameter Traces")
+    labs(
+        title = "Comparison of Python and R Parameter Traces",
+        subtitle = "Overlay of all replicate trajectories (transformed values)",
+        x = "Iteration",
+        y = "Transformed Value",
+        color = "Configuration"
+    ) +
+    scale_color_premium() +
+    theme_premium() +
+    guides(color = guide_legend(override.aes = list(alpha = 1)))
 ```
 
-```{r Compare python and R traces quantiles}
+::: {.callout-note}
+### Expectation
+Since `pypomp` is designed to be a direct Python/JAX implementation of R's `pomp` package, the paths taken by the individual replicates in Python (both CPU and GPU) should be similar to those in R, overlapping substantially.
+:::
+
+---
+
+### Comparison of Python and R Parameter Trace Quantiles
+
+To abstract away the noise of individual runs, this plot compares the 10th and 90th percentile bounds of the parameters across all runs.
+
+```{r Compare python and R traces quantiles, fig.width = 11, fig.height = 8}
 traces_pyr |>
     filter(quantity != "logLik") |>
     filter(value_T >= -12, value_T <= 12) |>
@@ -251,16 +439,44 @@ traces_pyr |>
         .groups = "drop"
     ) |>
     ggplot(
-        mapping = aes(x = iter, ymin = ymin, ymax = ymax, fill = language)
+        mapping = aes(
+            x = iter,
+            ymin = ymin,
+            ymax = ymax,
+            fill = language,
+            color = language
+        )
     ) +
-    geom_ribbon(alpha = 0.5) +
+    geom_ribbon(alpha = 0.3, color = NA) +
+    geom_line(aes(y = (ymin + ymax) / 2), linetype = "dashed", alpha = 0.7) +
     facet_wrap(vars(quantity), scales = "free") +
-    ggtitle("Comparison of Python and R Parameter Trace Quantiles")
+    labs(
+        title = "Comparison of Python and R Parameter Trace Quantiles",
+        subtitle = "Shaded regions represent the 10th to 90th percentile interval; dashed line is the midpoint",
+        x = "Iteration",
+        y = "Transformed Value Range",
+        fill = "Configuration",
+        color = "Configuration"
+    ) +
+    scale_fill_premium() +
+    scale_color_premium() +
+    theme_premium()
 ```
 
-# Compare python and R estimates
+::: {.callout-note}
+### Expectation
+While comparing individual noisy trajectories can be difficult, the 10th and 90th percentile ribbons provide a more robust view of convergence. If the package is working properly, the ribbons for Python (GPU), Python (CPU), and R should overlap closely throughout the iterations.
+:::
 
-```{r Compare python and R estimates}
+---
+
+## Parameter Estimates Distribution
+
+### Comparison of Final Parameter Estimates
+
+This plot compares the distribution of final estimated parameters across replicates.
+
+```{r Compare python and R estimates, fig.width = 10, fig.height = 7}
 traces_pyr |>
     group_by(language, quantity) |>
     filter(iter == max(iter)) |>
@@ -276,57 +492,115 @@ traces_pyr |>
         by = c("language", "quantity")
     ) |>
     filter(value_T >= -10, value_T <= 10) |>
-    ggplot(mapping = aes(x = value_T, fill = language)) +
-    geom_density(alpha = 0.5) +
+    ggplot(mapping = aes(x = value_T, fill = language, color = language)) +
+    geom_density(alpha = 0.3) +
     facet_wrap(vars(quantity), scales = "free") +
     labs(
-        title = "Comparison of Final Iteration Values for Each Parameter (Zoomed)",
-        x = "Parameter",
-        y = "Transformed Value",
-        fill = "Language"
-    )
+        title = "Comparison of Final Parameter Estimates",
+        subtitle = "Density distribution of parameters at the final IF2 iteration (transformed, zoomed)",
+        x = "Transformed Parameter Value",
+        y = "Density",
+        fill = "Configuration",
+        color = "Configuration"
+    ) +
+    scale_fill_premium() +
+    scale_color_premium() +
+    theme_premium()
 ```
 
-```{r Compare python and R estimates (boxplot)}
+::: {.callout-note}
+### Expectation
+The density of the final parameter values (at the last iteration) across replicates should overlap heavily for each configuration.
+:::
+
+---
+
+### Comparison of Starting Parameter Values (Sanity Check)
+
+This plot shows the distribution of initial parameter values to verify that the configurations started from identical distributions.
+
+```{r Compare python and R estimates (boxplot), fig.width = 10, fig.height = 7}
 traces_pyr |>
     filter(quantity != "logLik", quantity != "loglik") |>
     group_by(language, quantity) |>
     filter(iter == min(iter)) |>
-    ggplot(mapping = aes(x = value_T, fill = language)) +
-    geom_density(alpha = 0.5) +
+    ggplot(mapping = aes(x = value_T, fill = language, color = language)) +
+    geom_density(alpha = 0.3) +
     facet_wrap(vars(quantity), scales = "free") +
     labs(
-        title = "Comparison of Starting Parameter Values for Each Parameter (Zoomed)",
-        x = "Parameter",
-        y = "Transformed Value",
-        fill = "Language"
-    )
+        title = "Comparison of Initial Parameter Distributions",
+        subtitle = "Density of starting parameter configurations across restarts (transformed, zoomed)",
+        x = "Transformed Parameter Value",
+        y = "Density",
+        fill = "Configuration",
+        color = "Configuration"
+    ) +
+    scale_fill_premium() +
+    scale_color_premium() +
+    theme_premium()
 ```
 
-## LL comparison
+::: {.callout-note}
+### Expectation
+This density plot serves as a sanity check. Because the CPU, GPU, and R runs are initialized using the same random starting box, the starting densities should be be very similar across the configurations.
+:::
 
-### Python (GPU) LL summary:
+---
+
+## Log-Likelihood Comparisons
+
+### Summary of Final Log-Likelihood Estimates
+
+The table below summarizes the log-likelihood (LL) statistics across replicates at the final iteration.
+
+```{r LL summary statistics}
+ll_summary_table <- data.frame(
+    Configuration = c("pypomp (GPU)", "pypomp (CPU)", "R pomp"),
+    Min = c(min(py$LL_frame_gpu$LL), min(py$LL_frame_cpu$LL), min(LL_df_R$est)),
+    Median = c(
+        median(py$LL_frame_gpu$LL),
+        median(py$LL_frame_cpu$LL),
+        median(LL_df_R$est)
+    ),
+    Mean = c(
+        mean(py$LL_frame_gpu$LL),
+        mean(py$LL_frame_cpu$LL),
+        mean(LL_df_R$est)
+    ),
+    Max = c(max(py$LL_frame_gpu$LL), max(py$LL_frame_cpu$LL), max(LL_df_R$est)),
+    SD = c(sd(py$LL_frame_gpu$LL), sd(py$LL_frame_cpu$LL), sd(LL_df_R$est))
+)
+knitr::kable(
+    ll_summary_table,
+    digits = 2,
+    format = "html",
+    table.attr = "class='table table-striped table-hover'"
+)
+```
+
+::: {.callout-tip collapse="true"}
+### View Top 10 Best Replicates for Each Configuration
+**Python (GPU) Top 10:**
 ```{r}
-print(summary(py$LL_frame_gpu$LL))
 head(arrange(py$LL_frame_gpu, desc(LL)), 10)
 ```
-
-### Python (CPU) LL summary:
+**Python (CPU) Top 10:**
 ```{r}
-print(summary(py$LL_frame_cpu$LL))
 head(arrange(py$LL_frame_cpu, desc(LL)), 10)
 ```
-
-
-### R LL summary:
+**R Top 10:**
 ```{r}
-print(summary(LL_df_R$est))
 head(arrange(LL_df_R, desc(est)), 10)
 ```
+:::
 
-### Density plot comparison
+---
 
-```{r}
+### Density Plot Comparison (LL > 11,800)
+
+This plot shows the density distribution of final log-likelihood estimates.
+
+```{r LL density comparison, fig.width = 8, fig.height = 5}
 data.frame(
     GPU = py$LL_frame_gpu$LL,
     CPU = py$LL_frame_cpu$LL
@@ -335,17 +609,31 @@ data.frame(
     mutate(language = paste0("python (", language, ")")) |>
     bind_rows(data.frame(LL = LL_df_R$est, language = "R")) |>
     filter(LL > 11800) |>
-    ggplot(aes(x = LL, fill = language)) +
-    geom_density(alpha = 0.5) +
+    ggplot(aes(x = LL, fill = language, color = language)) +
+    geom_density(alpha = 0.3) +
     labs(
-        title = "Comparison of Python and R LL Estimates (Zoomed)",
-        x = "LL",
-        fill = "Language"
-    )
+        title = "Comparison of Final Log-Likelihood Estimates",
+        subtitle = "Density of estimated log-likelihoods at final parameter sets (LL > 11,800)",
+        x = "Log-Likelihood (LL)",
+        y = "Density",
+        fill = "Configuration",
+        color = "Configuration"
+    ) +
+    scale_fill_premium() +
+    scale_color_premium() +
+    theme_premium()
 ```
 
+::: {.callout-note}
+### Expectation
+We would like the final log-likelihood estimates from each configuration to be identical, so we want to see all 3 density estimates overlap heavily.
+:::
 
-# Compare python and R LL estimates at Weizhe's estimates
+---
+
+## Likelihood Evaluation at Fixed Parameter (rep3600 Check)
+
+This section evaluates the particle filter's likelihood calculation itself by running it multiple times on a single, fixed parameter vector (@sun2024 estimates).
 
 ```{python Load rep3600 eval results}
 EVAL_PKL_PATH = os.path.join("pfilter_check", "py_results", "spx_results_eval.pkl")
@@ -353,7 +641,7 @@ pkl_eval = pickle.load(open(EVAL_PKL_PATH, "rb"))
 LL_rep3600 = pkl_eval.results_history[0].logLiks[0].values.tolist()
 ```
 
-```{r Load rep3600 R eval and plot combined density}
+```{r Load rep3600 R eval and plot combined density, fig.width = 8, fig.height = 5}
 load(file.path("pfilter_check", "R_results", "spx_results_eval.rda"))
 
 # Extract numeric log-likelihoods from L.box regardless of shape
@@ -366,26 +654,38 @@ data.frame(
         rep("R", length(LL_rep3600_R))
     )
 ) |>
-    ggplot(aes(x = LL, fill = source)) +
-    geom_density(alpha = 0.5) +
+    ggplot(aes(x = LL, fill = source, color = source)) +
+    geom_density(alpha = 0.3) +
     labs(
-        title = "rep3600 Log-Likelihood Density: Python vs R",
-        x = "Log-Likelihood",
-        fill = "Source"
-    )
+        title = "Likelihood Evaluation at Fixed Parameter (rep3600)",
+        subtitle = "Log-Likelihood density distribution evaluated at a single benchmark parameter set",
+        x = "Log-Likelihood (LL)",
+        y = "Density",
+        fill = "Source",
+        color = "Source"
+    ) +
+    scale_fill_premium() +
+    scale_color_premium() +
+    theme_premium()
 ```
 
-<!-- # Weizhe's estimates
+::: {.callout-note}
+### Expectation
+Again, we want the two density curves to be about the same, overlapping heavily.
+:::
 
-This table compares the parameter estimates reported by Weizhe in his thesis to our best python parameter estimates.
+---
 
-```{r Weizhe estimates}
+::: {.callout-tip collapse="true"}
+### Comparison with @sun2024 Estimates
+This table compares the parameter estimates reported in @sun2024 to our best Python (GPU) parameter estimates.
+
+```{r Sun estimates}
 rho_transform <- function(x) {
     out <- log(if_else(abs(x) < 1, (1 + x) / (1 - x), NA_real_))
     return(out)
 }
 
-# Weizhe values
 data <- list(
     Parameter = c("mu", "kappa", "theta", "xi", "rho", "V_0"),
     Value = c(
@@ -397,22 +697,38 @@ data <- list(
         log(7.66e-3^2)
     )
 )
-df <- as.data.frame(data)
+df_weizhe <- as.data.frame(data)
 
-# Compare Weizhe's estimates to the best python fit
-traces |>
+traces_gpu |>
     filter(iter == last_iter, rep == best_rep, method == "pfilter") |>
     select(quantity, param_value) |>
     mutate(
         param_value_T = case_when(
             quantity == "logLik" ~ param_value,
-            quantity %in% c("mu", "kappa", "theta", "xi", "V_0") ~ log(if_else(param_value > 0, param_value, NA_real_)),
-            quantity == "rho" ~ log(if_else(abs(param_value) < 1, (1 + param_value) / (1 - param_value), NA_real_)),
+            quantity %in% c("mu", "kappa", "theta", "xi", "V_0") ~ log(if_else(
+                param_value > 0,
+                param_value,
+                NA_real_
+            )),
+            quantity == "rho" ~ log(if_else(
+                abs(param_value) < 1,
+                (1 + param_value) / (1 - param_value),
+                NA_real_
+            )),
             TRUE ~ param_value
         )
     ) |>
-    left_join(df, by = c("quantity" = "Parameter")) |>
+    left_join(df_weizhe, by = c("quantity" = "Parameter")) |>
     mutate(difference = param_value_T - Value) |>
     rename(Weizhe_value = Value, python_value = param_value_T) |>
-    print()
-``` -->
+    knitr::kable(
+        digits = 4,
+        format = "html",
+        table.attr = "class='table table-striped table-hover'"
+    )
+```
+:::
+
+---
+
+# References
