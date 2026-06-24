@@ -4,6 +4,15 @@ These __quantitative tests__, or simply __quant tests__, are designed to assess 
 
 The quant tests also provide additional examples of pypomp, focused on technical issues that extend the simpler examples in [pypomp:tutorials](https://pypomp.github.io/tutorials).
 
+---
+
+### 🚀 Quick Links
+* 💻 **[Core Repository](https://github.com/pypomp/pypomp)** — Source code and issue tracker for the `pypomp` package.
+* 📖 **[Read the Documentation](https://pypomp.readthedocs.io/)** — Core library API reference and user guide.
+* 🎓 **[Tutorials](https://pypomp.github.io/tutorials)** — Examples and tutorials for learning `pypomp`.
+
+---
+
 ## Existing Quantitative Tests
 
 Below is a list of quantitative test reports available in this repository:
