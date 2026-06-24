@@ -18,8 +18,6 @@ bibliography: references.bib
 engine: knitr
 ---
 
-**GPU Model Used:** NVIDIA Tesla V100
-
 ## Introduction
 
 This report compares the performance, parameter convergence, and likelihood evaluation of the S&P 500 (SPX) stochastic volatility model used in @sun2024 using the `pypomp` package (on CPU and GPU) and the R `pomp` package (on CPU).
@@ -200,6 +198,7 @@ cpu_pkl.print_metadata()
 ### Performance & Throughput Comparison
 
 The table below presents the execution runtimes, speedup factors, and throughput of each configuration relative to R pomp.
+The GPU used is a NVIDIA V100, and the CPU used is a 3.0 GHz Intel Xeon Gold 6154.
 
 ```{r R Execution time}
 load(here::here(
@@ -292,7 +291,7 @@ colnames(timing_df) <- c(
     "Pfilter Speedup",
     "Total Time",
     "Total Speedup",
-    "Throughput (vs 1 Core)"
+    "Throughput (vs 1 CPU Core)"
 )
 
 knitr::kable(
