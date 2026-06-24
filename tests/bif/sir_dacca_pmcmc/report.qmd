@@ -9,6 +9,8 @@ execute:
   daemon: false
 ---
 
+**GPU Model Used:** NVIDIA RTX 6000 (Blackwell)
+
 ```{python}
 # | label: setup
 # | echo: false

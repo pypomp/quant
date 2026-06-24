@@ -9,6 +9,8 @@ format:
 engine: python3  
 ---
 
+**GPU Model Used:** NVIDIA RTX 6000 (Blackwell)
+
 ```{python}
 #| label: setup
 #| echo: false

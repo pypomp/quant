@@ -1,6 +1,6 @@
 ---
 title: "Measles London Model Speed Comparison"
-subtitle: "R pomp (CPU) vs. pypomp (GPU) vs. pypomp JAX Samplers (GPU)"
+subtitle: "R pomp (CPU) vs. pypomp (GPU with fast samplers) vs. pypomp (GPU with JAX samplers)"
 date: now
 format:
   html:
@@ -18,9 +18,9 @@ jupyter: python3
 
 This report compares the runtime speed and statistical accuracy of the London measles model using three different setups:
 
-1. **R pomp** running in parallel on a CPU (36 cores).
-2. **pypomp** running on a GPU using the default fast approximate inverse CDF samplers (`fast_poisson`, `fast_gamma`, `fast_multinomial`).
-3. **pypomp** running on a GPU using the standard built-in JAX samplers (replacing the fast samplers).
+1. **R pomp** running in parallel on a CPU (36 cores of a 3.30GHz AMD EPYC 9575F).
+2. **pypomp** running on a GPU (NVIDIA RTX 6000 Blackwell) using the default fast approximate inverse CDF samplers (`fast_poisson`, `fast_gamma`, `fast_multinomial`).
+3. **pypomp** running on a GPU (NVIDIA RTX 6000 Blackwell) using the standard built-in JAX samplers (replacing the fast samplers).
 
 Both models were run under identical conditions:
 
@@ -70,6 +70,7 @@ py_jax_total = py_jax_mif + py_jax_pf
 ## Timing Comparison
 
 The table below presents the execution runtimes and the speedup factors relative to R pomp.
+We should see that Pypomp, when run with the `pypomp.random` fast samplers on a strong GPU, is substantially faster than the other configurations.
 
 ```{python}
 #| label: timing-table
@@ -112,136 +113,25 @@ timing_data = {
         f"{r_total_time / py_fast_total:.2f}x",
         f"{r_total_time / py_jax_total:.2f}x",
     ],
+    "Throughput (vs 1 CPU Core)": [
+        "36.00x",
+        f"{(r_total_time / py_fast_total) * 36:.2f}x",
+        f"{(r_total_time / py_jax_total) * 36:.2f}x",
+    ],
 }
 
 df_timing = pd.DataFrame(timing_data)
 HTML(df_timing.to_html(classes="table table-striped table-hover", index=False))
 ```
 
-## Log-Likelihood Comparison
 
-Let's compare the final estimated log-likelihoods across the 36 replicates. Running a particle filter evaluates the quality of the final parameters found by IF2.
-
-```{python}
-#| label: loglik-comparison
-#| fig-width: 8
-#| fig-height: 5
-#| warning: false
-
-# Extract logLiks
-# For R, it is mean_logLik per replicate
-r_logliks = r_results.groupby("replicate")["mean_logLik"].first().values
-
-# For pypomp, the results_df contains logLik
-py_fast_logliks = py_fast["results"]["logLik"].values
-py_jax_logliks = py_jax["results"]["logLik"].values
-
-loglik_df = pd.DataFrame({
-    "Method": (["R pomp"] * len(r_logliks)) + (["pypomp (Fast)"] * len(py_fast_logliks)) + (["pypomp (JAX)"] * len(py_jax_logliks)),
-    "LogLik": np.concatenate([r_logliks, py_fast_logliks, py_jax_logliks])
-})
-
-p_loglik = (
-    ggplot(loglik_df, aes(x="Method", y="LogLik", fill="Method"))
-    + geom_boxplot()
-    + theme_minimal()
-    + labs(
-        title="Comparison of Final Log-Likelihood Estimates across 36 Replicates",
-        x="Method",
-        y="Log-Likelihood"
-    )
-    + theme(legend_position="none")
-)
-p_loglik
-```
-
-```{python}
-# Print summary table
-summary_loglik = pd.DataFrame(
-    {
-        "Method": ["R pomp", "pypomp (Fast)", "pypomp (JAX)"],
-        "Mean LogLik": [
-            np.mean(r_logliks),
-            np.mean(py_fast_logliks),
-            np.mean(py_jax_logliks),
-        ],
-        "Max LogLik": [
-            np.max(r_logliks),
-            np.max(py_fast_logliks),
-            np.max(py_jax_logliks),
-        ],
-        "Min LogLik": [
-            np.min(r_logliks),
-            np.min(py_fast_logliks),
-            np.min(py_jax_logliks),
-        ],
-        "Std Dev": [np.std(r_logliks), np.std(py_fast_logliks), np.std(py_jax_logliks)],
-    }
-)
-
-HTML(summary_loglik.to_html(classes="table table-striped table-hover", index=False))
-```
-
-## Parameter Estimate Comparisons
-
-Finally, we compare the distribution of the estimated parameters across the 36 replicates to verify that all three implementations converge to similar parameter space regions.
-
-```{python}
-#| label: param-densities
-#| fig-width: 10
-#| fig-height: 12
-#| warning: false
-
-# Extract parameter names and values
-# R results are in long format: unit, replicate, names (param), coef (value)
-r_params = r_results[["replicate", "names", "coef"]].copy()
-r_params["source"] = "R pomp"
-r_params = r_params.rename(columns={"names": "param", "coef": "value"})
-
-# pypomp results are in wide format
-py_fast_df = py_fast["results"].copy()
-py_fast_df["source"] = "pypomp (Fast)"
-py_fast_df["replicate"] = py_fast_df.index + 1
-py_fast_melt = py_fast_df.drop(
-    columns=["logLik", "se", "theta_idx", "unit"], errors="ignore"
-).melt(id_vars=["source", "replicate"], var_name="param", value_name="value")
-
-py_jax_df = py_jax["results"].copy()
-py_jax_df["source"] = "pypomp (JAX)"
-py_jax_df["replicate"] = py_jax_df.index + 1
-py_jax_melt = py_jax_df.drop(
-    columns=["logLik", "se", "theta_idx", "unit"], errors="ignore"
-).melt(id_vars=["source", "replicate"], var_name="param", value_name="value")
-
-# Combine all results
-combined_params = pd.concat([r_params, py_fast_melt, py_jax_melt], ignore_index=True)
-
-# Select a subset of key parameters to display
-key_params = ["R0", "rho", "sigmaSE", "amplitude", "gamma", "sigma", "psi", "cohort"]
-combined_key_params = combined_params[combined_params["param"].isin(key_params)]
-
-p_params = (
-    ggplot(combined_key_params, aes(x="value", fill="source"))
-    + geom_density(alpha=0.4)
-    + facet_wrap("~param", scales="free", ncol=2)
-    + theme_minimal()
-    + labs(
-        title="Parameter Estimate Distributions across 36 Replicates",
-        x="Parameter Value",
-        y="Density",
-        fill="Method"
-    )
-    + theme(figure_size=(10, 12))
-)
-p_params
-```
 
 ## Extrapolation to 1,422 Cities
 
 Based on the runtimes measured for a single city (London) under each of the three setups, we can project the time required to scale the estimation across a larger dataset of 1,422 cities under two scenarios:
 
 1. **Config 1 (Same configuration)**: Running IF2 with 5,000 particles, 100 iterations, 36 replicates per city, and Pfilter with 5,000 particles, 36 replications per parameter set.
-2. **Config 2 (Twice particles/iterations)**: Running IF2 with 10,000 particles, 200 iterations (scaling IF2 computation by a factor of 4), 36 replicates per city, and Pfilter with 10,000 particles (scaling Pfilter computation by a factor of 2), 36 replications per parameter set.
+2. **Config 2 (2x particles, 2x iterations)**: Running IF2 with 10,000 particles, 200 iterations (scaling IF2 computation by a factor of 4), 36 replicates per city, and Pfilter with 10,000 particles (scaling Pfilter computation by a factor of 2), 36 replications per parameter set.
 
 Assuming linear scaling with respect to the number of cities, particles, and iterations:
 
@@ -330,6 +220,135 @@ HTML(
         classes="table table-striped table-hover", index=False, escape=False
     )
 )
+```
+
+Note that, for the GPU, times could be cut to about 1/G of the recorded times if the replications were split across G GPUs.
+
+
+## Log-Likelihood Comparison
+
+While the point of these runs was to benchmark the execution time of different approaches, and 36 replications isn't really sufficient to accurately compare estimate distributions, we also include comparisons of the log-likelihood and parameter estimates in case anything interesting crops up. 
+
+Ideally, the estimated log-likelihood distributions are roughly similar.
+
+```{python}
+#| label: loglik-comparison
+#| fig-width: 8
+#| fig-height: 5
+#| warning: false
+
+# Extract logLiks
+# For R, it is mean_logLik per replicate
+r_logliks = r_results.groupby("replicate")["mean_logLik"].first().values
+
+# For pypomp, the results_df contains logLik
+py_fast_logliks = py_fast["results"]["logLik"].values
+py_jax_logliks = py_jax["results"]["logLik"].values
+
+loglik_df = pd.DataFrame(
+    {
+        "Method": (["R pomp"] * len(r_logliks))
+        + (["pypomp (Fast)"] * len(py_fast_logliks))
+        + (["pypomp (JAX)"] * len(py_jax_logliks)),
+        "LogLik": np.concatenate([r_logliks, py_fast_logliks, py_jax_logliks]),
+    }
+)
+
+p_loglik = (
+    ggplot(loglik_df, aes(x="LogLik", fill="Method"))
+    + geom_density(alpha=0.4)
+    + theme_minimal()
+    + labs(
+        title="Comparison of Final Log-Likelihood Estimates across 36 Replicates",
+        x="Log-Likelihood",
+        y="Density",
+    )
+    + theme(legend_position="bottom")
+    + xlim((-3950, None))
+)
+p_loglik
+```
+
+```{python}
+# Print summary table
+summary_loglik = pd.DataFrame(
+    {
+        "Method": ["R pomp", "pypomp (Fast)", "pypomp (JAX)"],
+        "Mean LogLik": [
+            np.mean(r_logliks),
+            np.mean(py_fast_logliks),
+            np.mean(py_jax_logliks),
+        ],
+        "Max LogLik": [
+            np.max(r_logliks),
+            np.max(py_fast_logliks),
+            np.max(py_jax_logliks),
+        ],
+        "Min LogLik": [
+            np.min(r_logliks),
+            np.min(py_fast_logliks),
+            np.min(py_jax_logliks),
+        ],
+        "Std Dev": [np.std(r_logliks), np.std(py_fast_logliks), np.std(py_jax_logliks)],
+    }
+)
+
+HTML(summary_loglik.to_html(classes="table table-striped table-hover", index=False))
+```
+
+## Parameter Estimate Comparisons
+
+Here we display some of the estimated parameter distributions.
+Ideally, the estimated parameter distributions are roughly similar.
+
+```{python}
+#| label: param-densities
+#| fig-width: 10
+#| fig-height: 12
+#| warning: false
+
+# Extract parameter names and values
+# R results are in long format: unit, replicate, names (param), coef (value)
+r_params = r_results[["replicate", "names", "coef"]].copy()
+r_params["source"] = "R pomp"
+r_params = r_params.rename(columns={"names": "param", "coef": "value"})
+
+# pypomp results are in wide format
+py_fast_df = py_fast["results"].copy()
+py_fast_df["source"] = "pypomp (Fast)"
+py_fast_df["replicate"] = py_fast_df.index + 1
+py_fast_melt = py_fast_df.drop(
+    columns=["logLik", "se", "theta_idx", "unit"], errors="ignore"
+).melt(id_vars=["source", "replicate"], var_name="param", value_name="value")
+
+py_jax_df = py_jax["results"].copy()
+py_jax_df["source"] = "pypomp (JAX)"
+py_jax_df["replicate"] = py_jax_df.index + 1
+py_jax_melt = py_jax_df.drop(
+    columns=["logLik", "se", "theta_idx", "unit"], errors="ignore"
+).melt(id_vars=["source", "replicate"], var_name="param", value_name="value")
+
+# Combine all results
+combined_params = pd.concat([r_params, py_fast_melt, py_jax_melt], ignore_index=True)
+
+# Select a subset of key parameters to display
+key_params = ["R0", "rho", "sigmaSE", "amplitude", "gamma", "sigma", "psi", "cohort"]
+combined_key_params = combined_params[combined_params["param"].isin(key_params)]
+
+p_params = (
+    ggplot(combined_key_params, aes(x="value", fill="source"))
+    + geom_density(alpha=0.4)
+    + facet_wrap("~param", scales="free", ncol=2)
+    + theme_minimal()
+    + labs(
+        title="Parameter Estimate Distributions across 36 Replicates",
+        x="Parameter Value",
+        y="Density",
+        fill="Method"
+    )
+    + theme(figure_size=(10, 12))
+)
+p_params
 ```
 
 ## Conclusion

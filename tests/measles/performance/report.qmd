@@ -9,6 +9,8 @@ execute:
 engine: jupyter
 ---
 
+**GPU Model Used:** NVIDIA Tesla V100
+
 # Setup
 
 ```{python Import python modules}

@@ -21,7 +21,7 @@ Also checks that the particle filter yields the same distribution of log likelih
 ### 4. Measles Model
 * **[LogLik Comparison: Pypomp vs R](tests/measles/R_comparison/logLik_comparison/report.html)** (`tests/measles/R_comparison`): Verifies log-likelihood evaluation accuracy by comparing `pypomp` (both exact and approximate implementations) against R's `pomp` package.
 * **[Parameter Comparison: Pypomp vs R](tests/measles/R_comparison/parameter_comparison/report.html)** (`tests/measles/R_comparison/parameter_comparison`): Compares the parameter estimates obtained via `pypomp` versus R's `pomp`.
-* **[Measles Report](tests/measles/performance/report.html)** (`tests/measles/performance`): Benchmarks parameter estimation via IF2 on a discrete measles model.
+* **[Runtime Comparison: Pypomp vs R](tests/measles/R_comparison/speed_comparison/report.html)** (`tests/measles/R_comparison/speed_comparison`): Benchmarks runtime of IF2 on a discrete measles model using `pypomp` versus `pomp`. This demonstrates the utility of the fast samplers in `pypomp.random`.
 
 ### 5. Panel Measles Model
 * **[Panel Measles (only unit-specific parameters)](tests/panel_measles/performance/report.html)** (`tests/panel_measles/performance`): Benchmarks panel parameter estimation via MPIF on a panel measles dataset using only unit-specific parameters.

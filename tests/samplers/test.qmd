@@ -74,6 +74,8 @@ from scipy.stats import binom as scipy_binom
 
 print("JAX Devices:", jax.devices())
 print("Using CPU:", USE_CPU)
+if not USE_CPU and len(jax.devices()) > 0 and jax.devices()[0].platform == "gpu":
+    print("GPU Model Used:", jax.devices()[0].device_kind)
 ```
 
 ## Performance Benchmarks

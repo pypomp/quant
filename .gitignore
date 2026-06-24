@@ -71,3 +71,5 @@ tmp*
 
 
 GEMINI.md
+tests/measles/R_comparison/speed_comparison/results/r_pomp_results.csv
+tests/measles/R_comparison/speed_comparison/results/r_pomp_timings.csv

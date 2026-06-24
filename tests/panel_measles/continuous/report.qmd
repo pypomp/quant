@@ -7,6 +7,8 @@ format:
 jupyter: python3
 ---
 
+**GPU Model Used:** NVIDIA RTX 6000 (Blackwell)
+
 ```{python Import python modules}
 # | label: setup
 # | echo: false

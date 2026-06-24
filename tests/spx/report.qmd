@@ -7,6 +7,8 @@ format:
 engine: knitr
 ---
 
+**GPU Model Used:** NVIDIA Tesla V100
+
 # Setup
 ::: {.callout-note collapse="true"}
 ```{r Load R libraries, echo = FALSE}

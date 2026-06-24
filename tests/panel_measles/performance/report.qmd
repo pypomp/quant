@@ -8,6 +8,8 @@ execute:
   echo: false
 ---
 
+**GPU Model Used:** NVIDIA RTX 6000 (Blackwell)
+
 ```{python Import modules}
 import os
 import logging

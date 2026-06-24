@@ -1,5 +1,5 @@
 ---
-title: "Pypomp vs R Parameter Comparison"
+title: "Pypomp vs R Parameter Comparison on the Measles Model"
 format:
   html:
     toc: true
@@ -8,6 +8,8 @@ format:
     code-summary: "View Code"
 jupyter: python3
 ---
+
+**GPU Model Used:** NVIDIA RTX 6000 (Blackwell)
 
 ```{python}
 #| label: setup

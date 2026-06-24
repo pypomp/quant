@@ -9,6 +9,10 @@ execute:
   daemon: false
 ---
 
+**GPU Model Used for Parameter Estimation (MIF/Train):** NVIDIA RTX 6000 (Blackwell)  
+
+**GPU Model Used for Particle Filter Evaluation:** NVIDIA Tesla V100
+
 ```{python}
 # | label: setup
 # | echo: false
