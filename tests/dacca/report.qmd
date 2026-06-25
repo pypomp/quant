@@ -1,38 +1,129 @@
 ---
-title: "Dacca Report"
+title: "Dhaka Comparison"
+subtitle: "Performance, Convergence, and Likelihood Validation: R pomp vs. pypomp"
+date: now
 format:
   html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
     toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
     embed-resources: true
 jupyter: python3
 execute:
   daemon: false
 ---
 
-**GPU Model Used for Parameter Estimation (MIF/Train):** NVIDIA RTX 6000 (Blackwell)  
+## Introduction
 
-**GPU Model Used for Particle Filter Evaluation:** NVIDIA Tesla V100
+This report compares the performance, parameter convergence, and likelihood evaluation of the Dhaka cholera epidemic model using two different optimization pipelines from the `pypomp` package:
+
+1. **IF2 only** (Iterated Filtering 2 / IF2)
+2. **IF2 + Train (IFAD)** (Iterated Filtering with Automatic Differentiation)
+
+The Dhaka cholera model is an epidemic model describing cholera dynamics in Dhaka, Bangladesh.
+
+### Parameter Definitions
+
+- **`gamma`**: Recovery rate from infection.
+- **`m`**: Cholera mortality rate.
+- **`rho`**: Reporting rate of cholera cases.
+- **`epsilon`**: Rate of waning of immunity for inapparent infections.
+- **`c`**: Fraction of infections that lead to severe infection.
+- **`alpha`**: Non-linear transmission factor.
+- **`delta`**: Cholera-induced mortality rate.
+- **`beta_trend`**: Long-term secular trend in transmission.
+- **`sigma`**: Environmental noise intensity.
+- **`tau`**: Measurement noise (overdispersion parameter).
+- **`bs1` - `bs6`**: Spline coefficients modeling seasonal transmission rates.
+- **`omegas1` - `omegas6`**: Spline coefficients for seasonal environmental reservoir.
+- **`S_0`, `I_0`, `Y_0`, `R1_0`, `R2_0`, `R3_0`**: Initial compartment fractions.
+
+For this test, we fix the values of `Y0`, `c`, `alpha`, `delta`, and `rho`.
+
+Because the Dhaka model has a very fast transition process but many transition simulator calls per observation, it is highly sensitive to computational overhead.
+If the wall clock time is ever too long, it could be a sign that this overhead is excessive.
+
+A more thorough version of this analysis is available [here](https://github.com/pypomp/dmop). 
+
+---
+
+## Setup & Theme Configuration
 
 ```{python}
 # | label: setup
-# | echo: false
+# | code-fold: true
+# | code-summary: "Show Imports & Theme Configuration"
 import os
 import logging
-
-# Hide the noisy JAX CUDA initialization error on machines without a GPU
-logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
 import pickle
-
 from datetime import datetime
-
 import numpy as np
 import pandas as pd
 from plotnine import *
+from IPython.display import display, HTML, Markdown
+
+# Hide the noisy JAX CUDA initialization error on machines without a GPU
+logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
 
 import pypomp as pp
 import jax
 
-print(datetime.now())
+print(f"Report execution time: {datetime.now()}")
+
+
+# Setup theme and color palettes
+def theme_premium():
+    return theme_minimal(base_size=11) + theme(
+        plot_title=element_text(face="bold", size=12, color="#2c3e50"),
+        axis_title=element_text(face="bold", size=10, color="#34495e"),
+        axis_text=element_text(size=9, color="#2c3e50"),
+        legend_title=element_text(face="bold", size=9, color="#34495e"),
+        legend_text=element_text(size=9, color="#2c3e50"),
+        legend_position="bottom",
+        strip_background=element_rect(fill="#f8f9fa", color="none"),
+        strip_text=element_text(face="bold", size=9, color="#2c3e50"),
+        panel_grid_major=element_line(color="#eaeded"),
+        panel_grid_minor=element_line(color="#f4f6f6"),
+    )
+
+
+def scale_color_premium():
+    return scale_color_manual(
+        values={
+            "IF2": "#3498db",
+            "IFAD": "#1abc9c",
+            "mif": "#3498db",
+            "train": "#1abc9c",
+            "Python (pypomp)": "#1abc9c",
+            "R (pomp)": "#e74c3c",
+        }
+    )
+
+
+def scale_fill_premium():
+    return scale_fill_manual(
+        values={
+            "IF2": "#3498db",
+            "IFAD": "#1abc9c",
+            "mif": "#3498db",
+            "train": "#1abc9c",
+            "Python (pypomp)": "#1abc9c",
+            "R (pomp)": "#e74c3c",
+        }
+    )
+
+
+def display_html_table(df, title=None):
+    html_str = df.to_html(index=False, classes="table table-striped table-hover")
+    if title:
+        display(Markdown(f"#### {title}"))
+    display(HTML(html_str))
 ```
 
 ```{python}
@@ -50,8 +141,6 @@ traces_raw_train["source"] = "train"
 traces_raw = pd.concat([traces_raw_mif, traces_raw_train], ignore_index=True)
 ```
 
-# Individual results
-
 ```{python}
 # | label: traces-long
 # | echo: false
@@ -60,7 +149,7 @@ traces = traces_raw.rename(
     columns={"theta_idx": "rep", "iteration": "iter", "loglik": "logLik"}
 )
 id_cols = ["rep", "iter", "logLik", "method", "source"]
-param_cols = [c for c in traces.columns if c not in id_cols]
+param_cols = [c for c in traces.columns if c not in id_cols and c != "se"]
 traces_long = traces.melt(
     id_vars=id_cols,
     value_vars=param_cols,
@@ -69,30 +158,97 @@ traces_long = traces.melt(
 )
 ```
 
-## Summary results
+---
 
-### IF2 only
+## System Configurations & Metadata
+
+::: {.callout-note}
+### Hardware & Hardware Mappings
+- **GPU Model Used for Parameter Estimation (MIF/Train):** NVIDIA RTX 6000 (Blackwell)
+- **GPU Model Used for Particle Filter Evaluation:** NVIDIA Tesla V100
+:::
+
+::: {.callout-note collapse="true"}
+### Verbose Pomp Object Metadata
 ```{python}
 # | label: summary-if2
 # | echo: false
+print("IF2 only Pomp Object Metadata:")
 pomp_obj.print_metadata()
-pomp_obj.print_summary()
+print("\nIF2 + Train (IFAD) Pomp Object Metadata:")
+pomp_obj_train.print_metadata()
 ```
 
-### IF2 + train
+:::
+
+::: {.callout-note collapse="true"}
+### Verbose Optimization Summaries
 ```{python}
 # | label: summary-if2-train
 # | echo: false
-pomp_obj_train.print_metadata()
+print("IF2 only Summary:")
+pomp_obj.print_summary()
+print("\nIF2 + Train (IFAD) Summary:")
 pomp_obj_train.print_summary()
 ```
+
+:::
+
+---
+
+## Performance & Runtimes
+
+The tables below display the computational runtimes across different stages of the estimation algorithm for the two configurations.
+
+::: {.callout-note}
+### Validation Expectation
+The total time to run the IF2-only configuration should take a bit longer than the IFAD configuration, as part of the point of this report is to demonstrate that IFAD yields better log-likelihoods in the same or less time.
+
+Furthermore, we should observe that `train` runs no more than 3 times longer than IF2 per iteration.
+:::
+
+```{python}
+# | label: time-summary
+# | echo: false
+# | output: asis
+
+# Process IF2 times
+time_df_mif = pomp_obj.time()
+display_html_table(time_df_mif, "IF2 only - Step-by-Step Runtimes")
+display(
+    Markdown(f"**Total IF2 execution time:** {time_df_mif['time'].sum():.2f} seconds")
+)
+```
+
+```{python}
+# | label: time-summary-2
+# | echo: false
+# | output: asis
+# Process IF2 + Train times
+time_df_train = pomp_obj_train.time()
+display_html_table(time_df_train, "IF2 + Train (IFAD) - Step-by-Step Runtimes")
+display(
+    Markdown(
+        f"**Total IF2 + Train execution time:** {time_df_train['time'].sum():.2f} seconds"
+    )
+)
+```
+
+---
 
 ## LogLik Summary Statistics
 
 ### Final pfilter logLik by source
+
+::: {.callout-note}
+### Validation Expectation
+We expect a maximum IFAD log-likelihood around -3744.0 and a maximum IF2 log-likelihood around -3748.5. 
+:::
+
 ```{python}
 # | label: loglik-summary-stats
 # | echo: false
+# | output: asis
 # Get final pfilter logLik for each replicate by source
 pfilter_traces = traces[traces["method"] == "pfilter"]
 last_pfilter_iter = pfilter_traces.groupby(["rep", "source"])["iter"].transform("max")
@@ -108,173 +264,274 @@ loglik_summary = (
     .reset_index()
 )
 loglik_summary.columns = ["Source", "N", "Mean", "Std", "Min", "Median", "Max"]
-print(loglik_summary.to_string(index=False))
+# Relabel sources for readability
+loglik_summary["Source"] = loglik_summary["Source"].replace(
+    {"mif": "IF2 only", "train": "IF2 + Train (IFAD)"}
+)
+
+display_html_table(loglik_summary, "LogLik Summary Statistics by Pipeline")
 ```
 
-## Times
-
-### IF2 only
-```{python}
-# | label: time-summary
-# | echo: false
-time_df = pomp_obj.time()
-print(time_df)
-print("Total time: ", time_df["time"].sum())
-```
-
-### IF2 + train
-```{python}
-# | label: time-summary-train
-# | echo: false
-time_df = pomp_obj_train.time()
-print(time_df)
-print("Total time: ", time_df["time"].sum())
-```
+---
 
 ## IF2 only traces
 
+::: {.callout-note}
+### Validation Expectation
+The IF2 traces shouldn't look terrible. Some of the parameters in this model are not well-identified, so it's normal for IF2 to struggle to converge tightly for some parameters.
+:::
+
 ```{python}
-# | label: plot-traces
-# | fig-width: 12
-# | fig-height: 12
-# | echo: false
+#| label: plot-traces
+#| fig-width: 10
+#| fig-height: 15
+#| echo: false
 traces_long_mif = traces_long[traces_long["source"] == "mif"].copy()
-(
+p = (
     ggplot(
         traces_long_mif,
         aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
     )
-    + geom_line(show_legend=False)
-    + facet_wrap("quantity", scales="free_y")
-    + labs(title="IF2 only parameter traces")
+    + geom_line(show_legend=False, alpha=0.5)
+    + facet_wrap("quantity", scales="free_y", ncol=3)
+    + labs(
+        title="IF2 only parameter traces",
+        subtitle="Individual replicate paths across iterations",
+        x="Iteration",
+        y="Parameter Value",
+    )
+    + theme_premium()
+    + theme(figure_size=(10, 15), panel_spacing=0.02)
 )
+p.show()
 ```
 
 ```{python}
-# | label: plot-ll-traces
-# | fig-width: 10
-# | fig-height: 6
-# | echo: false
-traces_ll = traces[traces["source"] == "mif"][["rep", "iter", "logLik"]].copy()
-(
-    ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
-    + geom_line(show_legend=False)
-    + coord_cartesian(ylim=(-4000, None))
-    + labs(title="IF2 only logLik traces")
+#| label: plot-ll-traces
+#| fig-width: 8
+#| fig-height: 4
+#| echo: false
+traces_ll = (
+    traces[traces["source"] == "mif"][["rep", "iter", "logLik"]]
+    .dropna(subset=["logLik"])
+    .copy()
 )
+p = (
+    ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+    + geom_line(show_legend=False, alpha=0.6)
+    + coord_cartesian(ylim=(-4000, None))
+    + labs(
+        title="IF2 only logLik traces",
+        subtitle="Log-Likelihood trajectory of each replicate",
+        x="Iteration",
+        y="Log-Likelihood",
+    )
+    + theme_premium()
+    + theme(figure_size=(8, 4))
+)
+p.show()
 ```
+
+---
 
 ## IF2 + train traces
 
+::: {.callout-note}
+### Validation Expectation
+For most, but not all parameters, we should see the traces start to converge more tightly after the search switches from `mif` to `train`.
+:::
+
 ```{python}
-# | label: plot-traces-train
-# | fig-width: 12
-# | fig-height: 12
-# | echo: false
+#| label: plot-traces-train
+#| fig-width: 10
+#| fig-height: 15
+#| echo: false
 traces_long_train = traces_long[traces_long["source"] == "train"].copy()
-(
+p = (
     ggplot(
         traces_long_train,
         aes(x="iter", y="param_value", group="rep", color="factor(rep)"),
     )
-    + geom_line(show_legend=False)
-    + facet_wrap("quantity", scales="free_y")
-    + labs(title="IF2 + train parameter traces")
+    + geom_line(show_legend=False, alpha=0.5)
+    + facet_wrap("quantity", scales="free_y", ncol=3)
+    + labs(
+        title="IF2 + train parameter traces",
+        subtitle="Individual replicate paths across IF2 & training iterations",
+        x="Iteration",
+        y="Parameter Value",
+    )
+    + theme_premium()
+    + theme(figure_size=(10, 15), panel_spacing=0.02)
 )
+p.show()
 ```
-
 
 ```{python}
-# | label: plot-ll-traces-train
-# | fig-width: 10
-# | fig-height: 6
-# | echo: false
-traces_ll = traces[traces["source"] == "train"][["rep", "iter", "logLik"]].copy()
-(
-    ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
-    + geom_line(show_legend=False)
-    + coord_cartesian(ylim=(-4000, None))
-    + labs(title="IF2 + train logLik traces")
+#| label: plot-ll-traces-train
+#| fig-width: 8
+#| fig-height: 4
+#| echo: false
+traces_ll = (
+    traces[traces["source"] == "train"][["rep", "iter", "logLik"]]
+    .dropna(subset=["logLik"])
+    .copy()
 )
+p = (
+    ggplot(traces_ll, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+    + geom_line(show_legend=False, alpha=0.6)
+    + coord_cartesian(ylim=(-4000, None))
+    + labs(
+        title="IF2 + train logLik traces",
+        subtitle="Log-Likelihood trajectory of each replicate during the combined pipeline",
+        x="Iteration",
+        y="Log-Likelihood",
+    )
+    + theme_premium()
+    + theme(figure_size=(8, 4))
+)
+p.show()
 ```
+
+---
 
 # Comparison: MIF vs train
 
+This section directly compares the final output quality between the two pipelines.
+
 ## LogLik (density)
+
+::: {.callout-note}
+### Validation Expectation
+IFAD tends to yield better parameter estimates with lower Monte Carlo variance compared to IF2 alone, so we expect to see the better log-likelihood values for IFAD overall.
+:::
 
 ```{python}
 # | label: final-loglik
 # | echo: false
 pfilter_traces = traces_long[traces_long["method"] == "pfilter"]
 last_pfilter_iter = pfilter_traces.groupby(["rep", "source"])["iter"].transform("max")
-final_loglik = pfilter_traces.loc[
-    pfilter_traces["iter"] == last_pfilter_iter, ["rep", "source", "logLik"]
-].drop_duplicates(subset=["rep", "source"])
+final_loglik = (
+    pfilter_traces.loc[
+        pfilter_traces["iter"] == last_pfilter_iter, ["rep", "source", "logLik"]
+    ]
+    .dropna(subset=["logLik"])
+    .drop_duplicates(subset=["rep", "source"])
+)
+# Filter out logLik values below -3800 so they do not affect the KDE
+final_loglik = final_loglik[final_loglik["logLik"] >= -3800]
 ```
 
 ```{python}
-# | label: plot-ll-density
-# | fig-width: 8
-# | fig-height: 5
-# | echo: false
-(
+#| label: plot-ll-density
+#| fig-width: 8
+#| fig-height: 5
+#| echo: false
+p = (
     ggplot(
         final_loglik.replace({"source": {"mif": "IF2", "train": "IFAD"}}),
         aes(x="logLik", fill="source", color="source"),
     )
     + geom_density(alpha=0.4)
-    + labs(x="logLik", title="Final logLik: IF2 only vs IFAD")
-    # + coord_cartesian(xlim=(-4000, None))
-    + scale_x_continuous(limits=(-3800, None))
+    + labs(
+        title="Final logLik Density: IF2 only vs IFAD",
+        subtitle="Distribution of evaluated likelihoods at final parameter sets",
+        x="Log-Likelihood (logLik)",
+        y="Density",
+        fill="Pipeline",
+        color="Pipeline",
+    )
+    + scale_color_premium()
+    + scale_fill_premium()
+    + theme_premium()
+    + theme(figure_size=(8, 5))
 )
+p.show()
 ```
 
 ## Final parameter estimates (density)
+
+::: {.callout-note}
+### Validation Expectation
+IFAD tends to yield parameter estimates with lower Monte Carlo variance compared to IF2 alone, so we expect to see that reflected in the narrower parameter density curves.
+:::
 
 ```{python}
 # | label: final-params
 # | echo: false
 last_iter_by_source = traces_long.groupby("source")["iter"].transform("max")
-final_params = traces_long[traces_long["iter"] == last_iter_by_source].copy()
+final_params = (
+    traces_long[traces_long["iter"] == last_iter_by_source]
+    .dropna(subset=["param_value"])
+    .copy()
+)
 ```
 
 ```{python}
-# | label: plot-param-density
-# | fig-width: 10
-# | fig-height: 10
-# | echo: false
-(
+#| label: plot-param-density
+#| fig-width: 10
+#| fig-height: 15
+#| echo: false
+p = (
     ggplot(
         final_params.replace({"source": {"mif": "IF2", "train": "IFAD"}}),
         aes(x="param_value", fill="source", color="source"),
     )
     + geom_density(alpha=0.4)
-    + facet_wrap("quantity", scales="free")
-    + labs(x="estimate", title="Final parameter estimates: IF2 only vs IFAD")
+    + facet_wrap("quantity", scales="free", ncol=3)
+    + labs(
+        title="Final Parameter Estimates: IF2 only vs IFAD",
+        subtitle="Overlay of parameter density distributions across all restarts",
+        x="Estimated Value",
+        y="Density",
+        fill="Pipeline",
+        color="Pipeline",
+    )
+    + scale_color_premium()
+    + scale_fill_premium()
+    + theme_premium()
+    + theme(figure_size=(10, 15), panel_spacing=0.02)
 )
+p.show()
 ```
+
+---
 
 # Comparison: Python vs R (pfilter check)
 
+To verify the mathematical correctness of `pypomp`'s particle filter against R's `pomp`, we compare their respective log-likelihood evaluations at a fixed, identical parameter set (specifically, the Maximum Likelihood Estimate (MLE) used as the default parameter set in `pomp`).
+
 ## LogLik (density)
 
+::: {.callout-note}
+### Validation Expectation
+The log-likelihood estimate densities should overlap heavily.
+:::
+
 ```{python}
-# | label: load-pfilter-check
-# | echo: false
+#| label: load-pfilter-check
+#| echo: false
 import subprocess
 
 # Load python pfilter_check logLiks
 try:
-    py_pfilter_check = pickle.load(open("pfilter_check/py_results/dacca_results_eval.pkl", "rb"))
-    py_logliks = getattr(py_pfilter_check.results_history[-1], "logLiks").values.flatten()
+    py_pfilter_check = pickle.load(
+        open("pfilter_check/py_results/dacca_results_eval.pkl", "rb")
+    )
+    py_logliks = getattr(
+        py_pfilter_check.results_history[-1], "logLiks"
+    ).values.flatten()
 except Exception as e:
     print(f"Error loading Python pfilter_check results: {e}")
     py_logliks = []
 
 # Load R pfilter_check logLiks using Rscript
 try:
-    r_code = 'load("pfilter_check/R_results/dacca_results_eval.rda"); cat(L_box, sep=",")'
-    result = subprocess.run(["Rscript", "-e", r_code], capture_output=True, text=True, check=True)
+    r_code = (
+        'load("pfilter_check/R_results/dacca_results_eval.rda"); cat(L_box, sep=",")'
+    )
+    result = subprocess.run(
+        ["Rscript", "-e", r_code], capture_output=True, text=True, check=True
+    )
     r_logliks = [float(x) for x in result.stdout.strip().split(",") if x]
 except Exception as e:
     print(f"Error loading R pfilter_check results: {e}")
@@ -287,23 +544,32 @@ for ll in py_logliks:
 for ll in r_logliks:
     check_data.append({"logLik": float(ll), "source": "R (pomp)"})
 
-check_df = pd.DataFrame(check_data)
+check_df = pd.DataFrame(check_data).dropna(subset=["logLik"])
 ```
 
 ```{python}
-# | label: plot-check-density
-# | fig-width: 8
-# | fig-height: 5
-# | echo: false
+#| label: plot-check-density
+#| fig-width: 8
+#| fig-height: 5
+#| echo: false
 if not check_df.empty:
-    plot = (
+    p = (
         ggplot(check_df, aes(x="logLik", fill="source", color="source"))
         + geom_density(alpha=0.4)
         + labs(
-            x="logLik", title="Log-Likelihood Density Comparison at MLE: Python vs R"
+            title="Log-Likelihood Density Comparison at MLE: Python vs R",
+            subtitle="Monte Carlo variation across identical independent evaluations",
+            x="Log-Likelihood (logLik)",
+            y="Density",
+            fill="Source",
+            color="Source",
         )
+        + scale_color_premium()
+        + scale_fill_premium()
+        + theme_premium()
+        + theme(figure_size=(8, 5))
     )
-    plot.show()
+    p.show()
 else:
     print("No pfilter check data available to plot.")
 ```
@@ -311,8 +577,9 @@ else:
 ## LogLik Summary Statistics
 
 ```{python}
-# | label: check-summary-stats
-# | echo: false
+#| label: check-summary-stats
+#| echo: false
+#| output: asis
 if not check_df.empty:
     check_summary = (
         check_df.groupby("source")["logLik"]
@@ -321,8 +588,7 @@ if not check_df.empty:
         .reset_index()
     )
     check_summary.columns = ["Source", "N", "Mean", "Std", "Min", "Median", "Max"]
-    print(check_summary.to_string(index=False))
+    display_html_table(check_summary, "Comparison of LogLik Statistics: Python vs R")
 else:
-    print("No pfilter check data available to summarize.")
+    display(Markdown("No pfilter check data available to summarize."))
 ```
-

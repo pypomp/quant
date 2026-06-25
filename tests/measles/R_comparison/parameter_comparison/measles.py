@@ -45,8 +45,8 @@ DEFAULT_SD = 0.02
 DEFAULT_IVP_SD = DEFAULT_SD * 12
 RW_SD = pp.RWSigma(
     sigmas={
-        "R0": DEFAULT_SD * 0.25,
-        "sigma": DEFAULT_SD * 0.25,
+        "R0": DEFAULT_SD,
+        "sigma": DEFAULT_SD,
         "gamma": DEFAULT_SD * 0.5,
         "iota": DEFAULT_SD,
         "rho": DEFAULT_SD * 0.5,
