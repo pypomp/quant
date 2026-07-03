@@ -164,7 +164,7 @@ traces_long = traces.melt(
 
 ::: {.callout-note}
 ### Hardware & Hardware Mappings
-- **GPU Model Used for Parameter Estimation (MIF/Train):** NVIDIA RTX 6000 (Blackwell)
+- **GPU Model Used for Parameter Estimation (IF2/Train):** NVIDIA RTX 6000 (Blackwell)
 - **GPU Model Used for Particle Filter Evaluation:** NVIDIA Tesla V100
 :::
 
@@ -394,7 +394,7 @@ p.show()
 
 ---
 
-# Comparison: MIF vs train
+# Comparison: IF2 vs train
 
 This section directly compares the final output quality between the two pipelines.
 

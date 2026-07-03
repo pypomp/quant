@@ -141,12 +141,30 @@ RUN_LEVEL=2 python scripts/run_tests.py run tests/spx/performance/test.py
 
 ### Running a Specific Target Job
 
-If a test file has multiple target setups (for example, comparing `cpu` vs `gpu` under a `jobs:` block), running the script targets ALL of those jobs simultaneously.
+If a test file has multiple target setups (for example, comparing `cpu` vs `gpu` under a `jobs:` block), running the script targets ALL of those jobs simultaneously by default.
 
 If you ONLY want to test one configuration:
 ```bash
 python scripts/run_tests.py run tests/spx/performance/test.py --run-level 2 --job cpu
 ```
+
+### Sequential Job Chains & Race Conditions
+
+In some cases, multiple jobs defined in the same test script may depend on each other or share/update the same output/cache files (for example, `tests/samplers/test.qmd` where jobs share `benchmark_results.json` and render to the same `test.html`). Running them concurrently will cause a race condition.
+
+To handle this, you can specify `sequential: true` under the `--- SLURM CONFIG ---` block of the test file:
+```yaml
+# --- SLURM CONFIG ---
+# importance: high
+# sequential: true
+# jobs:
+#   gpu:
+#     ...
+#   cpu:
+#     ...
+```
+
+When `sequential: true` is set, `run_tests.py` will automatically chain the SLURM job submissions in the order they are defined using SLURM's `--dependency=afterok:<job_id>` flag, ensuring that each job only executes once the previous job has completed successfully. If running in `--dry-run` mode, the dependency configurations will be printed as part of the output script.
 
 ### Testing a Run (`--dry-run`)
 If you want to view the `sbatch` script that the python runner dynamically constructs before submitting it to the cluster, use the `--dry-run` flag:

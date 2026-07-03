@@ -9,37 +9,61 @@ format:
     toc: true
     toc-depth: 3
     theme: cosmo
+    css: styles.css
 ---
 
 ```{python}
 #| label: slurm-config
 #| echo: false
+# IMPORTANT: These jobs MUST be run sequentially (gpu -> cpu -> render)
+# because they share the same cache file (benchmark_results.json) and render
+# output (test.html). Running them concurrently will cause a race condition.
+# Run them in this order:
+#   python scripts/run_tests.py run tests/samplers/test.qmd --job gpu
+#   python scripts/run_tests.py run tests/samplers/test.qmd --job cpu
+#   python scripts/run_tests.py run tests/samplers/test.qmd --job render
 # --- SLURM CONFIG ---
 # importance: high
+# sequential: true
 # jobs:
 #   gpu:
 #     sbatch_args:
-#       job-name: "pypomp sampler speed test qmd"
+#       job-name: "pypomp sampler gpu bench"
 #       partition: gpu-rtx6000
 #       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
 #       mem: 16GB
 #       time: "00:12:00"
 #       output: "gpu_logs/slurm_%j.out"
+#     env:
+#       BENCHMARK_GPU: "true"
 #     setup: "source ../../.venv/bin/activate"
-#     command: "quarto render test.qmd --output test_gpu.html --to html"
+#     command: "quarto render test.qmd --output test.html --to html"
 #   cpu:
 #     sbatch_args:
-#       job-name: "pypomp sampler speed test qmd"
+#       job-name: "pypomp sampler cpu bench"
 #       partition: standard
 #       cpus-per-task: 1
-#       mem: 8GB
-#       time: "00:06:00"
+#       mem: 16GB
+#       time: "00:12:00"
 #       output: "cpu_logs/slurm_%j.out"
+#     env:
+#       BENCHMARK_CPU: "true"
+#       USE_CPU: "true"
+#     setup: "source ../../.venv/bin/activate"
+#     command: "quarto render test.qmd --output test.html --to html"
+#   render:
+#     sbatch_args:
+#       job-name: "pypomp sampler render"
+#       partition: standard
+#       cpus-per-task: 1
+#       mem: 10GB
+#       time: "00:08:00"
+#       output: "render_logs/slurm_%j.out"
 #     env:
 #       USE_CPU: "true"
 #     setup: "source ../../.venv/bin/activate"
-#     command: "quarto render test.qmd --output test_cpu.html --to html"
+#     command: "quarto render test.qmd --output test.html --to html"
 # --- END SLURM CONFIG ---
 ```
 
@@ -51,11 +75,15 @@ We compare `pypomp`'s fast approximate inverse CDF samplers against their counte
 
 ## Environment Setup & Imports
 
+<details>
+<summary>Environment Setup & Imports Log</summary>
+
 ```{python}
 #| label: environment-setup
 #| code-fold: true
 
 import os
+import json
 
 USE_CPU = os.environ.get("USE_CPU", "false").lower() == "true"
 if USE_CPU:
@@ -72,11 +100,44 @@ from scipy import stats
 from jax.scipy.stats import binom as jax_binom
 from scipy.stats import binom as scipy_binom
 
+# Determine benchmarking modes
+BENCHMARK_GPU = os.environ.get("BENCHMARK_GPU", "false").lower() == "true"
+BENCHMARK_CPU = os.environ.get("BENCHMARK_CPU", "false").lower() == "true"
+
 print("JAX Devices:", jax.devices())
-print("Using CPU:", USE_CPU)
-if not USE_CPU and len(jax.devices()) > 0 and jax.devices()[0].platform == "gpu":
+print("Using CPU Mode (forced):", USE_CPU)
+print("BENCHMARK_GPU Mode:", BENCHMARK_GPU)
+print("BENCHMARK_CPU Mode:", BENCHMARK_CPU)
+
+# Detect if JAX is running on GPU
+HAS_GPU = not USE_CPU and len(jax.devices()) > 0 and jax.devices()[0].platform == "gpu"
+if HAS_GPU:
     print("GPU Model Used:", jax.devices()[0].device_kind)
+
+# Load cached execution times if they exist
+CACHE_FILE = "benchmark_results.json"
+benchmark_results = {}
+if os.path.exists(CACHE_FILE):
+    try:
+        with open(CACHE_FILE, "r") as f:
+            benchmark_results = json.load(f)
+        print("Loaded cached benchmark results from", CACHE_FILE)
+        
+        # Convert older format cache where GPU times were stored under 't_pp' / 't_jax'
+        for category in list(benchmark_results.keys()):
+            if isinstance(benchmark_results[category], dict):
+                for name in list(benchmark_results[category].keys()):
+                    entry = benchmark_results[category][name]
+                    if isinstance(entry, dict):
+                        if "t_pp" in entry and "t_pp_gpu" not in entry:
+                            entry["t_pp_gpu"] = entry.pop("t_pp")
+                        if "t_jax" in entry and "t_jax_gpu" not in entry:
+                            entry["t_jax_gpu"] = entry.pop("t_jax")
+    except Exception as e:
+        print(f"Error loading cached benchmark results: {e}")
 ```
+
+</details>
 
 ## Performance Benchmarks
 
@@ -131,19 +192,66 @@ def poisson_performance():
         ),
     }
 
-    print(
-        "| Parameter Regime | pp.fast_poisson (ms) | jax.random.poisson (ms) | Speedup Ratio |"
-    )
-    print("|---|---|---|---|")
+    if "poisson" not in benchmark_results:
+        benchmark_results["poisson"] = {}
 
-    for name, lam_samples in regimes.items():
-        key1, key2 = jax.random.split(key)
+    # Run/update GPU benchmark if BENCHMARK_GPU is requested
+    if BENCHMARK_GPU:
+        for name, lam_samples in regimes.items():
+            key1, key2 = jax.random.split(key)
+            t_pp = run_benchmark(ppr.fast_poisson, key1, lam_samples, reps=reps) * 1000
+            t_jax = run_benchmark(jax.random.poisson, key2, lam_samples, reps=reps) * 1000
+            if name not in benchmark_results["poisson"]:
+                benchmark_results["poisson"][name] = {}
+            benchmark_results["poisson"][name]["t_pp_gpu"] = t_pp
+            benchmark_results["poisson"][name]["t_jax_gpu"] = t_jax
 
-        t_pp = run_benchmark(ppr.fast_poisson, key1, lam_samples, reps=reps) * 1000
-        t_jax = run_benchmark(jax.random.poisson, key2, lam_samples, reps=reps) * 1000
+    # Run/update CPU benchmark if BENCHMARK_CPU is requested
+    if BENCHMARK_CPU:
+        for name, lam_samples in regimes.items():
+            key1, key2 = jax.random.split(key)
+            t_pp = run_benchmark(ppr.fast_poisson, key1, lam_samples, reps=reps) * 1000
+            t_jax = run_benchmark(jax.random.poisson, key2, lam_samples, reps=reps) * 1000
+            if name not in benchmark_results["poisson"]:
+                benchmark_results["poisson"][name] = {}
+            benchmark_results["poisson"][name]["t_pp_cpu"] = t_pp
+            benchmark_results["poisson"][name]["t_jax_cpu"] = t_jax
 
-        ratio = t_jax / t_pp
-        print(f"| {name} | {t_pp:.2f} ms | {t_jax:.2f} ms | **{ratio:.2f}x** |")
+    # Save cache if benchmarks were executed
+    if BENCHMARK_GPU or BENCHMARK_CPU:
+        try:
+            with open(CACHE_FILE, "w") as f:
+                json.dump(benchmark_results, f, indent=2)
+        except Exception as e:
+            print(f"Error saving cache: {e}")
+
+    # Display GPU table if GPU times are present in cache
+    has_gpu = all("t_pp_gpu" in benchmark_results["poisson"].get(name, {}) for name in regimes)
+    if has_gpu:
+        print("#### GPU Performance Benchmarks")
+        print("| Parameter Regime | ppr.fast_poisson (ms) | jax.random.poisson (ms) | Speedup Ratio |")
+        print("|---|---|---|---|")
+        for name in regimes:
+            entry = benchmark_results["poisson"][name]
+            t_pp = entry["t_pp_gpu"]
+            t_jax = entry["t_jax_gpu"]
+            ratio = t_jax / t_pp
+            print(f"| {name} | {t_pp:.2f} ms | {t_jax:.2f} ms | **{ratio:.2f}x** |")
+        print("\n")
+
+    # Display CPU table if CPU times are present in cache
+    has_cpu = all("t_pp_cpu" in benchmark_results["poisson"].get(name, {}) for name in regimes)
+    if has_cpu:
+        print("#### CPU Performance Benchmarks")
+        print("| Parameter Regime | ppr.fast_poisson (ms) | jax.random.poisson (ms) | Speedup Ratio |")
+        print("|---|---|---|---|")
+        for name in regimes:
+            entry = benchmark_results["poisson"][name]
+            t_pp = entry["t_pp_cpu"]
+            t_jax = entry["t_jax_cpu"]
+            ratio = t_jax / t_pp
+            print(f"| {name} | {t_pp:.2f} ms | {t_jax:.2f} ms | **{ratio:.2f}x** |")
+        print("\n")
 
 
 poisson_performance()
@@ -169,7 +277,6 @@ def binomial_performance():
     trial_flat = trial_grid.reshape(-1)
     p_flat = p_grid.reshape(-1)
     n_repeat = n // len(trial_flat)
-    n_samples = n_repeat * len(trial_flat)
     trial_samples = jnp.tile(trial_flat, n_repeat)
     p_samples = jnp.tile(p_flat, n_repeat)
 
@@ -185,19 +292,66 @@ def binomial_performance():
         "Mixed Grid (n=1-200, p=0.01-0.99)": (trial_samples, p_samples),
     }
 
-    print(
-        "| Parameter Regime | pp.fast_binomial (ms) | jax.random.binomial (ms) | Speedup Ratio |"
-    )
-    print("|---|---|---|---|")
+    if "binomial" not in benchmark_results:
+        benchmark_results["binomial"] = {}
 
-    for name, (n_arr, p_arr) in regimes.items():
-        key1, key2 = jax.random.split(key)
+    # Run/update GPU benchmark if BENCHMARK_GPU is requested
+    if BENCHMARK_GPU:
+        for name, (n_arr, p_arr) in regimes.items():
+            key1, key2 = jax.random.split(key)
+            t_pp = run_benchmark(ppr.fast_binomial, key1, n_arr, p_arr, reps=reps) * 1000
+            t_jax = run_benchmark(jax.random.binomial, key2, n_arr, p_arr, reps=reps) * 1000
+            if name not in benchmark_results["binomial"]:
+                benchmark_results["binomial"][name] = {}
+            benchmark_results["binomial"][name]["t_pp_gpu"] = t_pp
+            benchmark_results["binomial"][name]["t_jax_gpu"] = t_jax
 
-        t_pp = run_benchmark(ppr.fast_binomial, key1, n_arr, p_arr, reps=reps) * 1000
-        t_jax = run_benchmark(jax.random.binomial, key2, n_arr, p_arr, reps=reps) * 1000
+    # Run/update CPU benchmark if BENCHMARK_CPU is requested
+    if BENCHMARK_CPU:
+        for name, (n_arr, p_arr) in regimes.items():
+            key1, key2 = jax.random.split(key)
+            t_pp = run_benchmark(ppr.fast_binomial, key1, n_arr, p_arr, reps=reps) * 1000
+            t_jax = run_benchmark(jax.random.binomial, key2, n_arr, p_arr, reps=reps) * 1000
+            if name not in benchmark_results["binomial"]:
+                benchmark_results["binomial"][name] = {}
+            benchmark_results["binomial"][name]["t_pp_cpu"] = t_pp
+            benchmark_results["binomial"][name]["t_jax_cpu"] = t_jax
 
-        ratio = t_jax / t_pp
-        print(f"| {name} | {t_pp:.2f} ms | {t_jax:.2f} ms | **{ratio:.2f}x** |")
+    # Save cache if benchmarks were executed
+    if BENCHMARK_GPU or BENCHMARK_CPU:
+        try:
+            with open(CACHE_FILE, "w") as f:
+                json.dump(benchmark_results, f, indent=2)
+        except Exception as e:
+            print(f"Error saving cache: {e}")
+
+    # Display GPU table if GPU times are present in cache
+    has_gpu = all("t_pp_gpu" in benchmark_results["binomial"].get(name, {}) for name in regimes)
+    if has_gpu:
+        print("#### GPU Performance Benchmarks")
+        print("| Parameter Regime | ppr.fast_binomial (ms) | jax.random.binomial (ms) | Speedup Ratio |")
+        print("|---|---|---|---|")
+        for name in regimes:
+            entry = benchmark_results["binomial"][name]
+            t_pp = entry["t_pp_gpu"]
+            t_jax = entry["t_jax_gpu"]
+            ratio = t_jax / t_pp
+            print(f"| {name} | {t_pp:.2f} ms | {t_jax:.2f} ms | **{ratio:.2f}x** |")
+        print("\n")
+
+    # Display CPU table if CPU times are present in cache
+    has_cpu = all("t_pp_cpu" in benchmark_results["binomial"].get(name, {}) for name in regimes)
+    if has_cpu:
+        print("#### CPU Performance Benchmarks")
+        print("| Parameter Regime | ppr.fast_binomial (ms) | jax.random.binomial (ms) | Speedup Ratio |")
+        print("|---|---|---|---|")
+        for name in regimes:
+            entry = benchmark_results["binomial"][name]
+            t_pp = entry["t_pp_cpu"]
+            t_jax = entry["t_jax_cpu"]
+            ratio = t_jax / t_pp
+            print(f"| {name} | {t_pp:.2f} ms | {t_jax:.2f} ms | **{ratio:.2f}x** |")
+        print("\n")
 
 
 binomial_performance()
@@ -225,19 +379,66 @@ def gamma_performance():
         "Mixed Shapes (0.5 to 100)": alpha_samples,
     }
 
-    print(
-        "| Parameter Regime | pp.fast_gamma (ms) | jax.random.gamma (ms) | Speedup Ratio |"
-    )
-    print("|---|---|---|---|")
+    if "gamma" not in benchmark_results:
+        benchmark_results["gamma"] = {}
 
-    for name, alpha_arr in regimes.items():
-        key1, key2 = jax.random.split(key)
+    # Run/update GPU benchmark if BENCHMARK_GPU is requested
+    if BENCHMARK_GPU:
+        for name, alpha_arr in regimes.items():
+            key1, key2 = jax.random.split(key)
+            t_pp = run_benchmark(ppr.fast_gamma, key1, alpha_arr, reps=reps) * 1000
+            t_jax = run_benchmark(jax.random.gamma, key2, alpha_arr, reps=reps) * 1000
+            if name not in benchmark_results["gamma"]:
+                benchmark_results["gamma"][name] = {}
+            benchmark_results["gamma"][name]["t_pp_gpu"] = t_pp
+            benchmark_results["gamma"][name]["t_jax_gpu"] = t_jax
 
-        t_pp = run_benchmark(ppr.fast_gamma, key1, alpha_arr, reps=reps) * 1000
-        t_jax = run_benchmark(jax.random.gamma, key2, alpha_arr, reps=reps) * 1000
+    # Run/update CPU benchmark if BENCHMARK_CPU is requested
+    if BENCHMARK_CPU:
+        for name, alpha_arr in regimes.items():
+            key1, key2 = jax.random.split(key)
+            t_pp = run_benchmark(ppr.fast_gamma, key1, alpha_arr, reps=reps) * 1000
+            t_jax = run_benchmark(jax.random.gamma, key2, alpha_arr, reps=reps) * 1000
+            if name not in benchmark_results["gamma"]:
+                benchmark_results["gamma"][name] = {}
+            benchmark_results["gamma"][name]["t_pp_cpu"] = t_pp
+            benchmark_results["gamma"][name]["t_jax_cpu"] = t_jax
 
-        ratio = t_jax / t_pp
-        print(f"| {name} | {t_pp:.2f} ms | {t_jax:.2f} ms | **{ratio:.2f}x** |")
+    # Save cache if benchmarks were executed
+    if BENCHMARK_GPU or BENCHMARK_CPU:
+        try:
+            with open(CACHE_FILE, "w") as f:
+                json.dump(benchmark_results, f, indent=2)
+        except Exception as e:
+            print(f"Error saving cache: {e}")
+
+    # Display GPU table if GPU times are present in cache
+    has_gpu = all("t_pp_gpu" in benchmark_results["gamma"].get(name, {}) for name in regimes)
+    if has_gpu:
+        print("#### GPU Performance Benchmarks")
+        print("| Parameter Regime | ppr.fast_gamma (ms) | jax.random.gamma (ms) | Speedup Ratio |")
+        print("|---|---|---|---|")
+        for name in regimes:
+            entry = benchmark_results["gamma"][name]
+            t_pp = entry["t_pp_gpu"]
+            t_jax = entry["t_jax_gpu"]
+            ratio = t_jax / t_pp
+            print(f"| {name} | {t_pp:.2f} ms | {t_jax:.2f} ms | **{ratio:.2f}x** |")
+        print("\n")
+
+    # Display CPU table if CPU times are present in cache
+    has_cpu = all("t_pp_cpu" in benchmark_results["gamma"].get(name, {}) for name in regimes)
+    if has_cpu:
+        print("#### CPU Performance Benchmarks")
+        print("| Parameter Regime | ppr.fast_gamma (ms) | jax.random.gamma (ms) | Speedup Ratio |")
+        print("|---|---|---|---|")
+        for name in regimes:
+            entry = benchmark_results["gamma"][name]
+            t_pp = entry["t_pp_cpu"]
+            t_jax = entry["t_jax_cpu"]
+            ratio = t_jax / t_pp
+            print(f"| {name} | {t_pp:.2f} ms | {t_jax:.2f} ms | **{ratio:.2f}x** |")
+        print("\n")
 
 
 gamma_performance()
@@ -277,19 +478,366 @@ def rnbinom_performance():
         "Mixed Grid (size=1-100, p=0.1-0.9)": (size_samples, p_samples),
     }
 
-    print("| Parameter Regime | pp.fast_nbinomial (ms) |")
-    print("|---|---|")
+    if "nbinomial" not in benchmark_results:
+        benchmark_results["nbinomial"] = {}
 
-    for name, (size_arr, p_arr) in regimes.items():
-        key1, _ = jax.random.split(key)
+    # Run/update GPU benchmark if BENCHMARK_GPU is requested
+    if BENCHMARK_GPU:
+        for name, (size_arr, p_arr) in regimes.items():
+            key1, _ = jax.random.split(key)
+            t_pp = run_benchmark(ppr.fast_nbinomial, key1, size_arr, p=p_arr, reps=reps) * 1000
+            if name not in benchmark_results["nbinomial"]:
+                benchmark_results["nbinomial"][name] = {}
+            benchmark_results["nbinomial"][name]["t_pp_gpu"] = t_pp
 
-        t_pp = (
-            run_benchmark(ppr.fast_nbinomial, key1, size_arr, p=p_arr, reps=reps) * 1000
-        )
-        print(f"| {name} | {t_pp:.2f} ms |")
+    # Run/update CPU benchmark if BENCHMARK_CPU is requested
+    if BENCHMARK_CPU:
+        for name, (size_arr, p_arr) in regimes.items():
+            key1, _ = jax.random.split(key)
+            t_pp = run_benchmark(ppr.fast_nbinomial, key1, size_arr, p=p_arr, reps=reps) * 1000
+            if name not in benchmark_results["nbinomial"]:
+                benchmark_results["nbinomial"][name] = {}
+            benchmark_results["nbinomial"][name]["t_pp_cpu"] = t_pp
+
+    # Save cache if benchmarks were executed
+    if BENCHMARK_GPU or BENCHMARK_CPU:
+        try:
+            with open(CACHE_FILE, "w") as f:
+                json.dump(benchmark_results, f, indent=2)
+        except Exception as e:
+            print(f"Error saving cache: {e}")
+
+    # Display GPU table if GPU times are present in cache
+    has_gpu = all("t_pp_gpu" in benchmark_results["nbinomial"].get(name, {}) for name in regimes)
+    if has_gpu:
+        print("#### GPU Performance Benchmarks")
+        print("| Parameter Regime | ppr.fast_nbinomial (ms) |")
+        print("|---|---|")
+        for name in regimes:
+            t_pp = benchmark_results["nbinomial"][name]["t_pp_gpu"]
+            print(f"| {name} | {t_pp:.2f} ms |")
+        print("\n")
+
+    # Display CPU table if CPU times are present in cache
+    has_cpu = all("t_pp_cpu" in benchmark_results["nbinomial"].get(name, {}) for name in regimes)
+    if has_cpu:
+        print("#### CPU Performance Benchmarks")
+        print("| Parameter Regime | ppr.fast_nbinomial (ms) |")
+        print("|---|---|")
+        for name in regimes:
+            t_pp = benchmark_results["nbinomial"][name]["t_pp_cpu"]
+            print(f"| {name} | {t_pp:.2f} ms |")
+        print("\n")
 
 
 rnbinom_performance()
+```
+
+## Statistical Distance Benchmarks
+
+To quantify the statistical accuracy of the fast approximate samplers relative to the reference JAX/SciPy samplers, we compute the **Wasserstein Distance** (1st Wasserstein metric) across a range of parameter values using 1,000,000 generated samples for each. 
+
+We plot both:
+
+1. The **Absolute Wasserstein Distance** (transport cost in the units of the random variable).
+2. The **Relative Wasserstein Distance** (normalized by the standard deviation of the reference distribution, $W_1 / \sigma$), providing a scale-invariant measure of the approximation error relative to the natural spread of the distribution.
+
+```{python}
+#| label: parameter-wise-wasserstein
+#| code-fold: true
+#| fig-cap: "Absolute and relative (scale-normalized) Wasserstein distance across parameter ranges."
+
+def parameter_wise_wasserstein_benchmarks():
+    n_samples = 1_000_000
+    key = jax.random.key(200)
+    
+    # We will check cache first to avoid recomputing on every render
+    grids_data = benchmark_results.get("grids", {})
+    
+    # Define grids for each distribution
+    poisson_lambdas = np.geomspace(0.1, 200.0, 30)
+    binom_ps = np.linspace(0.01, 0.99, 30)
+    binom_n = 100
+    gamma_alphas = np.geomspace(0.1, 100.0, 30)
+    nbinom_ps = np.linspace(0.05, 0.95, 30)
+    nbinom_size = 20
+    
+    dirty = False
+    
+    # --- Poisson ---
+    if "poisson" not in grids_data:
+        poisson_w = []
+        poisson_w_norm = []
+        for lam in poisson_lambdas:
+            key, key_pp, key_ref = jax.random.split(key, 3)
+            lam_arr = jnp.full((n_samples,), lam, dtype=jnp.float32)
+            pp_samples = ppr.fast_poisson(key_pp, lam_arr)
+            ref_samples = jax.random.poisson(key_ref, lam_arr)
+            w_dist = float(stats.wasserstein_distance(np.array(pp_samples), np.array(ref_samples)))
+            std = np.sqrt(lam)
+            poisson_w.append(w_dist)
+            poisson_w_norm.append(w_dist / std)
+        grids_data["poisson"] = {
+            "lambdas": poisson_lambdas.tolist(),
+            "w_dist": poisson_w,
+            "w_dist_norm": poisson_w_norm
+        }
+        dirty = True
+        
+    # --- Binomial ---
+    if "binomial" not in grids_data:
+        binom_w = []
+        binom_w_norm = []
+        for p_val in binom_ps:
+            key, key_pp, key_ref = jax.random.split(key, 3)
+            n_arr = jnp.full((n_samples,), binom_n, dtype=jnp.int32)
+            p_arr = jnp.full((n_samples,), p_val, dtype=jnp.float32)
+            pp_samples = ppr.fast_binomial(key_pp, n_arr, p_arr)
+            ref_samples = jax.random.binomial(key_ref, n=n_arr, p=p_arr)
+            w_dist = float(stats.wasserstein_distance(np.array(pp_samples), np.array(ref_samples)))
+            std = np.sqrt(binom_n * p_val * (1.0 - p_val))
+            binom_w.append(w_dist)
+            binom_w_norm.append(w_dist / std)
+        grids_data["binomial"] = {
+            "ps": binom_ps.tolist(),
+            "w_dist": binom_w,
+            "w_dist_norm": binom_w_norm,
+            "n_fixed": binom_n
+        }
+        dirty = True
+        
+    # --- Gamma ---
+    if "gamma" not in grids_data:
+        gamma_w = []
+        gamma_w_norm = []
+        for alpha in gamma_alphas:
+            key, key_pp, key_ref = jax.random.split(key, 3)
+            alpha_arr = jnp.full((n_samples,), alpha, dtype=jnp.float32)
+            pp_samples = ppr.fast_gamma(key_pp, alpha_arr)
+            ref_samples = jax.random.gamma(key_ref, alpha_arr)
+            w_dist = float(stats.wasserstein_distance(np.array(pp_samples), np.array(ref_samples)))
+            std = np.sqrt(alpha)
+            gamma_w.append(w_dist)
+            gamma_w_norm.append(w_dist / std)
+        grids_data["gamma"] = {
+            "alphas": gamma_alphas.tolist(),
+            "w_dist": gamma_w,
+            "w_dist_norm": gamma_w_norm
+        }
+        dirty = True
+        
+    # --- Negative Binomial ---
+    if "nbinomial" not in grids_data:
+        nbinom_w = []
+        nbinom_w_norm = []
+        for p_val in nbinom_ps:
+            key, key_pp, key_ref = jax.random.split(key, 3)
+            size_arr = jnp.full((n_samples,), nbinom_size, dtype=jnp.float32)
+            p_arr = jnp.full((n_samples,), p_val, dtype=jnp.float32)
+            pp_samples = ppr.fast_nbinomial(key_pp, size_arr, p=p_arr)
+            size_np = np.array(size_arr)
+            p_np = np.array(p_arr)
+            ref_samples = stats.nbinom.rvs(size_np, p_np)
+            w_dist = float(stats.wasserstein_distance(np.array(pp_samples), np.array(ref_samples)))
+            std = np.sqrt(nbinom_size * (1.0 - p_val)) / p_val
+            nbinom_w.append(w_dist)
+            nbinom_w_norm.append(w_dist / std)
+        grids_data["nbinomial"] = {
+            "ps": nbinom_ps.tolist(),
+            "w_dist": nbinom_w,
+            "w_dist_norm": nbinom_w_norm,
+            "size_fixed": nbinom_size
+        }
+        dirty = True
+        
+    # Save cache if dirty
+    if dirty:
+        benchmark_results["grids"] = grids_data
+        try:
+            with open(CACHE_FILE, "w") as f:
+                json.dump(benchmark_results, f, indent=2)
+        except Exception as e:
+            print(f"Error saving cache: {e}")
+            
+    # Set up matplotlib style
+    plt.rcParams.update({
+        'font.size': 10,
+        'axes.labelsize': 11,
+        'axes.titlesize': 12,
+        'xtick.labelsize': 9,
+        'ytick.labelsize': 9,
+        'grid.color': '#DDDDDD',
+        'grid.linestyle': ':',
+        'grid.linewidth': 0.8
+    })
+    
+    fig, axes = plt.subplots(2, 2, figsize=(11, 9))
+    
+    # 1. Poisson Plot
+    ax = axes[0, 0]
+    data = grids_data["poisson"]
+    ax.plot(data["lambdas"], data["w_dist"], color="tab:blue", marker="o", label="Absolute W1")
+    ax.set_xscale("log")
+    ax.set_xlabel("Rate (lambda)")
+    ax.set_ylabel("Absolute Wasserstein Distance", color="tab:blue")
+    ax.tick_params(axis='y', labelcolor="tab:blue")
+    ax.grid(True)
+    
+    ax_twin = ax.twinx()
+    ax_twin.plot(data["lambdas"], data["w_dist_norm"], color="tab:orange", marker="s", linestyle="--", label="Relative W1 / std")
+    ax_twin.set_ylabel("Relative Wasserstein (W1 / std)", color="tab:orange")
+    ax_twin.tick_params(axis='y', labelcolor="tab:orange")
+    ax.set_title("Poisson Approximation Error vs. Lambda")
+    
+    # 2. Binomial Plot
+    ax = axes[0, 1]
+    data = grids_data["binomial"]
+    ax.plot(data["ps"], data["w_dist"], color="tab:blue", marker="o")
+    ax.set_xlabel(f"Success Probability (p) [n={data['n_fixed']}]")
+    ax.set_ylabel("Absolute Wasserstein Distance", color="tab:blue")
+    ax.tick_params(axis='y', labelcolor="tab:blue")
+    ax.grid(True)
+    
+    ax_twin = ax.twinx()
+    ax_twin.plot(data["ps"], data["w_dist_norm"], color="tab:orange", marker="s", linestyle="--")
+    ax_twin.set_ylabel("Relative Wasserstein (W1 / std)", color="tab:orange")
+    ax_twin.tick_params(axis='y', labelcolor="tab:orange")
+    ax.set_title("Binomial Approximation Error vs. p")
+    
+    # 3. Gamma Plot
+    ax = axes[1, 0]
+    data = grids_data["gamma"]
+    ax.plot(data["alphas"], data["w_dist"], color="tab:blue", marker="o")
+    ax.set_xscale("log")
+    ax.set_xlabel("Shape (alpha)")
+    ax.set_ylabel("Absolute Wasserstein Distance", color="tab:blue")
+    ax.tick_params(axis='y', labelcolor="tab:blue")
+    ax.grid(True)
+    
+    ax_twin = ax.twinx()
+    ax_twin.plot(data["alphas"], data["w_dist_norm"], color="tab:orange", marker="s", linestyle="--")
+    ax_twin.set_ylabel("Relative Wasserstein (W1 / std)", color="tab:orange")
+    ax_twin.tick_params(axis='y', labelcolor="tab:orange")
+    ax.set_title("Gamma Approximation Error vs. Alpha")
+    
+    # 4. Negative Binomial Plot
+    ax = axes[1, 1]
+    data = grids_data["nbinomial"]
+    ax.plot(data["ps"], data["w_dist"], color="tab:blue", marker="o")
+    ax.set_xlabel(f"Probability (p) [size={data['size_fixed']}]")
+    ax.set_ylabel("Absolute Wasserstein Distance", color="tab:blue")
+    ax.tick_params(axis='y', labelcolor="tab:blue")
+    ax.grid(True)
+    
+    ax_twin = ax.twinx()
+    ax_twin.plot(data["ps"], data["w_dist_norm"], color="tab:orange", marker="s", linestyle="--")
+    ax_twin.set_ylabel("Relative Wasserstein (W1 / std)", color="tab:orange")
+    ax_twin.tick_params(axis='y', labelcolor="tab:orange")
+    ax.set_title("Negative Binomial Approximation Error vs. p")
+    
+    plt.tight_layout()
+    plt.show()
+
+parameter_wise_wasserstein_benchmarks()
+```
+
+
+### Quantile Function Miss Rates
+
+To give a sense of how often `pypomp`'s approximate inverse CDF implementation errs, we compare the approximate quantile functions `poissoninv` and `binominv` against the exact quantile functions from SciPy (`scipy.stats.poisson.ppf` and `scipy.stats.binom.ppf`). We evaluate the **miss rate**, defined as the proportion of $1,000,000$ random queries $u \in [0.0001, 0.9999]$ for which the approximate quantile differs from the exact integer quantile.
+
+```{python}
+#| label: quantile-miss-rates
+#| code-fold: true
+
+import scipy.stats as scipy_stats
+
+poisson_results = []
+lam_vals = [0.1, 1.0, 5.0, 10.0, 50.0, 100.0, 500.0, 1000.0]
+num_samples = 1_000_000
+key = jax.random.key(42)
+u = jax.random.uniform(key, (num_samples,), minval=0.0001, maxval=0.9999)
+
+# --- Poisson Miss Rates ---
+for lam in lam_vals:
+    approx_q = ppr.poissoninv(u, lam)
+    exact_q = scipy_stats.poisson.ppf(np.array(u), lam)
+    misses = np.sum(np.array(approx_q) != exact_q)
+    miss_rate = misses / num_samples
+    poisson_results.append((lam, miss_rate))
+
+# --- Binomial Miss Rates ---
+n_vals = [10, 100, 1000]
+p_vals = [0.01, 0.1, 0.5, 0.9, 0.99]
+binomial_results = {n: [] for n in n_vals}
+
+for n in n_vals:
+    for p in p_vals:
+        approx_q = ppr.binominv(u, n, p, exact_max=5)
+        exact_q = scipy_stats.binom.ppf(np.array(u), n, p)
+        misses = np.sum(np.array(approx_q) != exact_q)
+        miss_rate = misses / num_samples
+        binomial_results[n].append((p, miss_rate))
+```
+
+#### Quantile Miss Rate Visualizations
+
+```{python}
+#| label: plot-quantile-miss-rates
+#| code-fold: true
+#| fig-cap: "Quantile miss rates for the Poisson and Binomial fast approximate inverse CDF implementations."
+
+# Set up matplotlib style
+plt.rcParams.update({
+    'font.size': 10,
+    'axes.labelsize': 11,
+    'axes.titlesize': 12,
+    'xtick.labelsize': 9,
+    'ytick.labelsize': 9,
+    'grid.color': '#DDDDDD',
+    'grid.linestyle': ':',
+    'grid.linewidth': 0.8
+})
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+# 1. Poisson Plot
+ax1 = axes[0]
+lams = [r[0] for r in poisson_results]
+p_miss = [r[1] for r in poisson_results]
+# For log-scale plotting, clamp 0 to a small value (e.g. 1e-7) so they show up on the bottom line
+p_miss_plot = [m if m > 0 else 1e-7 for m in p_miss]
+
+ax1.plot(lams, p_miss_plot, color="tab:blue", marker="o", linewidth=2)
+ax1.set_xscale("log")
+ax1.set_yscale("log")
+ax1.set_ylim(1e-8, 1e-3)
+ax1.set_xlabel("Rate (lambda)")
+ax1.set_ylabel("Quantile Miss Rate (clamped at 1e-7 for 0.0)")
+ax1.set_title("Poisson Quantile Miss Rate vs. Lambda")
+ax1.grid(True, which="both", linestyle=":", alpha=0.5)
+
+# 2. Binomial Plot
+ax2 = axes[1]
+colors = ["tab:blue", "tab:orange", "tab:green"]
+markers = ["o", "s", "^"]
+for i, n in enumerate(n_vals):
+    p_vals_n = [r[0] for r in binomial_results[n]]
+    b_miss = [r[1] for r in binomial_results[n]]
+    b_miss_plot = [m if m > 0 else 1e-7 for m in b_miss]
+    ax2.plot(p_vals_n, b_miss_plot, color=colors[i], marker=markers[i], 
+             linewidth=2, label=f"n = {n}")
+
+ax2.set_yscale("log")
+ax2.set_ylim(1e-8, 1e-2)
+ax2.set_xlabel("Success Probability (p)")
+ax2.set_ylabel("Quantile Miss Rate (clamped at 1e-7 for 0.0)")
+ax2.set_title("Binomial Quantile Miss Rate vs. p")
+ax2.legend()
+ax2.grid(True, which="both", linestyle=":", alpha=0.5)
+
+plt.tight_layout()
+plt.show()
 ```
 
 ## Distribution Comparisons & Visualizations
@@ -352,7 +900,7 @@ def compare_rpoisson_and_jax_poisson(
             rpoisson_samples,
             bins=bin_edges,
             alpha=0.5,
-            label="pp.fast_poisson",
+            label="ppr.fast_poisson",
             density=True,
             color="C0",
             edgecolor="k",
@@ -399,7 +947,7 @@ def compare_rpoisson_and_jax_poisson(
         if show_labels:
             ax_qq.set_xlabel("jax.random.poisson quantiles", fontsize=9)
             if i == 0:
-                ax_qq.set_ylabel("pp.fast_poisson quantiles", fontsize=9)
+                ax_qq.set_ylabel("ppr.fast_poisson quantiles", fontsize=9)
             ax_qq.tick_params(axis="both", which="major", labelsize=8)
         else:
             ax_qq.tick_params(labelbottom=False, labelleft=False)
@@ -418,7 +966,6 @@ compare_rpoisson_and_jax_poisson()
 #| label: compare-binomial
 #| code-fold: true
 #| fig-cap: "Binomial Distribution comparison: Histogram and Q-Q Plot."
-
 
 def compare_rbinom2(
     seed=42,
@@ -496,7 +1043,7 @@ def compare_rbinom2(
                 rbinom_samples,
                 bins=bins,
                 alpha=0.5,
-                label="pp.fast_binomial",
+                label="ppr.fast_binomial",
                 density=True,
                 color="C0",
                 edgecolor="k",
@@ -554,7 +1101,7 @@ def compare_rbinom2(
             if show_labels:
                 ax.set_xlabel(xlabel, fontsize=8)
                 if col == 0:
-                    ax.set_ylabel("pp.fast_binomial quantiles", fontsize=8)
+                    ax.set_ylabel("ppr.fast_binomial quantiles", fontsize=8)
                 ax.tick_params(axis="both", which="major", labelsize=7)
             else:
                 ax.tick_params(
@@ -638,7 +1185,7 @@ def compare_rgamma_and_jax_gamma(
                 xs,
                 kde_rgamma(xs),
                 color="C0",
-                label="pp.fast_gamma",
+                label="ppr.fast_gamma",
                 lw=2,
                 linestyle="--",
             )
@@ -678,7 +1225,7 @@ def compare_rgamma_and_jax_gamma(
                     xs,
                     kde_rgamma(xs),
                     color="C0",
-                    label="pp.fast_gamma",
+                    label="ppr.fast_gamma",
                     lw=2,
                     linestyle="--",
                 )
@@ -701,7 +1248,7 @@ def compare_rgamma_and_jax_gamma(
                     rgamma_samples,
                     bins=bin_edges,
                     alpha=0.5,
-                    label="pp.fast_gamma",
+                    label="ppr.fast_gamma",
                     density=True,
                     color="C0",
                     edgecolor="k",
@@ -741,7 +1288,7 @@ def compare_rgamma_and_jax_gamma(
         if show_labels:
             ax_qq.set_xlabel("jax.random.gamma quantiles", fontsize=9)
             if i == 0:
-                ax_qq.set_ylabel("pp.fast_gamma quantiles", fontsize=9)
+                ax_qq.set_ylabel("ppr.fast_gamma quantiles", fontsize=9)
             ax_qq.tick_params(axis="both", which="major", labelsize=8)
         else:
             ax_qq.tick_params(labelbottom=False, labelleft=False)
@@ -760,7 +1307,6 @@ compare_rgamma_and_jax_gamma()
 #| label: compare-nbinom
 #| code-fold: true
 #| fig-cap: "Negative Binomial Distribution comparison: Histogram and Q-Q Plot against SciPy exact."
-
 
 def compare_rnbinom_and_scipy(
     seed=42,
@@ -794,7 +1340,7 @@ def compare_rnbinom_and_scipy(
                 rnbinom_samples,
                 bins=bin_edges,
                 alpha=0.5,
-                label="pp.fast_nbinomial",
+                label="ppr.fast_nbinomial",
                 density=True,
                 color="C0",
                 edgecolor="k",
@@ -850,7 +1396,7 @@ def compare_rnbinom_and_scipy(
             if show_labels:
                 ax_qq.set_xlabel("scipy.stats.nbinom quantiles", fontsize=9)
                 if plot_idx == 0:
-                    ax_qq.set_ylabel("pp.fast_nbinomial quantiles", fontsize=9)
+                    ax_qq.set_ylabel("ppr.fast_nbinomial quantiles", fontsize=9)
                 ax_qq.tick_params(axis="both", which="major", labelsize=8)
             else:
                 ax_qq.tick_params(labelbottom=False, labelleft=False)

@@ -239,7 +239,7 @@ def generate_sbatch_script(test_filepath, config, run_level):
     return "\n".join(lines)
 
 
-def run_test_config(filepath, config, run_level, global_config=None, dry_run=False):
+def run_test_config(filepath, config, run_level, global_config=None, dry_run=False, dependency_job_id=None):
     # Merge global sbatch args into the specific job's config
     if global_config and "sbatch_args" in global_config:
         if "sbatch_args" not in config:
@@ -249,6 +249,11 @@ def run_test_config(filepath, config, run_level, global_config=None, dry_run=Fal
         for k, v in global_config["sbatch_args"].items():
             if k not in config["sbatch_args"]:
                 config["sbatch_args"][k] = v
+
+    if dependency_job_id:
+        if "sbatch_args" not in config:
+            config["sbatch_args"] = {}
+        config["sbatch_args"]["dependency"] = f"afterok:{dependency_job_id}"
 
     script_content = generate_sbatch_script(filepath, config, run_level)
 
@@ -274,6 +279,7 @@ def run_test_config(filepath, config, run_level, global_config=None, dry_run=Fal
         print("DRY RUN: Generated script:")
         print(script_content)
         print("-" * 30)
+        return f"MOCK_JOB_ID_{config.get('name', 'job').replace(' ', '_')}"
     else:
         temp_sbat = os.path.join(
             test_dir, f".temp_run_{config.get('name', 'job').replace(' ', '_')}.sbat"
@@ -281,12 +287,26 @@ def run_test_config(filepath, config, run_level, global_config=None, dry_run=Fal
         with open(temp_sbat, "w") as f:
             f.write(script_content)
 
+        job_id = None
         try:
-            subprocess.run(
-                ["sbatch", os.path.basename(temp_sbat)], cwd=test_dir, check=True
+            res = subprocess.run(
+                ["sbatch", os.path.basename(temp_sbat)],
+                cwd=test_dir,
+                check=True,
+                capture_output=True,
+                text=True
             )
+            print(res.stdout, end="")
+            import re
+            m = re.search(r"Submitted batch job (\d+)", res.stdout)
+            if m:
+                job_id = m.group(1)
         except subprocess.CalledProcessError as e:
             print(f"Failed to submit {filepath}: {e}")
+            if e.stdout:
+                print(e.stdout)
+            if e.stderr:
+                print(e.stderr)
         except FileNotFoundError:
             print(
                 "Error: 'sbatch' command not found. Are you running this on the SLURM cluster?"
@@ -294,6 +314,7 @@ def run_test_config(filepath, config, run_level, global_config=None, dry_run=Fal
         finally:
             if os.path.exists(temp_sbat):
                 os.remove(temp_sbat)
+        return job_id
 
 
 def run_test(filepath, run_level, target_job=None, global_config=None, dry_run=False):
@@ -304,6 +325,9 @@ def run_test(filepath, run_level, target_job=None, global_config=None, dry_run=F
 
     # Support multiple jobs if specified under 'jobs'
     if "jobs" in config and isinstance(config["jobs"], dict):
+        last_job_id = None
+        is_sequential = config.get("sequential", False)
+
         for job_name, job_config in config["jobs"].items():
             if not isinstance(job_config, dict):
                 continue
@@ -326,7 +350,12 @@ def run_test(filepath, run_level, target_job=None, global_config=None, dry_run=F
                     merged["sbatch_args"] = config["sbatch_args"].copy()
                     merged["sbatch_args"].update(job_config["sbatch_args"])
 
-            run_test_config(filepath, merged, run_level, global_config, dry_run)
+            dependency_job_id = last_job_id if is_sequential else None
+            job_id = run_test_config(
+                filepath, merged, run_level, global_config, dry_run, dependency_job_id
+            )
+            if is_sequential and job_id:
+                last_job_id = job_id
     else:
         # For single job configs, just check if the name matches the target (if provided)
         job_name = config.get("name", os.path.basename(filepath))
