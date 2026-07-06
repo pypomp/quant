@@ -40,7 +40,7 @@ import pandas as pd
 import pypomp as pp
 from pypomp.core.par_trans import ParTrans
 from pypomp.core.pomp import Pomp
-from pypomp.models.measles.measlesPomp import UKMeasles
+from pypomp.models.measles.uk_measles import UKMeasles
 
 print("Available JAX Devices:", jax.devices())
 
@@ -69,7 +69,7 @@ unit_name = "London"
 if MODEL_TYPE == "fast":
     # Build Scenario A (Default fast pypomp)
     model_obj = UKMeasles.Pomp(
-        unit=[unit_name],
+        unit=unit_name,
         theta=starting_parameters,
         model="001b",
         clean=False,
@@ -77,7 +77,7 @@ if MODEL_TYPE == "fast":
 else:
     # Build Scenario B (JAX samplers pypomp)
     base_pomp = UKMeasles.Pomp(
-        unit=[unit_name],
+        unit=unit_name,
         theta=starting_parameters,
         model="001b",
         clean=False,

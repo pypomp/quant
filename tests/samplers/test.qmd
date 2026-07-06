@@ -45,7 +45,7 @@ format:
 #       partition: standard
 #       cpus-per-task: 1
 #       mem: 16GB
-#       time: "00:12:00"
+#       time: "00:24:00"
 #       output: "cpu_logs/slurm_%j.out"
 #     env:
 #       BENCHMARK_CPU: "true"
@@ -141,7 +141,11 @@ if os.path.exists(CACHE_FILE):
 
 ## Performance Benchmarks
 
-We measure execution times for generating 1,000,000 samples across multiple parameter ranges using both JAX built-ins and `pypomp`'s fast approximations. 
+We measure execution times for generating samples across multiple parameter ranges using both JAX built-ins and `pypomp`'s fast approximations. 
+We generate samples in batches of 1,000,000 for 20 replications, then record the average time.
+The number 1,000,000 was chosen because it's a realistic number of parallel draws that could be made in a particle filtering step across particles and method replications.
+In our experience, increasing the number of samples further causes the speedup ratio to increase significantly, so this benchmark could be conservative in some circumstances.
+We also implemented the 20 replications as a JIT-compiled scan to reduce overhead and better approximate how the samplers would be used in practice.
 
 ```{python}
 #| label: benchmark-utility
@@ -151,18 +155,25 @@ import gc
 
 
 def run_benchmark(sampler_fn, key, *args, reps=20, **kwargs):
-    jitted_sampler = jax.jit(sampler_fn)
+    # JIT compile loop to avoid overhead
+    @jax.jit
+    def run_scanned(keys, *scan_args, **scan_kwargs):
+        def body_fn(carry, k):
+            res = sampler_fn(k, *scan_args, **scan_kwargs)
+            # Update carry to ensure body isn't optimized out
+            return carry + res.ravel()[0], None
+        # Return just one value to reduce memory transfer overhead
+        return jax.lax.scan(body_fn, 0.0, keys)[0]
 
     keys = jax.random.split(key, reps)
 
-    # Warmup compiler
-    _ = jitted_sampler(keys[0], *args, **kwargs).block_until_ready()
+    # Warmup compilation to avoid overhead
+    _ = run_scanned(keys, *args, **kwargs).block_until_ready()
 
     gc.collect()
 
     t_start = time.perf_counter()
-    results = [jitted_sampler(k, *args, **kwargs) for k in keys]
-    results[-1].block_until_ready()
+    _ = run_scanned(keys, *args, **kwargs).block_until_ready()
     t_end = time.perf_counter()
 
     return (t_end - t_start) / reps
@@ -175,18 +186,22 @@ def run_benchmark(sampler_fn, key, *args, reps=20, **kwargs):
 #| code-fold: true
 #| output: asis
 
+n = 1_000_000 # number of draws per rep
 
 def poisson_performance():
-    n = 1_000_000
     key = jax.random.key(42)
     reps = 20
 
     regimes = {
-        "Low Rate (lambda=0.1)": jnp.full((n,), 0.1, dtype=jnp.float32),
+        "Low Rate (lambda=0.01)": jnp.full((n,), 0.01, dtype=jnp.float32),
+        "Before pypomp Switch (lambda=3.99)": jnp.full((n,), 3.99, dtype=jnp.float32),
+        "After pypomp Switch (lambda=4.01)": jnp.full((n,), 4.01, dtype=jnp.float32),
+        "Before JAX Switch (lambda=9.99)": jnp.full((n,), 9.99, dtype=jnp.float32),
+        "After JAX Switch (lambda=10.01)": jnp.full((n,), 10.01, dtype=jnp.float32),
         "High Rate (lambda=100.0)": jnp.full((n,), 100.0, dtype=jnp.float32),
-        "Mixed Rates (0.01 to 100)": jnp.repeat(
+        "Mixed Rates (around switches)": jnp.repeat(
             jnp.array(
-                [0.01, 0.2, 1.0, 8.0, 10.0, 12.0, 50.0, 100.0], dtype=jnp.float32
+                [0.01, 3.99, 4.01, 9.99, 10.01, 20.0, 50.0, 100.0], dtype=jnp.float32
             ),
             n // 8,
         ),
@@ -264,15 +279,13 @@ poisson_performance()
 #| code-fold: true
 #| output: asis
 
-
 def binomial_performance():
-    n = 1_000_000
     key = jax.random.key(43)
     reps = 20
 
     # Mixed parameter grid setup
-    trials = jnp.array([1, 5, 20, 50, 100, 200], dtype=jnp.float32)
-    p = jnp.array([0.01, 0.2, 0.5, 0.7, 0.9, 0.99], dtype=jnp.float32)
+    trials = jnp.array([10, 40, 100, 250], dtype=jnp.float32)
+    p = jnp.array([0.01, 0.039, 0.041, 0.099, 0.101, 0.499, 0.501, 0.99], dtype=jnp.float32)
     trial_grid, p_grid = jnp.meshgrid(trials, p, indexing="ij")
     trial_flat = trial_grid.reshape(-1)
     p_flat = p_grid.reshape(-1)
@@ -281,15 +294,31 @@ def binomial_performance():
     p_samples = jnp.tile(p_flat, n_repeat)
 
     regimes = {
-        "Rare Events (n=100, p=0.005)": (
+        "Before pypomp Switch (n=100, p=0.039)": (
             jnp.full((n,), 100, dtype=jnp.int32),
-            jnp.full((n,), 0.005, dtype=jnp.float32),
+            jnp.full((n,), 0.039, dtype=jnp.float32),
         ),
-        "Common Events (n=100, p=0.5)": (
+        "After pypomp Switch (n=100, p=0.041)": (
             jnp.full((n,), 100, dtype=jnp.int32),
-            jnp.full((n,), 0.5, dtype=jnp.float32),
+            jnp.full((n,), 0.041, dtype=jnp.float32),
         ),
-        "Mixed Grid (n=1-200, p=0.01-0.99)": (trial_samples, p_samples),
+        "Before JAX Switch (n=100, p=0.099)": (
+            jnp.full((n,), 100, dtype=jnp.int32),
+            jnp.full((n,), 0.099, dtype=jnp.float32),
+        ),
+        "After JAX Switch (n=100, p=0.101)": (
+            jnp.full((n,), 100, dtype=jnp.int32),
+            jnp.full((n,), 0.101, dtype=jnp.float32),
+        ),
+        "Before Flip Switch (n=100, p=0.499)": (
+            jnp.full((n,), 100, dtype=jnp.int32),
+            jnp.full((n,), 0.499, dtype=jnp.float32),
+        ),
+        "After Flip Switch (n=100, p=0.501)": (
+            jnp.full((n,), 100, dtype=jnp.int32),
+            jnp.full((n,), 0.501, dtype=jnp.float32),
+        ),
+        "Mixed Grid (around switches)": (trial_samples, p_samples),
     }
 
     if "binomial" not in benchmark_results:
@@ -364,19 +393,17 @@ binomial_performance()
 #| code-fold: true
 #| output: asis
 
-
 def gamma_performance():
-    n = 1_000_000
     key = jax.random.key(44)
     reps = 20
 
-    alpha = jnp.array([0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 100.0], dtype=jnp.float32)
+    alpha = jnp.array([0.1, 0.5, 0.99, 1.01, 2.0, 10.0, 50.0, 100.0], dtype=jnp.float32)
     alpha_samples = jnp.repeat(alpha, n // len(alpha))
 
     regimes = {
-        "Small Shape (alpha=0.1)": jnp.full((n,), 0.1, dtype=jnp.float32),
-        "Large Shape (alpha=50.0)": jnp.full((n,), 50.0, dtype=jnp.float32),
-        "Mixed Shapes (0.5 to 100)": alpha_samples,
+        "Before JAX Switch (alpha=0.99)": jnp.full((n,), 0.99, dtype=jnp.float32),
+        "After JAX Switch (alpha=1.01)": jnp.full((n,), 1.01, dtype=jnp.float32),
+        "Mixed Shapes (around switch)": alpha_samples,
     }
 
     if "gamma" not in benchmark_results:
@@ -451,14 +478,12 @@ gamma_performance()
 #| code-fold: true
 #| output: asis
 
-
 def rnbinom_performance():
-    n = 1_000_000
     key = jax.random.key(45)
     reps = 20
 
-    size = jnp.array([1.0, 5.0, 20.0, 100.0], dtype=jnp.float32)
-    p = jnp.array([0.1, 0.5, 0.9], dtype=jnp.float32)
+    size = jnp.array([1.0, 10.0, 100.0], dtype=jnp.float32)
+    p = jnp.array([0.1, 0.4998, 0.5003, 0.7138, 0.7148, 0.9], dtype=jnp.float32)
     size_grid, p_grid = jnp.meshgrid(size, p, indexing="ij")
     size_flat = size_grid.reshape(-1)
     p_flat = p_grid.reshape(-1)
@@ -467,15 +492,23 @@ def rnbinom_performance():
     p_samples = jnp.tile(p_flat, n_repeat)
 
     regimes = {
-        "Low Mean (size=1.0, p=0.9)": (
-            jnp.full((n,), 1.0, dtype=jnp.float32),
-            jnp.full((n,), 0.9, dtype=jnp.float32),
+        "Before Poisson Switch (size=10.0, p=0.7148)": (
+            jnp.full((n,), 10.0, dtype=jnp.float32),
+            jnp.full((n,), 10.0 / 13.99, dtype=jnp.float32),
         ),
-        "High Mean (size=100.0, p=0.1)": (
-            jnp.full((n,), 100.0, dtype=jnp.float32),
-            jnp.full((n,), 0.1, dtype=jnp.float32),
+        "After Poisson Switch (size=10.0, p=0.7138)": (
+            jnp.full((n,), 10.0, dtype=jnp.float32),
+            jnp.full((n,), 10.0 / 14.01, dtype=jnp.float32),
         ),
-        "Mixed Grid (size=1-100, p=0.1-0.9)": (size_samples, p_samples),
+        "Before JAX Poisson Switch (size=10.0, p=0.5003)": (
+            jnp.full((n,), 10.0, dtype=jnp.float32),
+            jnp.full((n,), 10.0 / 19.99, dtype=jnp.float32),
+        ),
+        "After JAX Poisson Switch (size=10.0, p=0.4998)": (
+            jnp.full((n,), 10.0, dtype=jnp.float32),
+            jnp.full((n,), 10.0 / 20.01, dtype=jnp.float32),
+        ),
+        "Mixed Grid (around switches)": (size_samples, p_samples),
     }
 
     if "nbinomial" not in benchmark_results:
