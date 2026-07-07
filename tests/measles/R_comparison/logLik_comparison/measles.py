@@ -101,7 +101,7 @@ for unit_name in units:
 
     # Create pomp object for this unit using PompParameters
     measles_obj = pp.models.UKMeasles.Pomp(
-        unit=[unit_name],
+        unit=unit_name,
         theta=pp.PompParameters(unit_params),
         model="001b",
         clean=False,

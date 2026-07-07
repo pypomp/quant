@@ -1,0 +1,228 @@
+---
+title: "UK Measles Model Comparison"
+subtitle: "Log-likelihood and parameter estimates in pypomp vs. R pomp"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+jupyter: python3
+---
+
+## Introduction
+
+This report compares the distributions of the log-likelihood and parameter estimates obtained for the measles model using the particle filter and iterated filtering 2 (IF2) in `pypomp` and `pomp`.
+
+---
+
+## Setup
+
+```{python}
+#| label: setup
+#| echo: true
+#| warning: false
+#| message: false
+
+import os
+import logging
+import pickle
+import numpy as np
+import pandas as pd
+import pyreadr
+from scipy.special import logit, logsumexp
+from plotnine import *
+from IPython.display import HTML
+
+# Hide the noisy JAX CUDA initialization error on machines without a GPU
+logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
+
+# ---------------------------------------------------------
+# Load Parameter Comparison Data
+# ---------------------------------------------------------
+# Load Python parameter results
+py_param_path = "parameter_comparison/results/mif_coefs.pkl"
+with open(py_param_path, "rb") as f:
+    py_results = pickle.load(f)
+
+py_results["source"] = "pypomp"
+py_results = py_results.drop(
+    columns=["logLik", "se", "theta_idx"], errors="ignore"
+).melt(id_vars=["source", "unit"], var_name="param", value_name="value")
+
+# Load R parameter results
+r_param_path = "parameter_comparison/results/mif_coefs.rds"
+r_data = pyreadr.read_r(r_param_path)
+r_results = r_data[None]
+r_results["source"] = "R"
+r_results = r_results[["source", "unit", "coef", "names"]].rename(
+    columns={"coef": "value", "names": "param"}
+)
+
+# ---------------------------------------------------------
+# Load Particle Filter Likelihood Data
+# ---------------------------------------------------------
+py_pf_32_path = "logLik_comparison/results/pfilter_logliks_f32.pkl"
+py_pf_64_path = "logLik_comparison/results/pfilter_logliks_f64.pkl"
+r_pf_path = "logLik_comparison/results/pfilter_logliks_f64.rds"
+
+with open(py_pf_32_path, "rb") as f:
+    pf_py_results = pickle.load(f)
+pf_py_results["source"] = "pypomp (32-bit)"
+
+with open(py_pf_64_path, "rb") as f:
+    pf_py_exact_results = pickle.load(f)
+pf_py_exact_results["source"] = "pypomp (64-bit)"
+
+pf_r_results = pyreadr.read_r(r_pf_path)[None]
+pf_r_results["source"] = "R"
+```
+
+---
+
+## Parameter Convergence & Distributions
+
+This section compares the final parameter values obtained from the IF2 algorithm across replicates. 
+Ideally, these should overlap as much as possible.
+
+```{python}
+#| label: parameter-prep
+#| include: false
+
+# Combine for the plotting transformations
+combined = pd.concat([py_results, r_results], ignore_index=True)
+
+log_params = ["gamma", "sigma", "iota", "R0", "sigmaSE"]
+logit_params = ["S_0", "E_0", "I_0", "R_0"]
+
+# Apply mathematical transformations matching R's log and qlogis
+combined["value"] = np.where(
+    combined["param"].isin(log_params),
+    np.log(combined["value"]),
+    np.where(
+        combined["param"].isin(logit_params),
+        logit(combined["value"]),
+        combined["value"],
+    ),
+)
+
+# Update parameter labels to reflect transformations
+param_mapping = {p: f"log({p})" for p in log_params}
+param_mapping.update({p: f"logit({p})" for p in logit_params})
+combined["param"] = combined["param"].replace(param_mapping)
+```
+
+### Density Plots
+
+We overlay the densities of 360 final parameter estimates for each unit to assess the agreement between `pypomp` and R.
+
+```{python}
+#| label: parameter-plots
+#| fig-width: 10
+#| fig-height: 7
+#| warning: false
+#| echo: false
+
+for unit_val in combined["unit"].unique():
+    unit_data = combined[combined["unit"] == unit_val]
+
+    gg = (
+        ggplot(unit_data, aes(x="value", fill="source"))
+        + geom_density(alpha=0.6)
+        + facet_wrap("~param", scales="free")
+        + labs(title=f"Estimated Parameter Densities (Unit: {unit_val})", x="Parameter Value", fill="Source")
+        + theme_minimal()
+        + theme(legend_position="bottom")
+    )
+    gg.show()
+```
+
+---
+
+## Particle Filter Likelihood Comparison
+
+In this section, we compare 3600 likelihood evaluations from the particle filters across different configurations.
+The configurations are as follows:
+
+1. `pypomp` run using 32-bit floating point precision.
+2. `pypomp` run using 64-bit floating point precision.
+3. `pomp` run using 64-bit floating point precision.
+
+We include `pypomp` with 64-bit floating point precision due to some previous results suggesting precision makes a difference in this model.
+For any given unit, we use the same parameter set for each evaluation.
+
+### Summary Statistics
+
+The table below presents the summary statistics of the log-likelihood (LL) calculations. 
+
+```{python}
+#| label: pfilter-summary
+#| echo: false
+
+cols = ["unit", "replicate", "logLik", "source"]
+pf_combined = pd.concat(
+    [pf_py_results[cols], pf_py_exact_results[cols], pf_r_results[cols]], ignore_index=True
+)
+
+# Stable logmeanexp definition matching pomp's behavior
+def logmeanexp(x):
+    return logsumexp(x) - np.log(len(x))
+
+summary_stats = (
+    pf_combined.groupby(["unit", "source"])["logLik"]
+    .agg(
+        mean_logLik="mean",
+        sd_logLik="std",
+        min_logLik="min",
+        max_logLik="max",
+        logmeanexp_logLik=logmeanexp,
+    )
+    .reset_index()
+)
+
+summary_stats_html = summary_stats.copy()
+numeric_cols = ["mean_logLik", "sd_logLik", "min_logLik", "max_logLik", "logmeanexp_logLik"]
+summary_stats_html[numeric_cols] = summary_stats_html[numeric_cols].round(3)
+
+HTML(summary_stats_html.to_html(classes="table table-striped table-hover", index=False))
+```
+
+### Log-Likelihood Distributions
+
+Below are the density plots of the calculated log-likelihoods for each unit (London and Halesworth). 
+Ideally, these overlap as much as possible.
+
+```{python}
+#| label: loglik-plots
+#| fig-width: 10
+#| fig-height: 6
+#| warning: false
+#| echo: false
+
+# Filter outliers (London with very small logLik values) if needed
+filter_outliers = False
+outlier_threshold = -3850
+
+plot_data = pf_combined.copy()
+if filter_outliers:
+    plot_data = plot_data[
+        ~((plot_data["unit"] == "London") & (plot_data["logLik"] < outlier_threshold))
+    ]
+
+p1 = (
+    ggplot(plot_data, aes(x="logLik", fill="source"))
+    + geom_density(alpha=0.6)
+    + facet_wrap("~unit", scales="free")
+    + labs(title="LogLik Comparison: Pypomp vs R", x="Log-Likelihood", fill="Source")
+    + theme_minimal()
+    + theme(legend_position="bottom")
+)
+p1.show()
+```
