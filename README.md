@@ -13,7 +13,7 @@ The quant tests also provide additional examples of pypomp, focused on technical
 
 ---
 
-## Existing Quantitative Tests
+## Quantitative Tests Index
 
 Below is a list of quantitative test reports available in this repository:
 
