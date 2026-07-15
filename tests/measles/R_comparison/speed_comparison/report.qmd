@@ -83,12 +83,12 @@ timing_data = {
         "pypomp (GPU, Fast Samplers)",
         "pypomp (GPU, JAX Samplers)",
     ],
-    "MIF2 Time": [
+    "IF2 Time": [
         f"{r_mif_time:.2f} s ({r_mif_time / 60:.2f} m)",
         f"{py_fast_mif:.2f} s ({py_fast_mif / 60:.2f} m)",
         f"{py_jax_mif:.2f} s ({py_jax_mif / 60:.2f} m)",
     ],
-    "MIF2 Speedup": [
+    "IF2 Speedup": [
         "1.00x",
         f"{r_mif_time / py_fast_mif:.2f}x",
         f"{r_mif_time / py_jax_mif:.2f}x",
@@ -146,7 +146,7 @@ r_mif_1 = r_mif_time * n_cities
 r_pf_1 = r_pf_time * n_cities
 r_total_1 = r_mif_1 + r_pf_1
 
-# Config 2: MIF2 scales by 4x (2x particles, 2x iterations), Pfilter scales by 2x (2x particles)
+# Config 2: IF2 scales by 4x (2x particles, 2x iterations), Pfilter scales by 2x (2x particles)
 r_mif_2 = r_mif_time * n_cities * 4
 r_pf_2 = r_pf_time * n_cities * 2
 r_total_2 = r_mif_2 + r_pf_2
@@ -182,7 +182,7 @@ extrap_data = {
         "pypomp (GPU, Fast Samplers)",
         "pypomp (GPU, JAX Samplers)",
     ],
-    "Config 1: MIF2 Time": [
+    "Config 1: IF2 Time": [
         format_time(r_mif_1),
         format_time(py_fast_mif_1),
         format_time(py_jax_mif_1),
@@ -197,7 +197,7 @@ extrap_data = {
         format_time(py_fast_total_1),
         format_time(py_jax_total_1),
     ],
-    "Config 2: MIF2 Time": [
+    "Config 2: IF2 Time": [
         format_time(r_mif_2),
         format_time(py_fast_mif_2),
         format_time(py_jax_mif_2),

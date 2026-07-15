@@ -32,14 +32,5 @@ Also checks that the particle filter yields the same distribution of log likelih
 * **[Runtime Comparison: Pypomp vs R](tests/measles/R_comparison/speed_comparison/report.html)** (`tests/measles/R_comparison/speed_comparison`): Benchmarks runtime of IF2 on a discrete measles model using `pypomp` versus `pomp`. This demonstrates the utility of the fast samplers in `pypomp.random`.
 
 ### 5. Panel Measles Model
-* **[Panel Measles (only unit-specific parameters)](tests/panel_measles/performance/report.html)** (`tests/panel_measles/performance`): Benchmarks panel parameter estimation via MPIF on a panel measles dataset using only unit-specific parameters.
-
-* **[Panel Measles (mixed parameters)](tests/panel_measles/performance_mixed/report.html)** (`tests/panel_measles/performance_mixed`): Benchmarks panel parameter estimation via MPIF on a panel measles dataset using both unit-specific and shared parameters.
-
-### 6. Differentiated Process Off-Parameter Filtering
-* **[DPOP London Measles Benchmark](tests/dpop/london_measles/report.html)** (`tests/dpop/london_measles`): Compares DPOP training against an IF2 baseline on the single-unit London measles model, including likelihood distribution, elapsed-time trace, and runtime summaries.
-
-### 7. Bayesian Iterated Filtering
-* **[BIF versus PMCMC Benchmarks](tests/bif/sir_dacca_pmcmc/report.html)** (`tests/bif/sir_dacca_pmcmc`): Compares BIF against PMCMC on a four-parameter SIR model and a four-parameter, 100-observation Dacca cholera benchmark, including runtime, posterior marginal, interval, and PMCMC diagnostic summaries.
-
+* **[Panel Measles (mixed parameters)](tests/panel_measles/R_comparison/mixed/report.html)** (`tests/panel_measles/R_comparison/mixed`): Compares parameter and log-likelihood estimates on a panel measles dataset using `pypomp` and R's `pomp`.
 

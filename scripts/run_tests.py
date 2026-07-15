@@ -89,7 +89,7 @@ def parse_slurm_time(time_str):
         days = int(parts[0])
         time_str = parts[1]
         has_days = True
-    
+
     parts = list(map(int, time_str.split(":")))
     if has_days:
         if len(parts) == 3:
@@ -115,7 +115,7 @@ def parse_slurm_time(time_str):
             seconds = 0
         else:
             raise ValueError(f"Invalid SLURM time format: {time_str}")
-            
+
     return days * 86400 + hours * 3600 + minutes * 60 + seconds
 
 
@@ -124,7 +124,7 @@ def format_slurm_time(total_seconds):
     days, remainder = divmod(total_seconds, 86400)
     hours, remainder = divmod(remainder, 3600)
     minutes, seconds = divmod(remainder, 60)
-    
+
     if days > 0:
         return f"{days}-{hours:02d}:{minutes:02d}:{seconds:02d}"
     else:
@@ -161,9 +161,13 @@ def generate_sbatch_script(test_filepath, config, run_level):
             scaled_seconds = int(total_seconds * scale_factor)
             scaled_time = format_slurm_time(scaled_seconds)
             sbatch_args["time"] = scaled_time
-            print(f"Scaled time limit for {n_units} units: {original_time} -> {scaled_time}")
+            print(
+                f"Scaled time limit for {n_units} units: {original_time} -> {scaled_time}"
+            )
         except Exception as e:
-            print(f"Warning: Failed to scale time '{sbatch_args.get('time')}' for N_UNITS={n_units_val}: {e}")
+            print(
+                f"Warning: Failed to scale time '{sbatch_args.get('time')}' for N_UNITS={n_units_val}: {e}"
+            )
 
     for key, value in sbatch_args.items():
         # Handle flags without values
@@ -212,9 +216,7 @@ def generate_sbatch_script(test_filepath, config, run_level):
         activate_r = os.path.join(project_root, ".renv", "activate.R")
         # Use RENV_PROJECT, RENV_PATHS_RENV and R_PROFILE_USER to point to the root renv without creating a local .Rprofile
         lines.append(f'export RENV_PROJECT="{project_root}"')
-        lines.append(
-            f'export RENV_PATHS_RENV="{os.path.join(project_root, ".renv")}"'
-        )
+        lines.append(f'export RENV_PATHS_RENV="{os.path.join(project_root, ".renv")}"')
         lines.append(f"export R_PROFILE_USER='{activate_r}'")
 
     # Base command logic
@@ -239,7 +241,14 @@ def generate_sbatch_script(test_filepath, config, run_level):
     return "\n".join(lines)
 
 
-def run_test_config(filepath, config, run_level, global_config=None, dry_run=False, dependency_job_id=None):
+def run_test_config(
+    filepath,
+    config,
+    run_level,
+    global_config=None,
+    dry_run=False,
+    dependency_job_id=None,
+):
     # Merge global sbatch args into the specific job's config
     if global_config and "sbatch_args" in global_config:
         if "sbatch_args" not in config:
@@ -294,10 +303,11 @@ def run_test_config(filepath, config, run_level, global_config=None, dry_run=Fal
                 cwd=test_dir,
                 check=True,
                 capture_output=True,
-                text=True
+                text=True,
             )
             print(res.stdout, end="")
             import re
+
             m = re.search(r"Submitted batch job (\d+)", res.stdout)
             if m:
                 job_id = m.group(1)
@@ -398,7 +408,11 @@ def extract_fallback_description(filepath):
                         in_docstring = True
                         docstring_char = stripped[:3]
                         content = stripped[3:]
-                        if docstring_char and content.endswith(docstring_char) and len(content) >= 3:
+                        if (
+                            docstring_char
+                            and content.endswith(docstring_char)
+                            and len(content) >= 3
+                        ):
                             desc_lines.append(content[:-3].strip())
                             break
                         if content:
@@ -460,7 +474,7 @@ def filter_tests(tests, importance_filter=None, tag_filter=None):
                 continue
 
         filtered.append((test, config, importance, tags))
-    
+
     # Sort tests alphabetically by path to group them by directory naturally
     filtered.sort(key=lambda x: x[0])
     return filtered
@@ -482,11 +496,11 @@ def print_tests_table(filtered_tests):
     print("=" * 100)
     print(f"  {'#':<3}  {'Importance':<10}  {'Test Path / Description & Details'}")
     print("=" * 100)
-    
+
     current_category = None
     for idx, (filepath, config, importance, tags) in enumerate(filtered_tests, 1):
         category = get_category_name(filepath)
-        
+
         # Check if we are transitioning to a new category parent folder
         if category != current_category:
             if current_category is not None:
@@ -523,13 +537,13 @@ def print_tests_table(filtered_tests):
             elif importance == "medium":
                 color_start = "\033[33;1m"  # yellow bold
             else:
-                color_start = "\033[36m"    # cyan
+                color_start = "\033[36m"  # cyan
             color_end = "\033[0m"
 
         imp_display = f"{color_start}{importance.upper():<10}{color_end}"
 
         print(f"  {idx:<3}  {imp_display}  {filepath}")
-        
+
         # Wrap description to avoid going off screen
         wrapped_desc = textwrap.wrap(desc, width=75)
         if wrapped_desc:
@@ -538,7 +552,7 @@ def print_tests_table(filtered_tests):
                 print(f"       {'':<12} {line}")
         else:
             print(f"       {'Description:':<12} ")
-            
+
         print(f"       {'Jobs:':<12} {jobs_str}")
         print(f"       {'Tags:':<12} {tags_str}")
     print("=" * 100)
@@ -557,7 +571,9 @@ def run_interactive_mode(filtered_tests, global_config, dry_run):
     run_level = os.environ.get("RUN_LEVEL")
     if not run_level:
         try:
-            level_input = input("\nEnter RUN_LEVEL (e.g. 1, 2, 3, 4) [default: 1]: ").strip()
+            level_input = input(
+                "\nEnter RUN_LEVEL (e.g. 1, 2, 3, 4) [default: 1]: "
+            ).strip()
             if level_input:
                 run_level = level_input
             else:
@@ -567,7 +583,9 @@ def run_interactive_mode(filtered_tests, global_config, dry_run):
             return
 
     try:
-        user_input = input("\nEnter test numbers/ranges to run (e.g., '1, 3', '1-3', 'all', or 'q' to quit): ").strip()
+        user_input = input(
+            "\nEnter test numbers/ranges to run (e.g., '1, 3', '1-3', 'all', or 'q' to quit): "
+        ).strip()
     except (KeyboardInterrupt, EOFError):
         print("\nCancelled.")
         return
@@ -603,7 +621,9 @@ def run_interactive_mode(filtered_tests, global_config, dry_run):
                     if 1 <= idx <= num_tests:
                         selected_indices.add(idx)
                     else:
-                        print(f"Warning: Index {idx} out of range (1-{num_tests}) ignored.")
+                        print(
+                            f"Warning: Index {idx} out of range (1-{num_tests}) ignored."
+                        )
                 except ValueError:
                     print(f"Warning: Invalid selection '{part}' ignored.")
 
@@ -611,10 +631,18 @@ def run_interactive_mode(filtered_tests, global_config, dry_run):
         print("No valid tests selected. Exiting.")
         return
 
-    print(f"\nRunning {len(selected_indices)} selected test(s) at RUN_LEVEL={run_level}:")
+    print(
+        f"\nRunning {len(selected_indices)} selected test(s) at RUN_LEVEL={run_level}:"
+    )
     for idx in sorted(selected_indices):
         filepath, config, importance, tags = filtered_tests[idx - 1]
-        run_test(filepath, run_level, target_job=None, global_config=global_config, dry_run=dry_run)
+        run_test(
+            filepath,
+            run_level,
+            target_job=None,
+            global_config=global_config,
+            dry_run=dry_run,
+        )
 
 
 if __name__ == "__main__":
@@ -692,7 +720,9 @@ if __name__ == "__main__":
     if args.action == "list":
         print(f"\nDiscovered {len(filtered)} test(s) in '{args.target}':")
         print_tests_table(filtered)
-        print("\nUse 'python scripts/run_tests.py run <path>' to execute them, or use -i for interactive mode.\n")
+        print(
+            "\nUse 'python scripts/run_tests.py run <path>' to execute them, or use -i for interactive mode.\n"
+        )
     elif args.action == "run":
         global_config = load_global_config()
         if global_config:

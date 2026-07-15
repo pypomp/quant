@@ -152,7 +152,7 @@ initial_params = pp.PanelPomp.sample_params(
 
 pomp_dict = {
     unit: pp.models.UKMeasles.Pomp(
-        unit=[unit],
+        unit=unit,
         theta=dummy_initial_params_list,
         model="001b",
         clean=True,
@@ -169,7 +169,7 @@ start_time = time.time()
 
 # ----- MIF round 1 -----
 key, subkey = jax.random.split(key)
-panel_measles_obj.mif(rw_sd=RW_SD, M=NFITR, J=NP_FITR, key=subkey, vmap_chunk_size=16)
+panel_measles_obj.mif(rw_sd=RW_SD, M=NFITR, J=NP_FITR, key=subkey)
 
 # ----- PFILTER round 1 -----
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL)

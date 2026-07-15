@@ -72,7 +72,9 @@ def main() -> None:
             copy_file(src_dir / name, dst_dir / name)
         copy_file(src_dir / spec["rank"], dst_dir / spec["rank"])
         for name in spec["figures"]:
-            copy_file(src_dir / "figures" / "main" / name, dst_dir / "figures" / "main" / name)
+            copy_file(
+                src_dir / "figures" / "main" / name, dst_dir / "figures" / "main" / name
+            )
 
 
 if __name__ == "__main__":
