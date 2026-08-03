@@ -45,7 +45,7 @@ library(reticulate)
 library(tidyverse)
 library(pomp)
 
-setwd(file.path(here::here(), "tests", "spx", "performance"))
+setwd(file.path(here::here(), "tests", "spx"))
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 sessionInfo()
@@ -70,8 +70,11 @@ import jax
 ```
 
 ```{python Load data in python}
-GPU_PKL_PATH = "performance/gpu_results/spx_results_rl4.pkl"
-CPU_PKL_PATH = "performance/cpu_results/spx_results_rl4.pkl"
+# Fitted objects from the estimation kind. The CSV/JSON alongside these is the
+# committed record; the pickle is the fallback, used here for quantities like
+# .time() and .traces() that are read straight off the object.
+GPU_PKL_PATH = "estimation/results/gpu/fitted.pkl"
+CPU_PKL_PATH = "estimation/results/cpu/fitted.pkl"
 
 gpu_pkl = pickle.load(open(GPU_PKL_PATH, "rb"))
 cpu_pkl = pickle.load(open(CPU_PKL_PATH, "rb"))
@@ -203,8 +206,8 @@ The GPU used is a NVIDIA V100, and the CPU used is a 3.0 GHz Intel Xeon Gold 615
 ```{r R Execution time}
 # Frozen R baseline, extracted from the 66 MB global-search .rda that used to be
 # required here. See R_reference/MANIFEST.json for provenance; regenerate with
-# `python scripts/freeze_r_results.py freeze --only spx/performance`.
-R_REFERENCE <- here::here("tests", "spx", "performance", "R_reference")
+# `python scripts/freeze_r_results.py freeze --only spx/estimation`.
+R_REFERENCE <- here::here("tests", "spx", "estimation", "R_reference")
 
 r_timings <- read.csv(file.path(R_REFERENCE, "timings.csv"))
 elapsed_for <- function(stage) {
@@ -216,15 +219,47 @@ r_mif <- elapsed_for("mif")
 r_pf <- elapsed_for("pfilter")
 r_total <- elapsed_for("total")
 
-gpu_time <- py$gpu_pkl$time()
-gpu_mif <- gpu_time$time[gpu_time$method == "mif"]
-gpu_pf <- gpu_time$time[gpu_time$method == "pfilter"]
-gpu_total <- sum(gpu_time$time)
+# Runtimes come from the timing kind, which is the controlled measurement:
+# fixed small replicate counts, repeated identical work. The estimation run's
+# own clock is used only as a fallback, since its configuration is chosen for
+# statistical power rather than for comparability.
+#
+# pfilter_warm is the phase to compare against R: R pays no JIT compilation, so
+# its pfilter time is warm by construction.
+timing_for <- function(platform, fallback_pkl) {
+    path <- here::here(
+        "tests", "spx", "timing", "results", platform, "timings.csv"
+    )
+    if (file.exists(path)) {
+        tm <- read.csv(path)
+        get <- function(phase) tm$time_seconds[tm$phase == phase]
+        list(
+            mif = get("mif"),
+            pf = get("pfilter_warm"),
+            total = get("mif") + get("pfilter_warm"),
+            source = "timing/"
+        )
+    } else {
+        tm <- fallback_pkl$time()
+        list(
+            mif = tm$time[tm$method == "mif"],
+            pf = tm$time[tm$method == "pfilter"],
+            total = sum(tm$time),
+            source = "estimation/ (fallback)"
+        )
+    }
+}
 
-cpu_time <- py$cpu_pkl$time()
-cpu_mif <- cpu_time$time[cpu_time$method == "mif"]
-cpu_pf <- cpu_time$time[cpu_time$method == "pfilter"]
-cpu_total <- sum(cpu_time$time)
+gpu_t <- timing_for("gpu", py$gpu_pkl)
+cpu_t <- timing_for("cpu", py$cpu_pkl)
+
+gpu_mif <- gpu_t$mif
+gpu_pf <- gpu_t$pf
+gpu_total <- gpu_t$total
+
+cpu_mif <- cpu_t$mif
+cpu_pf <- cpu_t$pf
+cpu_total <- cpu_t$total
 
 # Speedups (relative to R pomp)
 gpu_mif_speedup <- r_mif / gpu_mif
@@ -330,7 +365,7 @@ best_rep <- traces_gpu |>
 Here, we overlay the trajectories from R, Python (CPU), and Python (GPU) to compare the search paths directly.
 
 ```{r Load R estimates}
-R_REFERENCE <- here::here("tests", "spx", "performance", "R_reference")
+R_REFERENCE <- here::here("tests", "spx", "estimation", "R_reference")
 
 # The frozen likelihood estimates keep pomp's (est, se) pair, renamed on freeze.
 LL_df_R <- read.csv(file.path(R_REFERENCE, "pfilter_logliks.csv")) |>
@@ -632,15 +667,15 @@ We would like the final log-likelihood estimates from each configuration to be i
 This section evaluates the particle filter's likelihood calculation itself by running it multiple times on a single, fixed parameter vector (@sun2024 estimates).
 
 ```{python Load rep3600 eval results}
-EVAL_PKL_PATH = os.path.join("pfilter_check", "py_results", "spx_results_eval.pkl")
+EVAL_PKL_PATH = os.path.join("loglik", "results", "gpu", "fitted.pkl")
 pkl_eval = pickle.load(open(EVAL_PKL_PATH, "rb"))
 LL_rep3600 = pkl_eval.results_history[0].logLiks[0].values.tolist()
 ```
 
 ```{r Load rep3600 R eval and plot combined density, fig.width = 8, fig.height = 5}
-# Frozen R baseline; see pfilter_check/R_reference/MANIFEST.json for provenance.
+# Frozen R baseline; see loglik/R_reference/MANIFEST.json for provenance.
 LL_rep3600_R <- read.csv(
-    file.path("pfilter_check", "R_reference", "pfilter_logliks.csv")
+    file.path("loglik", "R_reference", "pfilter_logliks.csv")
 )$logLik
 
 data.frame(

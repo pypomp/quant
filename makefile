@@ -1,4 +1,4 @@
-.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all freeze-r check-r
+.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all freeze-r check-r check
 
 install_pypi: install_requirements
 	pip install pypomp
@@ -36,4 +36,8 @@ freeze-r:
 # enough for CI and needs neither R nor the original .rds/.rda files.
 check-r:
 	.venv/bin/python scripts/freeze_r_results.py check
+
+# Evaluate every test's expect.yaml against its most recent results.
+check:
+	.venv/bin/python scripts/check_expectations.py tests --all
 

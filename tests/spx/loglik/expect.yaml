@@ -1,0 +1,44 @@
+# What a run of this test must satisfy, checked by scripts/check_expectations.py.
+#
+# Kind: loglik. theta is pinned, so the question is purely whether pypomp's
+# distribution of likelihood estimates matches R's. These checks replace
+# eyeballing the density overlay in the report -- the plot stays, but it is no
+# longer the only thing standing between a regression and a green run.
+#
+# Reference: R_reference/pfilter_logliks.csv, 3600 R replicates at the Sun (2024)
+# estimates -- mean 11848.080, sd 2.047.
+
+# Level 1 uses J=2 and produces deliberate garbage; it only proves the code path
+# runs. Nothing below level 2 is worth asserting on.
+min_run_level: 2
+
+checks:
+  - name: mean logLik matches R
+    type: mean_vs_reference
+    source: pfilter_logliks.csv
+    column: logLik
+    reference_csv: R_reference/pfilter_logliks.csv
+    reference_column: logLik
+    # The reference SE of the mean is 0.034 at 3600 reps; a 225-rep pypomp run
+    # has SE 0.137. 0.5 nats is a little under 4 combined SEs -- loose enough
+    # not to cry wolf on Monte Carlo noise, tight enough to catch a real bias.
+    max_abs_diff: 0.5
+
+  - name: logLik distribution matches R
+    type: ks_test
+    source: pfilter_logliks.csv
+    column: logLik
+    reference_csv: R_reference/pfilter_logliks.csv
+    reference_column: logLik
+    # Two-sided KS. This is the check that catches a right mean with a wrong
+    # shape, which the comparison above would pass.
+    min_p_value: 0.001
+
+  - name: no diverged replicates
+    type: scalar
+    source: pfilter_logliks.csv
+    column: logLik
+    statistic: min
+    # A collapsed filter shows up as a wildly negative logLik. The R baseline
+    # has none at this theta (its worst is 11841.87).
+    min: 11800

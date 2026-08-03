@@ -1,0 +1,36 @@
+# What a run of this test must satisfy, checked by scripts/check_expectations.py.
+#
+# Kind: timing. Checks are one-sided on purpose -- getting faster is never a
+# failure. Absolute ceilings are set generously because cluster nodes vary and
+# a shared machine will occasionally give you a bad draw; the check that will
+# actually earn its keep is max_ratio_vs_history, which compares against this
+# test's own recorded past rather than a number somebody guessed once.
+#
+# The R baseline for the same work is in ../estimation/R_reference/timings.csv:
+# mif 6893.5 s, pfilter 289.6 s elapsed, on 36 CPU cores.
+
+min_run_level: 2
+
+checks:
+  - name: mif has not slowed down
+    type: timing
+    source: timings.csv
+    phase: mif
+    # Only fires once there are enough past runs to have a stable median.
+    max_ratio_vs_history: 1.5
+    min_history: 5
+
+  - name: warm pfilter has not slowed down
+    type: timing
+    source: timings.csv
+    phase: pfilter_warm
+    max_ratio_vs_history: 1.5
+    min_history: 5
+
+  - name: mif stays far ahead of R
+    type: timing
+    source: timings.csv
+    phase: mif
+    # R takes 6893 s on 36 cores. If pypomp ever takes more than a tenth of
+    # that, something is badly wrong rather than merely slower.
+    max_seconds: 689
