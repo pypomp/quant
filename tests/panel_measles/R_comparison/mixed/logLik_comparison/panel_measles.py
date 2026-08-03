@@ -97,8 +97,10 @@ pomp_dict = {
 
 # Override covariates with R-computed ones to match R exactly
 import sys
+
 sys.path.append("..")
 from align_covariates import align_covariates
+
 align_covariates(pomp_dict)
 
 
@@ -112,6 +114,7 @@ panel_measles_obj = pp.PanelPomp(
 print(f"Running {NREPS_EVAL} panel pfilters with J={NP_EVAL}...")
 key, subkey = jax.random.split(key)
 import time
+
 t_start = time.perf_counter()
 panel_measles_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=subkey)
 t_pfilter = time.perf_counter() - t_start
@@ -135,7 +138,7 @@ if len(panel_measles_obj.results_history) > 0:
         pickle.dump(logliks_df[["unit", "replicate", "logLik"]], f)
 
     print(f"Saved results to {output_file}")
-    
+
     # Save timing to CSV
     timing_df = pd.DataFrame({"phase": ["pfilter"], "time_seconds": [t_pfilter]})
     timing_df.to_csv("results/pypomp_time.csv", index=False)

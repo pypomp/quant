@@ -134,8 +134,10 @@ pomp_dict = {
 
 # Override covariates with R-computed ones to match R exactly
 import sys
+
 sys.path.append("..")
 from align_covariates import align_covariates
+
 align_covariates(pomp_dict)
 
 

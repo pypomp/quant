@@ -1,12 +1,23 @@
 # --- SLURM CONFIG ---
 # importance: medium
-# sbatch_args:
-#   job-name: "panel measles speed comparison (pypomp)"
-#   partition: gpu-rtx6000
-#   gpus: "rtx_pro_6000_blackwell:1"
-#   cpus-per-gpu: 1
-#   mem: 6GB
-#   output: "results/logs/slurm-%j.out"
+# jobs:
+#   gpu:
+#     sbatch_args:
+#       job-name: "panel measles speed comparison (pypomp gpu)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 6GB
+#       output: "results/logs/slurm-gpu-%j.out"
+#   cpu:
+#     sbatch_args:
+#       job-name: "panel measles speed comparison (pypomp cpu)"
+#       partition: standard
+#       cpus-per-task: 36
+#       mem: 80GB
+#       output: "results/logs/slurm-cpu-%j.out"
+#     env:
+#       USE_CPU: "true"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:04:00" }
@@ -15,13 +26,34 @@
 #   3:
 #     sbatch_args: { time: "01:00:00" }
 #   4:
-#     sbatch_args: { time: "02:00:00" }
+#     sbatch_args: { time: "03:00:00" }
 # --- END SLURM CONFIG ---
 
 import os
 import pickle
 import time
 from typing import Any
+
+# Set JAX platform before importing JAX
+USE_CPU = os.environ.get("USE_CPU", "false").lower() == "true"
+if USE_CPU:
+    os.environ["JAX_PLATFORMS"] = "cpu"
+
+    # Restrict CPU intra-op multi-threading to prevent oversubscription
+    # os.environ["OMP_NUM_THREADS"] = "1"
+    # os.environ["MKL_NUM_THREADS"] = "1"
+    # os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    # os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+    # os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
+    xla_flags = os.environ.get("XLA_FLAGS", "")
+    # xla_flags += " --xla_cpu_multi_thread_eigen=false"
+
+    if "SLURM_CPUS_PER_TASK" in os.environ:
+        xla_flags += f" --xla_force_host_platform_device_count={os.environ['SLURM_CPUS_PER_TASK']}"
+
+    os.environ["XLA_FLAGS"] = xla_flags.strip()
+
 import jax
 import numpy as np
 import pandas as pd
@@ -144,11 +176,13 @@ pomp_dict = {
 }
 
 # Override covariates with R-computed ones to match R exactly
-# The discrepancy occurs due to the available spline smoothing functions being slightly 
+# The discrepancy occurs due to the available spline smoothing functions being slightly
 # different between the two languages. The difference is significant for some cities.
 import sys
+
 sys.path.append("..")
 from align_covariates import align_covariates
+
 align_covariates(pomp_dict)
 
 
@@ -210,8 +244,9 @@ results_to_save = {
 
 # Save results
 os.makedirs("results", exist_ok=True)
-output_path = "results/pypomp_speed_results.pkl"
+device_type = "cpu" if USE_CPU else "gpu"
+output_path = f"results/pypomp_speed_results_{device_type}.pkl"
 with open(output_path, "wb") as f:
     pickle.dump(results_to_save, f)
 
-print(f"\npypomp speed benchmark complete. Saved to {output_path}")
+print(f"\npypomp {device_type} speed benchmark complete. Saved to {output_path}")

@@ -123,16 +123,25 @@ pf_combined = pd.concat([pf_py_results, pf_r_results], ignore_index=True)
 # ---------------------------------------------------------
 # Load Speed/Timing Data
 # ---------------------------------------------------------
-py_speed_path = "speed_comparison/results/pypomp_speed_results.pkl"
+py_gpu_speed_path = "speed_comparison/results/pypomp_speed_results_gpu.pkl"
+py_cpu_speed_path = "speed_comparison/results/pypomp_speed_results_cpu.pkl"
 r_speed_path = "speed_comparison/results/r_pomp_timings.csv"
 
 try:
-    with open(py_speed_path, "rb") as f:
-        py_speed = pickle.load(f)
+    with open(py_gpu_speed_path, "rb") as f:
+        py_gpu_speed = pickle.load(f)
 except FileNotFoundError:
-    py_speed = {"mif_time": np.nan, "pfilter_time": np.nan, "pfilter_warm_time": np.nan}
+    py_gpu_speed = {"mif_time": np.nan, "pfilter_time": np.nan, "pfilter_warm_time": np.nan}
 
-py_pf_warm_time = py_speed.get("pfilter_warm_time", np.nan)
+py_gpu_pf_warm_time = py_gpu_speed.get("pfilter_warm_time", np.nan)
+
+try:
+    with open(py_cpu_speed_path, "rb") as f:
+        py_cpu_speed = pickle.load(f)
+except FileNotFoundError:
+    py_cpu_speed = {"mif_time": np.nan, "pfilter_time": np.nan, "pfilter_warm_time": np.nan}
+
+py_cpu_pf_warm_time = py_cpu_speed.get("pfilter_warm_time", np.nan)
 
 try:
     r_speed_df = pd.read_csv(r_speed_path)
@@ -331,8 +340,11 @@ The table below presents runtimes for the marginalized panel iterated filtering 
 #| label: timing-comparison
 #| echo: false
 
-py_mif_time = py_speed["mif_time"]
-py_pf_time = py_speed["pfilter_time"]
+py_gpu_mif_time = py_gpu_speed["mif_time"]
+py_gpu_pf_time = py_gpu_speed["pfilter_time"]
+
+py_cpu_mif_time = py_cpu_speed["mif_time"]
+py_cpu_pf_time = py_cpu_speed["pfilter_time"]
 
 num_reps = len(pf_py_results["replicate"].unique()) if not pf_py_results.empty else 3600
 
@@ -351,19 +363,40 @@ timing_df = pd.DataFrame({
         f"{r_pf_eval_time:.2f} s" if not np.isnan(r_pf_eval_time) else "N/A",
         f"{r_mif_time + r_pf_time:.2f} s" if not (np.isnan(r_mif_time) or np.isnan(r_pf_time)) else "N/A"
     ],
-    "pypomp (GPU)": [
-        f"{py_mif_time:.2f} s" if not np.isnan(py_mif_time) else "N/A",
-        f"{py_pf_time:.2f} s" if not np.isnan(py_pf_time) else "N/A",
-        f"{py_pf_warm_time:.2f} s" if not np.isnan(py_pf_warm_time) else "N/A",
-        f"{py_pf_eval_time:.2f} s" if not np.isnan(py_pf_eval_time) else "N/A",
-        f"{py_mif_time + py_pf_time:.2f} s" if not (np.isnan(py_mif_time) or np.isnan(py_pf_time)) else "N/A"
+    "pypomp (CPU)": [
+        f"{py_cpu_mif_time:.2f} s" if not np.isnan(py_cpu_mif_time) else "N/A",
+        f"{py_cpu_pf_time:.2f} s" if not np.isnan(py_cpu_pf_time) else "N/A",
+        f"{py_cpu_pf_warm_time:.2f} s" if not np.isnan(py_cpu_pf_warm_time) else "N/A",
+        "N/A",
+        f"{py_cpu_mif_time + py_cpu_pf_time:.2f} s" if not (np.isnan(py_cpu_mif_time) or np.isnan(py_cpu_pf_time)) else "N/A"
     ],
-    "GPU Speedup Factor": [
-        f"{r_mif_time / py_mif_time:.2f}x" if not (np.isnan(r_mif_time) or np.isnan(py_mif_time)) else "N/A",
-        f"{r_pf_time / py_pf_time:.2f}x" if not (np.isnan(r_pf_time) or np.isnan(py_pf_time)) else "N/A",
-        f"{r_pf_time / py_pf_warm_time:.2f}x" if not (np.isnan(r_pf_time) or np.isnan(py_pf_warm_time)) else "N/A",
+    "pypomp (GPU)": [
+        f"{py_gpu_mif_time:.2f} s" if not np.isnan(py_gpu_mif_time) else "N/A",
+        f"{py_gpu_pf_time:.2f} s" if not np.isnan(py_gpu_pf_time) else "N/A",
+        f"{py_gpu_pf_warm_time:.2f} s" if not np.isnan(py_gpu_pf_warm_time) else "N/A",
+        f"{py_pf_eval_time:.2f} s" if not np.isnan(py_pf_eval_time) else "N/A",
+        f"{py_gpu_mif_time + py_gpu_pf_time:.2f} s" if not (np.isnan(py_gpu_mif_time) or np.isnan(py_gpu_pf_time)) else "N/A"
+    ],
+    "CPU Speedup (vs R)": [
+        f"{r_mif_time / py_cpu_mif_time:.2f}x" if not (np.isnan(r_mif_time) or np.isnan(py_cpu_mif_time)) else "N/A",
+        f"{r_pf_time / py_cpu_pf_time:.2f}x" if not (np.isnan(r_pf_time) or np.isnan(py_cpu_pf_time)) else "N/A",
+        f"{r_pf_time / py_cpu_pf_warm_time:.2f}x" if not (np.isnan(r_pf_time) or np.isnan(py_cpu_pf_warm_time)) else "N/A",
+        "N/A",
+        f"{(r_mif_time + r_pf_time) / (py_cpu_mif_time + py_cpu_pf_time):.2f}x" if not (np.isnan(r_mif_time) or np.isnan(py_cpu_mif_time) or np.isnan(py_cpu_pf_time)) else "N/A"
+    ],
+    "GPU Speedup (vs R)": [
+        f"{r_mif_time / py_gpu_mif_time:.2f}x" if not (np.isnan(r_mif_time) or np.isnan(py_gpu_mif_time)) else "N/A",
+        f"{r_pf_time / py_gpu_pf_time:.2f}x" if not (np.isnan(r_pf_time) or np.isnan(py_gpu_pf_time)) else "N/A",
+        f"{r_pf_time / py_gpu_pf_warm_time:.2f}x" if not (np.isnan(r_pf_time) or np.isnan(py_gpu_pf_warm_time)) else "N/A",
         f"{r_pf_eval_time / py_pf_eval_time:.2f}x" if not (np.isnan(r_pf_eval_time) or np.isnan(py_pf_eval_time)) else "N/A",
-        f"{(r_mif_time + r_pf_time) / (py_mif_time + py_pf_time):.2f}x" if not (np.isnan(r_mif_time) or np.isnan(py_mif_time) or np.isnan(py_pf_time)) else "N/A"
+        f"{(r_mif_time + r_pf_time) / (py_gpu_mif_time + py_gpu_pf_time):.2f}x" if not (np.isnan(r_mif_time) or np.isnan(py_gpu_mif_time) or np.isnan(py_gpu_pf_time)) else "N/A"
+    ],
+    "GPU Speedup (vs CPU)": [
+        f"{py_cpu_mif_time / py_gpu_mif_time:.2f}x" if not (np.isnan(py_cpu_mif_time) or np.isnan(py_gpu_mif_time)) else "N/A",
+        f"{py_cpu_pf_time / py_gpu_pf_time:.2f}x" if not (np.isnan(py_cpu_pf_time) or np.isnan(py_gpu_pf_time)) else "N/A",
+        f"{py_cpu_pf_warm_time / py_gpu_pf_warm_time:.2f}x" if not (np.isnan(py_cpu_pf_warm_time) or np.isnan(py_gpu_pf_warm_time)) else "N/A",
+        "N/A",
+        f"{(py_cpu_mif_time + py_cpu_pf_time) / (py_gpu_mif_time + py_gpu_pf_time):.2f}x" if not (np.isnan(py_cpu_mif_time) or np.isnan(py_cpu_pf_time) or np.isnan(py_gpu_mif_time) or np.isnan(py_gpu_pf_time)) else "N/A"
     ]
 })
 

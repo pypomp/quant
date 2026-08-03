@@ -524,18 +524,28 @@ except Exception as e:
     print(f"Error loading Python pfilter_check results: {e}")
     py_logliks = []
 
-# Load R pfilter_check logLiks using Rscript
+# Load R pfilter_check logLiks using pyreadr (fallback to Rscript if needed)
 try:
-    r_code = (
-        'load("pfilter_check/R_results/dacca_results_eval.rda"); cat(L_box, sep=",")'
-    )
-    result = subprocess.run(
-        ["Rscript", "-e", r_code], capture_output=True, text=True, check=True
-    )
-    r_logliks = [float(x) for x in result.stdout.strip().split(",") if x]
-except Exception as e:
-    print(f"Error loading R pfilter_check results: {e}")
-    r_logliks = []
+    import pyreadr
+    r_res = pyreadr.read_r("pfilter_check/R_results/dacca_results_eval.rda")
+    key = "L_box" if "L_box" in r_res else list(r_res.keys())[0]
+    val = r_res[key]
+    vals_flat = val.values.flatten() if hasattr(val, "values") else np.array(val).flatten()
+    r_logliks = [float(x) for x in vals_flat if not np.isnan(x)]
+except Exception as pyreadr_err:
+    import shutil
+    rscript_bin = shutil.which("Rscript") or "Rscript"
+    try:
+        r_code = (
+            'load("pfilter_check/R_results/dacca_results_eval.rda"); cat(L_box, sep=",")'
+        )
+        result = subprocess.run(
+            [rscript_bin, "-e", r_code], capture_output=True, text=True, check=True
+        )
+        r_logliks = [float(x) for x in result.stdout.strip().split(",") if x]
+    except Exception as e:
+        print(f"Error loading R pfilter_check results: {e}")
+        r_logliks = []
 
 # Build comparison DataFrame
 check_data = []
@@ -544,7 +554,7 @@ for ll in py_logliks:
 for ll in r_logliks:
     check_data.append({"logLik": float(ll), "source": "R (pomp)"})
 
-check_df = pd.DataFrame(check_data).dropna(subset=["logLik"])
+check_df = pd.DataFrame(check_data, columns=["logLik", "source"]).dropna(subset=["logLik"])
 ```
 
 ```{python}

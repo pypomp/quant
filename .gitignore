@@ -71,6 +71,7 @@ tmp*
 
 
 GEMINI.md
+CLAUDE.md
 tests/measles/R_comparison/speed_comparison/results/r_pomp_results.csv
 tests/measles/R_comparison/speed_comparison/results/r_pomp_timings.csv
 tests/panel_measles/R_comparison/mixed/parameter_comparison/starting_parameters.csv

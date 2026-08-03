@@ -117,7 +117,7 @@ key, subkey = jax.random.split(key)
 initial_params_list = pp.Pomp.sample_params(sp500_box, NREPS_FITR, key=subkey)
 
 # implement Feller's condition
-initial_params_dicts = initial_params_list.params()
+initial_params_dicts = initial_params_list.params(as_list=True)
 for params in initial_params_dicts:
     params["xi"] = float(
         np.random.uniform(
