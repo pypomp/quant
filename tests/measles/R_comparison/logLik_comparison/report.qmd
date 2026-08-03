@@ -19,7 +19,6 @@ import os
 import pickle
 import numpy as np
 import pandas as pd
-import pyreadr
 from scipy.special import logsumexp
 from plotnine import *
 
@@ -44,15 +43,15 @@ def load_pkl(filename):
     )
 
 
-def load_rds(filename):
-    paths = [f"results/{filename}"]
-    for p in paths:
-        if os.path.exists(p):
-            r_data = pyreadr.read_r(p)
-            return r_data[None]
-    raise FileNotFoundError(
-        f"Could not find {filename} in any of the expected locations: {paths}"
-    )
+def load_r_reference(filename):
+    """Load a frozen R baseline. See R_reference/MANIFEST.json for provenance."""
+    path = f"R_reference/{filename}"
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Could not find {path}. Frozen R baselines are committed; regenerate "
+            "with `python scripts/freeze_r_results.py freeze` after a pomp bump."
+        )
+    return pd.read_csv(path)
 
 
 # Load pfilter logLik results (pf_ prefix to avoid collision with parameter comparison)
@@ -62,7 +61,7 @@ pf_py_results["source"] = "pypomp (32-bit)"
 pf_py_exact_results = load_pkl("pfilter_logliks_f64.pkl")
 pf_py_exact_results["source"] = "pypomp (64-bit)"
 
-pf_r_results = load_rds("pfilter_logliks_f64.rds")
+pf_r_results = load_r_reference("pfilter_logliks_f64.csv")
 pf_r_results["source"] = "R"
 ```
 

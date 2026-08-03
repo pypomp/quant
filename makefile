@@ -1,4 +1,4 @@
-.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all
+.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all freeze-r check-r
 
 install_pypi: install_requirements
 	pip install pypomp
@@ -26,4 +26,14 @@ test-high:
 
 test-all:
 	.venv/bin/python scripts/run_tests.py run tests
+
+# Re-extract the frozen R/pomp baselines from the (gitignored) .rds/.rda files.
+# Only needed after bumping pomp and re-running the R scripts.
+freeze-r:
+	.venv/bin/python scripts/freeze_r_results.py freeze
+
+# Verify the committed R_reference/ CSVs still match their manifests. Cheap
+# enough for CI and needs neither R nor the original .rds/.rda files.
+check-r:
+	.venv/bin/python scripts/freeze_r_results.py check
 

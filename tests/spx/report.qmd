@@ -201,19 +201,20 @@ The table below presents the execution runtimes, speedup factors, and throughput
 The GPU used is a NVIDIA V100, and the CPU used is a 3.0 GHz Intel Xeon Gold 6154.
 
 ```{r R Execution time}
-load(here::here(
-    "tests",
-    "spx",
-    "performance",
-    "R_results",
-    "search360_hidden",
-    "1d_global_search360.rda"
-))
+# Frozen R baseline, extracted from the 66 MB global-search .rda that used to be
+# required here. See R_reference/MANIFEST.json for provenance; regenerate with
+# `python scripts/freeze_r_results.py freeze --only spx/performance`.
+R_REFERENCE <- here::here("tests", "spx", "performance", "R_reference")
+
+r_timings <- read.csv(file.path(R_REFERENCE, "timings.csv"))
+elapsed_for <- function(stage) {
+    r_timings$seconds[r_timings$stage == stage & r_timings$metric == "elapsed"]
+}
 
 # Extract times
-r_mif <- t.if.box["elapsed"]
-r_pf <- t.L.box["elapsed"]
-r_total <- t.box["elapsed"]
+r_mif <- elapsed_for("mif")
+r_pf <- elapsed_for("pfilter")
+r_total <- elapsed_for("total")
 
 gpu_time <- py$gpu_pkl$time()
 gpu_mif <- gpu_time$time[gpu_time$method == "mif"]
@@ -329,21 +330,17 @@ best_rep <- traces_gpu |>
 Here, we overlay the trajectories from R, Python (CPU), and Python (GPU) to compare the search paths directly.
 
 ```{r Load R estimates}
-load(here::here(
-    "tests",
-    "spx",
-    "performance",
-    "R_results",
-    "search360_hidden",
-    "1d_global_search360.rda"
-))
-LL_df_R <- as.data.frame(L.box)
-traces_long <- lapply(seq_along(if.box), function(x) {
-    tr <- traces(if.box[[x]])
-    as.data.frame(tr) |>
-        mutate(iter = 1:nrow(tr), rep = x)
-}) |>
-    bind_rows() -> traces_long
+R_REFERENCE <- here::here("tests", "spx", "performance", "R_reference")
+
+# The frozen likelihood estimates keep pomp's (est, se) pair, renamed on freeze.
+LL_df_R <- read.csv(file.path(R_REFERENCE, "pfilter_logliks.csv")) |>
+    select(est = logLik, se)
+
+# Frozen IF2 traces: 360 replicates x 201 iterations, gzipped. `iteration` is
+# 0-based on disk; the plots below expect the original 1-based `iter`.
+traces_long <- read.csv(gzfile(file.path(R_REFERENCE, "mif_traces.csv.gz"))) |>
+    mutate(iter = iteration + 1L, rep = replicate) |>
+    select(-iteration, -replicate)
 
 transform_traces <- function(df) {
     df |>
@@ -375,8 +372,8 @@ traces_long <- traces_long |>
     mutate(language = "R") |>
     transform_traces()
 
-# Memory management
-rm(if.box)
+# Memory management (the frozen traces are far smaller than the mif2List they
+# replace, but the pivoted long form is still worth collecting).
 invisible(gc())
 
 traces_pyr <- bind_rows(
@@ -641,10 +638,10 @@ LL_rep3600 = pkl_eval.results_history[0].logLiks[0].values.tolist()
 ```
 
 ```{r Load rep3600 R eval and plot combined density, fig.width = 8, fig.height = 5}
-load(file.path("pfilter_check", "R_results", "spx_results_eval.rda"))
-
-# Extract numeric log-likelihoods from L.box regardless of shape
-LL_rep3600_R <- as.numeric(L.box)
+# Frozen R baseline; see pfilter_check/R_reference/MANIFEST.json for provenance.
+LL_rep3600_R <- read.csv(
+    file.path("pfilter_check", "R_reference", "pfilter_logliks.csv")
+)$logLik
 
 data.frame(
     LL = c(unlist(py$LL_rep3600), LL_rep3600_R),

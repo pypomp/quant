@@ -1,0 +1,49 @@
+{
+  "name": "measles/speed_comparison",
+  "frozen_at": "2026-08-03T15:52:39",
+  "frozen_by": "scripts/freeze_r_results.py",
+  "produced_by": "tests/measles/R_comparison/speed_comparison/measles.R",
+  "quant_git_sha": "2d5f653f870b0492943dc0b5702361a2c15804a7",
+  "pinned_versions_from_renv_lock": {
+    "R": "4.4.0",
+    "pomp": "6.3",
+    "panelPomp": "1.7.0.0"
+  },
+  "extracted_with_pomp": null,
+  "sources": [
+    {
+      "path": "tests/measles/R_comparison/speed_comparison/results/r_pomp_timings.csv",
+      "sha256": "0414f4defee34836f10d044cef2c51321439b757e58f5d3124ee38099f05527b",
+      "bytes": 72,
+      "mtime": "2026-06-23T11:35:59"
+    },
+    {
+      "path": "tests/measles/R_comparison/speed_comparison/results/r_pomp_results.csv",
+      "sha256": "803096031a3fef46b490ee067b82e572f6ab973688650813b619abdb4f7735cd",
+      "bytes": 33815,
+      "mtime": "2026-06-23T11:35:59"
+    }
+  ],
+  "files": {
+    "r_pomp_results.csv": {
+      "rows": 468,
+      "columns": [
+        "unit",
+        "replicate",
+        "names",
+        "coef",
+        "mean_logLik",
+        "sd_logLik"
+      ],
+      "sha256": "803096031a3fef46b490ee067b82e572f6ab973688650813b619abdb4f7735cd"
+    },
+    "r_pomp_timings.csv": {
+      "rows": 2,
+      "columns": [
+        "phase",
+        "time_seconds"
+      ],
+      "sha256": "0414f4defee34836f10d044cef2c51321439b757e58f5d3124ee38099f05527b"
+    }
+  }
+}

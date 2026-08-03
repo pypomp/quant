@@ -36,7 +36,6 @@ import logging
 import pickle
 import numpy as np
 import pandas as pd
-import pyreadr
 from scipy.special import logit, logsumexp
 from plotnine import *
 from IPython.display import HTML
@@ -57,10 +56,10 @@ py_results = py_results.drop(
     columns=["logLik", "se", "theta_idx"], errors="ignore"
 ).melt(id_vars=["source", "unit"], var_name="param", value_name="value")
 
-# Load R parameter results
-r_param_path = "parameter_comparison/results/mif_coefs.rds"
-r_data = pyreadr.read_r(r_param_path)
-r_results = r_data[None]
+# Load the frozen R parameter baseline (see the sibling MANIFEST.json for
+# provenance; regenerate with `python scripts/freeze_r_results.py freeze`).
+r_param_path = "parameter_comparison/R_reference/mif_coefs.csv"
+r_results = pd.read_csv(r_param_path)
 r_results["source"] = "R"
 r_results = r_results[["source", "unit", "coef", "names"]].rename(
     columns={"coef": "value", "names": "param"}
@@ -71,7 +70,7 @@ r_results = r_results[["source", "unit", "coef", "names"]].rename(
 # ---------------------------------------------------------
 py_pf_32_path = "logLik_comparison/results/pfilter_logliks_f32.pkl"
 py_pf_64_path = "logLik_comparison/results/pfilter_logliks_f64.pkl"
-r_pf_path = "logLik_comparison/results/pfilter_logliks_f64.rds"
+r_pf_path = "logLik_comparison/R_reference/pfilter_logliks_f64.csv"
 
 with open(py_pf_32_path, "rb") as f:
     pf_py_results = pickle.load(f)
@@ -81,7 +80,7 @@ with open(py_pf_64_path, "rb") as f:
     pf_py_exact_results = pickle.load(f)
 pf_py_exact_results["source"] = "pypomp (64-bit)"
 
-pf_r_results = pyreadr.read_r(r_pf_path)[None]
+pf_r_results = pd.read_csv(r_pf_path)
 pf_r_results["source"] = "R"
 ```
 

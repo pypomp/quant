@@ -1,0 +1,16 @@
+stage,metric,seconds
+mif,user.self,0.972
+mif,sys.self,0.657
+mif,elapsed,6893.524
+mif,user.child,243489.625
+mif,sys.child,405.11
+pfilter,user.self,0.0710000000000002
+pfilter,sys.self,0.162
+pfilter,elapsed,289.632000000001
+pfilter,user.child,10154.75
+pfilter,sys.child,30.126
+total,user.self,1.297
+total,sys.self,0.819
+total,elapsed,7183.41
+total,user.child,253644.375
+total,sys.child,435.236

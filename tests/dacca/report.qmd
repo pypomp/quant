@@ -524,28 +524,18 @@ except Exception as e:
     print(f"Error loading Python pfilter_check results: {e}")
     py_logliks = []
 
-# Load R pfilter_check logLiks using pyreadr (fallback to Rscript if needed)
+# Load the frozen R pfilter_check logLiks. This used to read the .rda through
+# pyreadr with an Rscript fallback; both needed a local R and a gitignored file.
+# See pfilter_check/R_reference/MANIFEST.json for provenance.
 try:
-    import pyreadr
-    r_res = pyreadr.read_r("pfilter_check/R_results/dacca_results_eval.rda")
-    key = "L_box" if "L_box" in r_res else list(r_res.keys())[0]
-    val = r_res[key]
-    vals_flat = val.values.flatten() if hasattr(val, "values") else np.array(val).flatten()
-    r_logliks = [float(x) for x in vals_flat if not np.isnan(x)]
-except Exception as pyreadr_err:
-    import shutil
-    rscript_bin = shutil.which("Rscript") or "Rscript"
-    try:
-        r_code = (
-            'load("pfilter_check/R_results/dacca_results_eval.rda"); cat(L_box, sep=",")'
-        )
-        result = subprocess.run(
-            [rscript_bin, "-e", r_code], capture_output=True, text=True, check=True
-        )
-        r_logliks = [float(x) for x in result.stdout.strip().split(",") if x]
-    except Exception as e:
-        print(f"Error loading R pfilter_check results: {e}")
-        r_logliks = []
+    r_logliks = (
+        pd.read_csv("pfilter_check/R_reference/pfilter_logliks.csv")["logLik"]
+        .dropna()
+        .tolist()
+    )
+except Exception as e:
+    print(f"Error loading frozen R pfilter_check results: {e}")
+    r_logliks = []
 
 # Build comparison DataFrame
 check_data = []

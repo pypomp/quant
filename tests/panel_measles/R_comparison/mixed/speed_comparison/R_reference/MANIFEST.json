@@ -1,0 +1,31 @@
+{
+  "name": "panel_measles/speed_comparison",
+  "frozen_at": "2026-08-03T15:52:42",
+  "frozen_by": "scripts/freeze_r_results.py",
+  "produced_by": "tests/panel_measles/R_comparison/mixed/speed_comparison/panel_measles.R",
+  "quant_git_sha": "2d5f653f870b0492943dc0b5702361a2c15804a7",
+  "pinned_versions_from_renv_lock": {
+    "R": "4.4.0",
+    "pomp": "6.3",
+    "panelPomp": "1.7.0.0"
+  },
+  "extracted_with_pomp": null,
+  "sources": [
+    {
+      "path": "tests/panel_measles/R_comparison/mixed/speed_comparison/results/r_pomp_timings.csv",
+      "sha256": "05265f025ef1f461ab72e55de557af04d8d5ebc3baeb7275fc6273c36760273f",
+      "bytes": 73,
+      "mtime": "2026-07-08T12:43:14"
+    }
+  ],
+  "files": {
+    "r_pomp_timings.csv": {
+      "rows": 2,
+      "columns": [
+        "phase",
+        "time_seconds"
+      ],
+      "sha256": "05265f025ef1f461ab72e55de557af04d8d5ebc3baeb7275fc6273c36760273f"
+    }
+  }
+}

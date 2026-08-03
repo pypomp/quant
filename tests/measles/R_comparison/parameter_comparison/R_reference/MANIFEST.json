@@ -1,0 +1,33 @@
+{
+  "name": "measles/parameter_comparison",
+  "frozen_at": "2026-08-03T15:52:36",
+  "frozen_by": "scripts/freeze_r_results.py",
+  "produced_by": "tests/measles/R_comparison/parameter_comparison/measles.R",
+  "quant_git_sha": "2d5f653f870b0492943dc0b5702361a2c15804a7",
+  "pinned_versions_from_renv_lock": {
+    "R": "4.4.0",
+    "pomp": "6.3",
+    "panelPomp": "1.7.0.0"
+  },
+  "extracted_with_pomp": null,
+  "sources": [
+    {
+      "path": "tests/measles/R_comparison/parameter_comparison/results/mif_coefs.rds",
+      "sha256": "6fbb84b07ff62f38a60e2c0e56f4c244a5c5055793b17d04f0fdae3b3bf138ad",
+      "bytes": 112153,
+      "mtime": "2026-01-10T08:16:10"
+    }
+  ],
+  "files": {
+    "mif_coefs.csv": {
+      "rows": 9360,
+      "columns": [
+        "unit",
+        "replicate",
+        "coef",
+        "names"
+      ],
+      "sha256": "e72e4b3569951f151ec5f239f23b2a0e3c014420dd48732e7f80922fe18de6e1"
+    }
+  }
+}

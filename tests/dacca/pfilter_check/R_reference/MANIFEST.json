@@ -1,0 +1,38 @@
+{
+  "name": "dacca/pfilter_check",
+  "frozen_at": "2026-08-03T15:52:43",
+  "frozen_by": "scripts/freeze_r_results.py",
+  "produced_by": "tests/dacca/pfilter_check/eval.R",
+  "quant_git_sha": "2d5f653f870b0492943dc0b5702361a2c15804a7",
+  "pinned_versions_from_renv_lock": {
+    "R": "4.4.0",
+    "pomp": "6.3",
+    "panelPomp": "1.7.0.0"
+  },
+  "extracted_with_pomp": null,
+  "sources": [
+    {
+      "path": "tests/dacca/pfilter_check/R_results/dacca_results_eval.rda",
+      "sha256": "6bdbac234f42a9808577c4b4a84c9450adcfcd07e662fea2fe91bb82484abe32",
+      "bytes": 117687,
+      "mtime": "2026-06-17T10:22:20"
+    }
+  ],
+  "files": {
+    "pfilter_logliks.csv": {
+      "rows": 3600,
+      "columns": [
+        "logLik"
+      ],
+      "sha256": "d49731f8a270ce8051efdc7dba5849e9f61d42a20bd2e38e45901f0e8f9b1719"
+    },
+    "timings.csv": {
+      "rows": 5,
+      "columns": [
+        "stage",
+        "seconds"
+      ],
+      "sha256": "825f6c0a9ceeeaa67bc86f419618adc5c96e493cd8e86afa1cd6bef4200c03b6"
+    }
+  }
+}

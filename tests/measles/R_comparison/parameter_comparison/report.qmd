@@ -18,7 +18,6 @@ import logging
 import pickle
 import numpy as np
 import pandas as pd
-import pyreadr
 from scipy.special import logit
 from plotnine import *
 
@@ -34,9 +33,9 @@ py_results = py_results.drop(
     columns=["logLik", "se", "theta_idx"], errors="ignore"
 ).melt(id_vars=["source", "unit"], var_name="param", value_name="value")
 
-# Load R results directly using pyreadr
-r_data = pyreadr.read_r("results/mif_coefs.rds")
-r_results = r_data[None]
+# Load the frozen R baseline (see R_reference/MANIFEST.json for provenance).
+# Regenerate with `python scripts/freeze_r_results.py freeze` only after a pomp bump.
+r_results = pd.read_csv("R_reference/mif_coefs.csv")
 r_results["source"] = "R"
 r_results = r_results[["source", "unit", "coef", "names"]].rename(
     columns={"coef": "value", "names": "param"}
