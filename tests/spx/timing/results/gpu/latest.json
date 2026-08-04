@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-08-04T12:49:35",
+  "pypomp_version": "0.4.9.0",
+  "jax_version": "0.9.0.1",
+  "quant_git_sha": "52b69b4e38ae986f9cea17fb32a8336275c66ed3",
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "56269368",
+    "partition": "gpu"
+  },
+  "run_config": {
+    "kind": "timing",
+    "model": "spx",
+    "RUN_LEVEL": 4,
+    "USE_CPU": false,
+    "NP": 1000,
+    "NFITR": 200,
+    "NREPS": 36,
+    "MAIN_SEED": 631409
+  },
+  "timings": {
+    "mif": 105.72812104225159,
+    "pfilter_cold": 19.89101266860962,
+    "pfilter_warm": 17.707432985305786
+  }
+}

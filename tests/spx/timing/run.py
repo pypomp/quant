@@ -76,7 +76,7 @@ print(f"Running at level {RUN_LEVEL}")
 
 NP = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NFITR = (2, 20, 50, 200)[RUN_LEVEL - 1]
-NREPS = (2, 3, 3, 36)[RUN_LEVEL - 1]
+NREPS = (2, 3, 3, 360)[RUN_LEVEL - 1]
 
 key = jax.random.key(model.MAIN_SEED)
 np.random.seed(model.MAIN_SEED)
