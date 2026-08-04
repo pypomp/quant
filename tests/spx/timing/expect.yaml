@@ -1,13 +1,4 @@
 # What a run of this test must satisfy, checked by scripts/check_expectations.py.
-#
-# Kind: timing. Checks are one-sided on purpose -- getting faster is never a
-# failure. Absolute ceilings are set generously because cluster nodes vary and
-# a shared machine will occasionally give you a bad draw; the check that will
-# actually earn its keep is max_ratio_vs_history, which compares against this
-# test's own recorded past rather than a number somebody guessed once.
-#
-# The R baseline for the same work is in ../estimation/R_reference/timings.csv:
-# mif 6893.5 s, pfilter 289.6 s elapsed, on 36 CPU cores.
 
 min_run_level: 2
 

@@ -1,21 +1,5 @@
 """SPX: wall-clock timing of mif and pfilter.
 
-Kind: timing -- nothing varies across the runs inside this test. It repeats
-identical work and measures the clock, which is what makes the numbers
-comparable between runs, devices and against R.
-
-This is deliberately separate from ../estimation/. Estimation needs many starts
-and many iterations to characterise where IF2 lands; timing needs neither, and
-paying estimation's budget to read a clock is what made the old combined
-`performance/test.py` slower than it had to be. Here the replicate count is
-small and fixed.
-
-pfilter is measured twice: the first call pays JIT compilation, the second does
-not. Both are reported, because "how long does a fresh process take" and "how
-long does the algorithm take" are different questions and the SPX model -- one
-rproc step per observation, a single normal draw -- is sensitive enough to
-framework overhead that the gap is informative on its own.
-
 Compared against the frozen R baseline in ../estimation/R_reference/timings.csv.
 """
 
@@ -90,11 +74,9 @@ print("Using CPU:", USE_CPU)
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 print(f"Running at level {RUN_LEVEL}")
 
-# Small and fixed on purpose. Level 2 is the standard measurement; 3 and 4 exist
-# only so the knobs match the R baseline's configuration more closely.
 NP = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NFITR = (2, 20, 50, 200)[RUN_LEVEL - 1]
-NREPS = (2, 3, 3, 3)[RUN_LEVEL - 1]
+NREPS = (2, 3, 3, 36)[RUN_LEVEL - 1]
 
 key = jax.random.key(model.MAIN_SEED)
 np.random.seed(model.MAIN_SEED)
@@ -128,9 +110,6 @@ timed(
 timed("pfilter_cold", lambda: spx_obj.pfilter(J=NP, reps=NREPS))
 timed("pfilter_warm", lambda: spx_obj.pfilter(J=NP, reps=NREPS))
 
-# Label the output by the device actually used, not by the USE_CPU request:
-# a job that asked for a GPU and silently fell back to CPU must not write
-# its numbers into results/gpu/.
 platform = jax.devices()[0].platform
 out_dir = os.path.join("results", platform)
 os.makedirs(out_dir, exist_ok=True)

@@ -1,12 +1,6 @@
 #' SPX: R pomp baseline for the distribution of IF2 parameter estimates.
 #'
-#' Kind: estimation. The R counterpart of run.py, and the source of the frozen
-#' baseline in R_reference/.
-#'
-#' You should not normally need to run this. The frozen CSVs in R_reference/
-#' are what the report reads, and they only need regenerating when pomp
-#' changes -- this job cost 7183 s elapsed / 70 CPU-hours the last time it ran.
-#' After running it, re-freeze with:
+#' Only needs regenerating when pomp changes. After running it, re-freeze with:
 #'     python scripts/freeze_r_results.py freeze --only spx/estimation
 
 # --- SLURM CONFIG ---

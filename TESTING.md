@@ -190,7 +190,7 @@ This will display a structured menu of available tests in the `tests` directory,
 
 For convenience, several target shortcuts are defined in the root `makefile` to run and list tests using the virtual environment environment automatically:
 
-- `make list`: Beautifully format and list all discovered tests.
+- `make list`: Format and list all discovered tests.
 - `make test-interactive` / `make test-i`: Start the interactive test selection runner.
 - `make test-high`: Run all high (or critical) importance tests.
 - `make test-all`: Run all tests in the repository.
@@ -228,12 +228,6 @@ question: **what varies across the runs inside the test?**
 | `algorithms` | the algorithm | free | slowest algorithm |
 | `scaling` | a size knob (units, J) | fixed | largest size |
 
-If the honest answer is "two of these", that is the signal to split the test in
-two, with different run cadences. Timing in particular must stay separate:
-it is a *controlled* measurement, and it only means anything if the replicate
-count is small, fixed and identical between runs. Other kinds record their
-wall clock as metadata, but that is not a timing measurement.
-
 ### Run outputs
 
 `run.py` calls `save_run()` from `tests/utils.py`, which writes into
@@ -253,10 +247,6 @@ The pickle is the fallback; the text files are the record. `latest.json`
 carries the pypomp and JAX versions, the quant git SHA, the device, the SLURM
 job id and the full algorithmic configuration, so a number that looks wrong
 months later can be traced to a commit.
-
-The platform subdirectory is taken from the device actually used, not from the
-`USE_CPU` request -- a job that asked for a GPU and silently fell back to CPU
-must not write into `results/gpu/`.
 
 **Do not commit results from a smoke run.** Level 1 exists to prove the code
 path executes and produces deliberate nonsense (`J=2`); committing it would
@@ -284,15 +274,6 @@ never meant to satisfy. Check types:
 | `mean_vs_reference` | the mean is within `max_abs_diff` of a reference CSV |
 | `ks_test` | two-sample KS against a reference, `p >= min_p_value` |
 | `timing` | a phase is under `max_seconds`, or under `max_ratio_vs_history` times the median of past runs |
-
-Timing checks are one-sided: getting faster is never a failure. The
-history-relative form skips itself until `min_history` past runs exist, so it
-cannot fire on a baseline of one.
-
-This does not replace reading the report. Trace shapes and density
-plausibility still need eyes. It removes the checks that were only ever
-mechanical -- is the likelihood where it should be, does the distribution match
-R, did something get slower -- so that those fail loudly instead of silently.
 
 ---
 

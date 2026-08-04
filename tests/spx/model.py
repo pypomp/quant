@@ -1,11 +1,5 @@
 """Shared definition of the SPX stochastic volatility benchmark.
 
-Every SPX test kind (`timing/`, `estimation/`, `loglik/`) builds its model,
-parameter box and random-walk SDs from here, so a change to the benchmark is a
-change in one place rather than three. The model itself comes from
-`pypomp.models.spx()`; what this module owns is the *experimental setup* around
-it -- the search box, the perturbation sizes, and how starting points are drawn.
-
 The SPX model uses simple random number generation (a normal draw) and one
 rproc step per observation, which makes it unusually sensitive to framework
 overhead in mif and pfilter. That is what makes it a good early-warning test.
@@ -14,12 +8,10 @@ overhead in mif and pfilter. That is what makes it a good early-warning test.
 import numpy as np
 import pypomp as pp
 
-# Shared across kinds so that runs of different kinds are comparable.
 MAIN_SEED = 631409
 
 COOLING_RATE = 0.5
 
-# Random-walk SDs for IF2. V_0 is an initial-value parameter, hence init_names.
 RW_SD = pp.RWSigma(
     sigmas={
         "mu": 0.02,
@@ -32,7 +24,6 @@ RW_SD = pp.RWSigma(
     init_names=["V_0"],
 ).geometric_cooling(a=COOLING_RATE)
 
-# Global search box.
 BOX = {
     "mu": [1e-6, 1e-4],
     "kappa": [1e-8, 0.1],
@@ -43,8 +34,6 @@ BOX = {
 }
 
 # The Sun (2024) estimates, used as the fixed parameter vector for `loglik/`.
-# These must stay fixed: the whole point of that kind is that theta does not
-# move, so the R and Python likelihood distributions are comparable.
 SUN2024_THETA = pp.PompParameters(
     {
         "mu": 3.68e-4,
@@ -58,7 +47,6 @@ SUN2024_THETA = pp.PompParameters(
 
 
 def spx():
-    """The SPX Pomp object."""
     return pp.models.spx()
 
 

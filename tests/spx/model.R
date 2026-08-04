@@ -1,10 +1,5 @@
 #' Shared definition of the SPX stochastic volatility benchmark for R pomp.
 #'
-#' This is the R counterpart of model.py. The model definition below was
-#' previously duplicated verbatim in both performance/test.R and
-#' pfilter_check/eval.R -- about 130 identical lines in each, which is exactly
-#' the kind of thing that drifts silently between two copies.
-#'
 #' Source this from a kind directory (timing/, estimation/, loglik/):
 #'     source("../model.R")
 #'
@@ -17,8 +12,7 @@ library(tidyverse)
 
 SPX_DATA_PATH <- "../../../data/SPX.csv"
 
-# The Sun (2024) estimates. Must match SUN2024_THETA in model.py -- the whole
-# point of the loglik kind is that both languages evaluate at the same theta.
+# The Sun (2024) estimates. Must match SUN2024_THETA in model.py.
 SPX_SUN2024_THETA <- c(
   mu = 3.68e-4,
   kappa = 3.14e-2,
@@ -52,7 +46,6 @@ SPX_RW_SD <- rw_sd(
 )
 
 
-#' Load and difference the SPX series into log returns.
 spx_data <- function(path = SPX_DATA_PATH) {
   read.csv(path) %>%
     mutate(date = as.Date(Date)) %>%
@@ -64,7 +57,6 @@ spx_data <- function(path = SPX_DATA_PATH) {
 }
 
 
-#' Build the SPX filtering pomp object.
 spx_filt <- function(sp500 = spx_data()) {
   statenames <- c("V", "S")
   rp_names <- c("mu", "kappa", "theta", "xi", "rho")

@@ -1,16 +1,5 @@
 """SPX: distribution of the pfilter log-likelihood at a fixed parameter vector.
 
-Kind: loglik -- theta is pinned to the Sun (2024) estimates and only the
-replicate seed varies. The question is whether pypomp's particle filter
-produces the *right distribution* of likelihood estimates, not whether it can
-find good parameters.
-
-Cost is driven purely by the replicate count, and the precision of the
-comparison scales as 1/sqrt(reps): going from 3600 replicates to 225 costs 4x
-in the standard error of the mean for 16x less compute. Level 3 is the routine
-setting; level 4 reproduces the 3600-replicate archival run that the frozen R
-baseline uses.
-
 Compared against R_reference/pfilter_logliks.csv (3600 R replicates).
 """
 
@@ -60,7 +49,6 @@ RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "2"))
 print(f"Running at level {RUN_LEVEL}")
 
 NP_EVAL = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
-# Level 3 is the routine setting; level 4 matches the archival R baseline.
 NREPS_EVAL = (2, 100, 225, 3600)[RUN_LEVEL - 1]
 
 key = jax.random.key(model.MAIN_SEED)
@@ -75,11 +63,9 @@ execution_time = time.time() - started
 
 print(spx_obj.results())
 
-# Label the output by the device actually used, matching the other SPX kinds.
 platform = jax.devices()[0].platform
 out_dir = os.path.join("results", platform)
 
-# theta is fixed, so there are no per-iteration traces worth writing.
 metrics = save_run(
     spx_obj,
     out_dir=out_dir,
@@ -96,10 +82,6 @@ metrics = save_run(
     write_traces=False,
 )
 
-# The per-replicate log-likelihoods are the point of this kind, and what the
-# frozen R baseline holds. results.csv carries only the aggregated logmeanexp,
-# which sits ~sd^2/2 above the mean and is not comparable to R's per-replicate
-# numbers.
 logliks = pfilter_logliks_frame(spx_obj)
 logliks.to_csv(os.path.join(out_dir, "pfilter_logliks.csv"), index=False)
 print(

@@ -1,17 +1,6 @@
 """SPX: distribution of IF2 parameter estimates from a global search.
 
-Kind: estimation -- theta is free and the starting point is what varies across
-replicates. The question is where IF2 lands from many random starts, and
-whether that distribution matches R's.
-
-This is the expensive SPX kind: cost is starts x iterations x particles. Wall
-clock is recorded here as metadata, but it is *not* the timing measurement --
-see ../timing/ for that, which is a controlled comparison at fixed, small
-replicate counts.
-
-Compared against the frozen R baseline in R_reference/ (360 replicates,
-7183 s elapsed / 70 CPU-hours in R). Regenerating that is a deliberate act; see
-TESTING.md.
+Compared against the frozen R baseline in R_reference/.
 """
 
 # --- SLURM CONFIG ---
@@ -108,9 +97,6 @@ execution_time = time.time() - started
 print(spx_obj.results())
 print(spx_obj.time())
 
-# Label the output by the device actually used, not by the USE_CPU request:
-# a job that asked for a GPU and silently fell back to CPU must not write
-# its numbers into results/gpu/.
 platform = jax.devices()[0].platform
 out_dir = os.path.join("results", platform)
 metrics = save_run(
