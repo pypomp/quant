@@ -73,25 +73,19 @@ The table below presents execution runtimes, speedup factors, and throughput of 
 ::: {.callout-note}
 ### Note on Timing Measurements
 `pypomp` runtimes come from controlled `timing/` benchmarks.
-R figures come either from `results/R/timings.csv` or the scaled reference in `../estimation/results/R/timings.csv`.
 :::
 
 ```{python Performance table}
-R_TIMING_LOCAL = os.path.join("results", "R", "timings.csv")
-R_REFERENCE = os.path.join("..", "estimation", "results", "R", "timings.csv")
+R_TIMING = os.path.join("results", "R", "timings.csv")
+R_LATEST = os.path.join("results", "R", "latest.json")
 
-if os.path.exists(R_TIMING_LOCAL):
-    r_tm = pd.read_csv(R_TIMING_LOCAL)
-    r_mif_360 = r_tm.loc[r_tm["phase"] == "mif", "time_seconds"].values[0]
-    r_pf_360 = r_tm.loc[r_tm["phase"] == "pfilter_warm", "time_seconds"].values[0]
-    R_STARTS_BASE = 36
-else:
-    r_timings = pd.read_csv(R_REFERENCE)
-    def elapsed_for(stage):
-        return r_timings.loc[(r_timings["stage"] == stage) & (r_timings["metric"] == "elapsed"), "seconds"].values[0]
-    r_mif_360 = elapsed_for("mif")
-    r_pf_360 = elapsed_for("pfilter")
-    R_STARTS_BASE = 360
+r_tm = pd.read_csv(R_TIMING)
+r_mif_base = r_tm.loc[r_tm["phase"] == "mif", "time_seconds"].values[0]
+r_pf_base = r_tm.loc[r_tm["phase"] == "pfilter_warm", "time_seconds"].values[0]
+
+R_STARTS_BASE = 36
+if os.path.exists(R_LATEST):
+    R_STARTS_BASE = json.load(open(R_LATEST)).get("run_config", {}).get("Nstarts", R_STARTS_BASE)
 
 R_NFITR, R_NP, R_NREPS = 200, 1000, 24
 
@@ -137,8 +131,8 @@ def r_baseline_for(cfg):
     mif_scale = (nstarts / R_STARTS_BASE) * (nfitr / R_NFITR) * (npart / R_NP)
     pf_scale = (nstarts * nreps) / (R_STARTS_BASE * R_NREPS) * (npart / R_NP)
 
-    r_mif = r_mif_360 * mif_scale
-    r_pf = r_pf_360 * pf_scale
+    r_mif = r_mif_base * mif_scale
+    r_pf = r_pf_base * pf_scale
     return r_mif, r_pf, r_mif + r_pf, nstarts, nreps, unrecorded_starts
 
 r_mif, r_pf, r_total, timing_nstarts, timing_nreps, gpu_starts_missing = r_baseline_for(gpu_t["cfg"])
