@@ -177,7 +177,9 @@ The GPU used is a NVIDIA V100, and the CPU used is a 3.0 GHz Intel Xeon Gold 615
 
 ::: {.callout-note}
 ### Note on Timing Measurements
-`pypomp` runtimes are measured on controlled benchmark runs. Because CPU execution scales linearly with the number of replicates, R pomp's 360-replicate reference timing is scaled down to match the benchmark replicate count ($N_{\text{reps}} = 36$) for a direct 1-to-1 comparison.
+`pypomp` runtimes come from the controlled `timing/` benchmark; the R figures are the frozen baseline in `estimation/R_reference/timings.csv`, rescaled to the same amount of work.
+
+The two phases are rescaled separately, because they do not depend on the same knobs. IF2 cost scales with $N_{\text{starts}} \times N_{\text{iterations}} \times J$, while the particle filter runs $N_{\text{reps}}$ replicates *per* starting point and so scales with $N_{\text{starts}} \times N_{\text{reps}} \times J$. Applying one shared factor to both — as an earlier version of this report did — misstates the pfilter comparison whenever the two counts differ.
 :::
 
 ```{python Performance table}
@@ -198,27 +200,34 @@ r_total_360 = elapsed_for("total")
 # Runtimes come strictly from the timing benchmark.
 # pfilter_warm is the phase to compare against R: R pays no JIT compilation, so
 # its pfilter time is warm by construction.
+# The algorithmic configuration of the frozen R baseline (estimation/run.R at
+# run level 4): 360 starting points, Nmif = 200, Np = 1000, and 24 pfilter
+# replicates per start.
+R_STARTS, R_NFITR, R_NP, R_NREPS = 360, 200, 1000, 24
+
 def timing_for(platform):
     path = os.path.join("timing", "results", platform, "timings.csv")
     json_path = os.path.join("timing", "results", platform, "latest.json")
-    if os.path.exists(path):
-        tm = pd.read_csv(path)
-        get_time = lambda phase: tm.loc[tm["phase"] == phase, "time_seconds"].values[0]
-        nreps = 36
-        if os.path.exists(json_path):
-            try:
-                nreps = json.load(open(json_path)).get("run_config", {}).get("NREPS", 36)
-            except Exception:
-                pass
-        return {
-            "mif": get_time("mif"),
-            "pf": get_time("pfilter_warm"),
-            "total": get_time("mif") + get_time("pfilter_warm"),
-            "nreps": nreps,
-            "source": "timing/"
-        }
-    else:
-        return {"mif": np.nan, "pf": np.nan, "total": np.nan, "nreps": 36, "source": "missing"}
+    if not os.path.exists(path):
+        return {"mif": np.nan, "pf": np.nan, "total": np.nan, "cfg": {}, "source": "missing"}
+
+    tm = pd.read_csv(path)
+    get_time = lambda phase: tm.loc[tm["phase"] == phase, "time_seconds"].values[0]
+
+    cfg = {}
+    if os.path.exists(json_path):
+        try:
+            cfg = json.load(open(json_path)).get("run_config", {}) or {}
+        except Exception:
+            cfg = {}
+
+    return {
+        "mif": get_time("mif"),
+        "pf": get_time("pfilter_warm"),
+        "total": get_time("mif") + get_time("pfilter_warm"),
+        "cfg": cfg,
+        "source": "timing/"
+    }
 
 gpu_t = timing_for("gpu")
 cpu_t = timing_for("cpu")
@@ -226,23 +235,57 @@ cpu_t = timing_for("cpu")
 gpu_mif, gpu_pf, gpu_total = gpu_t["mif"], gpu_t["pf"], gpu_t["total"]
 cpu_mif, cpu_pf, cpu_total = cpu_t["mif"], cpu_t["pf"], cpu_t["total"]
 
-# Determine NREPS used by timing benchmarks (defaulting to 36)
-timing_nreps = gpu_t.get("nreps", 36)
+# Scale the R baseline to the amount of work the pypomp run actually did. The
+# two phases scale differently and must not share one factor:
+#   mif     costs starts x iterations x particles
+#   pfilter costs starts x replicates-per-start x particles
+# Records written before NSTARTS and NREPS were separated carry only NREPS, and
+# in those runs the one value served as both.
+def r_baseline_for(cfg):
+    # NSTARTS was added to the record only after the starts/reps split. Runs
+    # written before that carry a single NREPS that served as both counts --
+    # except for runs made while the split existed in the script but not yet in
+    # the record, where the true starting-point count is simply absent. Guessing
+    # would silently misscale the whole row, so flag it instead.
+    nstarts = cfg.get("NSTARTS")
+    unrecorded_starts = nstarts is None
+    if unrecorded_starts:
+        nstarts = cfg.get("NREPS", R_STARTS)
+    nreps = cfg.get("NREPS", R_NREPS)
+    nfitr = cfg.get("NFITR", R_NFITR)
+    npart = cfg.get("NP", R_NP)
 
-# Scale R pomp baseline timing down from 360 reps to timing_nreps
-r_scale = float(timing_nreps) / 360.0
-r_mif = r_mif_360 * r_scale
-r_pf = r_pf_360 * r_scale
-r_total = r_total_360 * r_scale
+    mif_scale = (nstarts / R_STARTS) * (nfitr / R_NFITR) * (npart / R_NP)
+    pf_scale = (nstarts * nreps) / (R_STARTS * R_NREPS) * (npart / R_NP)
 
-# Speedups (relative to scaled R pomp)
+    r_mif = r_mif_360 * mif_scale
+    r_pf = r_pf_360 * pf_scale
+    # Sum the scaled phases rather than scaling R's own total row, which was
+    # measured under a single configuration and cannot be rescaled per phase.
+    return r_mif, r_pf, r_mif + r_pf, nstarts, nreps, unrecorded_starts
+
+r_mif, r_pf, r_total, timing_nstarts, timing_nreps, gpu_starts_missing = r_baseline_for(gpu_t["cfg"])
+
+# Each platform is compared against the R baseline scaled to *its own*
+# configuration. Normally the two jobs run at the same level and these agree; if
+# one was re-run and the other was not, they do not, and a single shared
+# baseline would silently misreport the stale row.
+r_mif_cpu, r_pf_cpu, r_total_cpu, cpu_nstarts, cpu_nreps, cpu_starts_missing = r_baseline_for(cpu_t["cfg"])
+starts_missing = gpu_starts_missing or cpu_starts_missing
+
+CONFIG_KEYS = ["NP", "NFITR", "NSTARTS", "NREPS"]
+gpu_cfg_summary = {k: gpu_t["cfg"].get(k) for k in CONFIG_KEYS}
+cpu_cfg_summary = {k: cpu_t["cfg"].get(k) for k in CONFIG_KEYS}
+config_mismatch = gpu_t["cfg"] and cpu_t["cfg"] and gpu_cfg_summary != cpu_cfg_summary
+
+# Speedups (each relative to the R baseline scaled to that run's own workload)
 gpu_mif_speedup = r_mif / gpu_mif
 gpu_pf_speedup = r_pf / gpu_pf
 gpu_total_speedup = r_total / gpu_total
 
-cpu_mif_speedup = r_mif / cpu_mif
-cpu_pf_speedup = r_pf / cpu_pf
-cpu_total_speedup = r_total / cpu_total
+cpu_mif_speedup = r_mif_cpu / cpu_mif
+cpu_pf_speedup = r_pf_cpu / cpu_pf
+cpu_total_speedup = r_total_cpu / cpu_total
 
 # Throughput vs 1 CPU core (R uses 36 cores)
 r_throughput = 36.0
@@ -251,9 +294,9 @@ cpu_throughput = cpu_total_speedup * 36.0
 
 timing_df = pd.DataFrame({
     "Configuration": [
-        f"R pomp (CPU, 36 Cores, N={timing_nreps})",
-        f"pypomp (CPU, 36 Cores, N={timing_nreps})",
-        f"pypomp (GPU, 1 V100 GPU, N={timing_nreps})"
+        f"R pomp (CPU, 36 Cores, {timing_nstarts} starts x {timing_nreps} reps)",
+        f"pypomp (CPU, 36 Cores, {cpu_nstarts} starts x {cpu_nreps} reps)",
+        f"pypomp (GPU, 1 V100 GPU, {timing_nstarts} starts x {timing_nreps} reps)"
     ],
     "IF2 Time": [
         f"{r_mif:.2f}s ({r_mif/60:.2f}m)",
@@ -293,6 +336,32 @@ timing_df = pd.DataFrame({
 })
 
 display(HTML(timing_df.to_html(classes="table table-striped table-hover", index=False)))
+
+# The R row is scaled to the GPU run's workload. If the CPU job last ran under a
+# different configuration, its speedup is still correct (it uses its own scaled
+# baseline) but it is not comparable to the GPU row, and the single R row shown
+# above does not describe it. Say so rather than letting the table imply
+# otherwise.
+if starts_missing:
+    display(HTML(
+        "<p><strong>Warning: the speedup figures above are not trustworthy.</strong> "
+        "At least one timing run predates <code>NSTARTS</code> being written to "
+        "<code>latest.json</code>, so the number of starting points it actually used "
+        "is not recorded anywhere. The R baseline has been scaled assuming starts "
+        "equal replicates, which is the old convention but is wrong for any run made "
+        "after the two knobs were split. Re-run <code>timing/run.py</code> to produce "
+        "a record that carries both counts.</p>"
+    ))
+
+if config_mismatch:
+    display(HTML(
+        "<p><strong>Warning:</strong> the CPU and GPU timing runs used different "
+        f"configurations (GPU: {gpu_cfg_summary}, CPU: {cpu_cfg_summary}). Each row's "
+        "speedup is computed against an R baseline scaled to its own workload, so the "
+        "two <em>Speedup</em> columns remain individually valid, but the CPU and GPU "
+        "rows are not directly comparable and the R row describes the GPU workload "
+        "only. Re-run both jobs at the same run level to restore the comparison.</p>"
+    ))
 ```
 
 ::: {.callout-note}
@@ -605,6 +674,29 @@ EVAL_CSV_PATH = os.path.join("loglik", "results", "gpu", "pfilter_logliks.csv")
 LL_rep3600 = pd.read_csv(EVAL_CSV_PATH)["logLik"].values.tolist()
 
 LL_rep3600_R = pd.read_csv(os.path.join("loglik", "R_reference", "pfilter_logliks.csv"))["logLik"].values
+```
+
+### KS Test
+
+```{python KS test against the R baseline}
+from scipy.stats import ks_2samp
+
+ks_stat, ks_p = ks_2samp(LL_rep3600, LL_rep3600_R)
+
+ks_table = pd.DataFrame({
+    "Source": ["pypomp (GPU)", "R pomp"],
+    "Replicates": [len(LL_rep3600), len(LL_rep3600_R)],
+    "Mean": [np.mean(LL_rep3600), np.mean(LL_rep3600_R)],
+    "SD": [np.std(LL_rep3600, ddof=1), np.std(LL_rep3600_R, ddof=1)],
+    "Min": [np.min(LL_rep3600), np.min(LL_rep3600_R)],
+    "Max": [np.max(LL_rep3600), np.max(LL_rep3600_R)],
+})
+
+display(HTML(ks_table.round(3).to_html(classes="table table-striped table-hover", index=False)))
+print(
+    f"Mean difference: {np.mean(LL_rep3600) - np.mean(LL_rep3600_R):+.4f} nats\n"
+    f"Two-sample KS:   D = {ks_stat:.4f}, p = {ks_p:.4g}"
+)
 ```
 
 ```{python Plot rep3600 combined density, fig.width = 8, fig.height = 5}

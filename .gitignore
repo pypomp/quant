@@ -18,6 +18,7 @@ dacca/gpu/dacca_profiler
 **.pkl
 **.rds
 **.rda
+*.csv.gz
 
 # No need to save level 0 results
 *_0
@@ -81,4 +82,3 @@ tests/panel_measles/R_comparison/mixed/R_covariates.csv
 # record. Keep the text, drop the binary and the logs.
 tests/**/results/**/*.pkl
 tests/**/results/**/logs/
-tests/**/results/**/check_report.json

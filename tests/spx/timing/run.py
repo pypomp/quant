@@ -17,6 +17,15 @@ Compared against the frozen R baseline in ../estimation/R_reference/timings.csv.
 #       mem: 6GB
 #       time: "00:20:00"
 #       output: "results/gpu/logs/slurm-%j.out"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:02:00" }
+#       2:
+#         sbatch_args: { time: "00:20:00" }
+#       3:
+#         sbatch_args: { time: "00:30:00" }
+#       4:
+#         sbatch_args: { time: "00:30:00" }
 #   cpu:
 #     sbatch_args:
 #       job-name: "spx timing (cpu)"
@@ -27,16 +36,15 @@ Compared against the frozen R baseline in ../estimation/R_reference/timings.csv.
 #       output: "results/cpu/logs/slurm-%j.out"
 #     env:
 #       USE_CPU: "true"
-#
-# run_levels:
-#   1:
-#     sbatch_args: { time: "00:02:00" }
-#   2:
-#     sbatch_args: { time: "00:20:00" }
-#   3:
-#     sbatch_args: { time: "00:30:00" }
-#   4:
-#     sbatch_args: { time: "00:30:00" }
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:02:00" }
+#       2:
+#         sbatch_args: { time: "00:20:00" }
+#       3:
+#         sbatch_args: { time: "00:30:00" }
+#       4:
+#         sbatch_args: { time: "01:30:00" }
 # --- END SLURM CONFIG ---
 
 import json
@@ -66,7 +74,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 import model  # noqa: E402
-from utils import append_history, run_metadata  # noqa: E402
+from utils import run_metadata  # noqa: E402
 
 print(jax.devices())
 print("Using CPU:", USE_CPU)
@@ -76,13 +84,14 @@ print(f"Running at level {RUN_LEVEL}")
 
 NP = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NFITR = (2, 20, 50, 200)[RUN_LEVEL - 1]
-NREPS = (2, 3, 3, 360)[RUN_LEVEL - 1]
+NSTARTS = (2, 3, 3, 360)[RUN_LEVEL - 1]
+NREPS = (2, 3, 3, 24)[RUN_LEVEL - 1]
 
 key = jax.random.key(model.MAIN_SEED)
 np.random.seed(model.MAIN_SEED)
 
 key, subkey = jax.random.split(key)
-starts = model.sample_starts(NREPS, key=subkey)
+starts = model.sample_starts(NSTARTS, key=subkey)
 
 spx_obj = model.spx()
 
@@ -122,11 +131,8 @@ record = run_metadata(
         "kind": "timing",
         "model": "spx",
         "RUN_LEVEL": RUN_LEVEL,
-        "USE_CPU": USE_CPU,
-        "NP": NP,
-        "NFITR": NFITR,
-        "NREPS": NREPS,
         "MAIN_SEED": model.MAIN_SEED,
+        "NSTARTS": NSTARTS,
     }
 )
 record["timings"] = {t["phase"]: t["time_seconds"] for t in timings}
@@ -134,7 +140,6 @@ record["timings"] = {t["phase"]: t["time_seconds"] for t in timings}
 with open(os.path.join(out_dir, "latest.json"), "w") as f:
     json.dump(record, f, indent=2, default=str)
     f.write("\n")
-append_history(record, os.path.join(out_dir, "history.jsonl"))
 
 print(f"\n{timings_df.to_string(index=False)}")
-print(f"wrote {out_dir}/ (timings.csv, latest.json, history.jsonl)")
+print(f"wrote {out_dir}/ (timings.csv, latest.json)")

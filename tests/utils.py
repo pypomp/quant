@@ -33,6 +33,23 @@ def _git_sha() -> Optional[str]:
         return None
 
 
+def _gpu_type() -> Optional[str]:
+    """Detect GPU hardware description if running on GPU."""
+    try:
+        for d in jax.devices():
+            if getattr(d, "platform", None) == "gpu" or (
+                hasattr(d, "device_kind") and d.device_kind.lower() != "cpu"
+            ):
+                return getattr(d, "device_kind", str(d))
+    except Exception:
+        pass
+    for env_var in ("SLURM_JOB_GRES", "SLURM_GPUS"):
+        val = os.environ.get(env_var)
+        if val:
+            return val
+    return None
+
+
 def run_metadata(run_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Provenance for a single run.
 
@@ -44,21 +61,29 @@ def run_metadata(run_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     except Exception:
         devices = []
 
+    slurm_info = {
+        k: os.environ.get(v)
+        for k, v in {
+            "job_id": "SLURM_JOB_ID",
+            "partition": "SLURM_JOB_PARTITION",
+            "cpus": "SLURM_CPUS_PER_TASK",
+            "gres": "SLURM_JOB_GRES",
+            "gpus": "SLURM_GPUS",
+        }.items()
+        if os.environ.get(v) is not None
+    }
+
+    gpu_type = _gpu_type()
+    if gpu_type is not None:
+        slurm_info["gpu_type"] = gpu_type
+
     return {
         "timestamp": datetime.datetime.now().replace(microsecond=0).isoformat(),
         "pypomp_version": _package_version("pypomp"),
         "jax_version": _package_version("jax"),
         "quant_git_sha": _git_sha(),
         "devices": devices,
-        "slurm": {
-            k: os.environ.get(v)
-            for k, v in {
-                "job_id": "SLURM_JOB_ID",
-                "partition": "SLURM_JOB_PARTITION",
-                "cpus": "SLURM_CPUS_PER_TASK",
-            }.items()
-            if os.environ.get(v) is not None
-        },
+        "slurm": slurm_info,
         "run_config": run_config or {},
     }
 
@@ -78,11 +103,15 @@ def save_run(
       results.csv     parameter estimates + logLik
       traces.csv.gz   per-iteration traces, when the object has them
       timings.csv     per-method wall clock
-      latest.json     metrics for this run, pretty-printed and diffable
-      history.jsonl   one appended line per run, for tracking drift over time
+      latest.json     provenance and algorithmic configuration for this run
 
     The CSV/JSON outputs are the committed record; the pickle exists so a run
     can be reopened if something not captured here turns out to matter.
+
+    `latest.json` deliberately holds only what the CSVs cannot: which pypomp,
+    on what hardware, from which commit, with which knobs. Per-run drift is
+    tracked by git -- these files are committed, so `git log -p <latest.json>`
+    is the history.
     """
     os.makedirs(out_dir, exist_ok=True)
 
@@ -105,15 +134,12 @@ def save_run(
     if write_traces:
         _try_write("traces.csv.gz", pomp_obj.traces)
 
-    metrics = get_pomp_metrics(
-        pomp_obj, execution_time=execution_time, run_config=run_config
-    )
+    metrics = get_pomp_metrics(pomp_obj, run_config=run_config)
     metrics.update(run_metadata(run_config))
 
     with open(os.path.join(out_dir, "latest.json"), "w") as f:
         json.dump(metrics, f, indent=2, default=str)
         f.write("\n")
-    append_history(metrics, os.path.join(out_dir, "history.jsonl"))
 
     return metrics
 
@@ -146,18 +172,6 @@ def pfilter_logliks_frame(pomp_obj: Any, history_index: int = -1):
                 }
             )
     return pd.DataFrame(rows)
-
-
-def append_history(metrics: Dict[str, Any], filepath: str):
-    """Appends a dictionary of metrics to a JSONL file."""
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
-
-    with open(filepath, "a") as f:
-        # jsonl format is one JSON object per line.
-        # default=str so that an unforeseen object type can never lose a run's
-        # record at the very last step, after all the compute has been paid for.
-        f.write(json.dumps(metrics, default=str) + "\n")
 
 
 def _to_python(val):
@@ -218,90 +232,31 @@ def _entry_fields(entry: Any) -> Dict[str, Any]:
 
 def get_pomp_metrics(
     pomp_obj: Any,
-    execution_time: Optional[float] = None,
     run_config: Optional[Dict[str, Any]] = None,
-    history_index: int = -1,
-):
+    **_kwargs,
+) -> Dict[str, Any]:
     """
-    Extracts logLik, top 5 estimates per parameter, unit logliks,
-    algorithmic parameters, and summary statistics.
+    Summarise a run for `latest.json`: provenance and the algorithmic
+    configuration pypomp actually executed.
+
+    Saved JSON fields:
+    - timestamp: Execution ISO timestamp.
+    - pypomp_version: Version of the installed pypomp package.
+    - jax_version: Version of the installed jax package.
+    - quant_git_sha: Git commit SHA of the quant repository.
+    - devices: List of JAX backend devices (e.g. CUDA/CPU).
+    - slurm: SLURM job details (job_id, partition, cpus, gres, gpus, gpu_type).
+    - run_config: Specified script metadata and run parameters.
+    - results_history: Executed algorithmic configuration per entry in results_history.
 
     Args:
         pomp_obj: The Pomp or PanelPomp object to extract data from.
-        execution_time (float, optional): Total wall-clock time for the run.
         run_config (dict, optional): Metadata for the run (e.g., N_UNITS, RUN_LEVEL).
-        history_index (int, optional): The index in results_history to use for
-            summary statistics. Defaults to -1 (the most recent result).
     """
     metrics = {
         "timestamp": datetime.datetime.now().isoformat(),
-        "execution_time": execution_time,
         "run_config": run_config or {},
     }
-
-    # Extract logLik top 5 estimates and descriptive stats
-    metrics["loglik"] = None
-    metrics["loglik_stats"] = {}
-    metrics["top_5_estimates"] = {}
-
-    try:
-        if hasattr(pomp_obj, "results") and callable(pomp_obj.results):
-            df = pomp_obj.results(index=history_index)
-
-            if not isinstance(df, pd.DataFrame):
-                metrics["top_5_estimates"] = {
-                    "error": f"results() returned {type(df)}, expected pandas.DataFrame"
-                }
-                return metrics
-
-            if "logLik" in df.columns:
-                df_sorted = df.sort_values(by="logLik", ascending=False)
-
-                # Descriptive statistics for logLik over all parameter sets
-                desc = df["logLik"].describe()
-                metrics["loglik_stats"] = {
-                    "min": float(desc.loc["min"]),
-                    "25%": float(desc.loc["25%"]),
-                    "median": float(desc.loc["50%"]),
-                    "75%": float(desc.loc["75%"]),
-                    "max": float(desc.loc["max"]),
-                    "mean": float(desc.loc["mean"]),
-                }
-
-                # Best loglik overall
-                metrics["loglik"] = float(df_sorted.iloc[0]["logLik"])
-
-                # Top 5 estimates for each parameter
-                top_5_df = df_sorted.head(5)
-                top_5_theta = {}
-                for col in top_5_df.columns:
-                    if col not in ["logLik", "se"]:
-                        top_5_theta[col] = top_5_df[col].tolist()
-
-                metrics["top_5_estimates"] = top_5_theta
-            else:
-                metrics["top_5_estimates"] = {
-                    "error": "logLik column not found in results()"
-                }
-        else:
-            metrics["top_5_estimates"] = {
-                "error": "results() method not found on pomp_obj"
-            }
-    except Exception as e:
-        metrics["top_5_estimates"] = {"error": str(e)}
-
-    # Extract method times
-    try:
-        if hasattr(pomp_obj, "time"):
-            time_df = pomp_obj.time()
-            if isinstance(time_df, pd.DataFrame):
-                metrics["method_times"] = time_df.to_dict(orient="records")
-            else:
-                metrics["method_times"] = None
-        else:
-            metrics["method_times"] = None
-    except Exception as e:
-        metrics["method_times"] = {"error": str(e)}
 
     # Extract algorithmic configuration from results_history
     try:

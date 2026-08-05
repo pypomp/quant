@@ -74,7 +74,7 @@ print(f"Running at level {RUN_LEVEL}")
 
 NP_FITR = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NFITR = (2, 20, 200, 200)[RUN_LEVEL - 1]
-NREPS_FITR = (2, 3, 20, 120 * 3)[RUN_LEVEL - 1]
+NSTARTS = (2, 3, 20, 120 * 3)[RUN_LEVEL - 1]
 NP_EVAL = (2, 1000, 1000, 1000)[RUN_LEVEL - 1]
 NREPS_EVAL = (2, 5, 24, 24)[RUN_LEVEL - 1]
 
@@ -82,7 +82,7 @@ key = jax.random.key(model.MAIN_SEED)
 np.random.seed(model.MAIN_SEED)
 
 key, subkey = jax.random.split(key)
-starts = model.sample_starts(NREPS_FITR, key=subkey)
+starts = model.sample_starts(NSTARTS, key=subkey)
 
 spx_obj = model.spx()
 
@@ -107,15 +107,12 @@ metrics = save_run(
         "model": "spx",
         "RUN_LEVEL": RUN_LEVEL,
         "USE_CPU": USE_CPU,
-        "NP_FITR": NP_FITR,
-        "NFITR": NFITR,
-        "NREPS_FITR": NREPS_FITR,
-        "NP_EVAL": NP_EVAL,
-        "NREPS_EVAL": NREPS_EVAL,
         "MAIN_SEED": model.MAIN_SEED,
+        "NSTARTS": NSTARTS,
     },
-    execution_time=execution_time,
 )
 
-print(f"\nbest logLik: {metrics['loglik']}")
-print(f"wrote {out_dir}/ (results.csv, traces.csv.gz, latest.json, history.jsonl)")
+res = spx_obj.results()
+if "logLik" in res.columns:
+    print(f"\nbest logLik: {res['logLik'].max():.4f}")
+print(f"wrote {out_dir}/ (results.csv, traces.csv.gz, timings.csv, latest.json)")

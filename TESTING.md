@@ -196,7 +196,6 @@ For convenience, several target shortcuts are defined in the root `makefile` to 
 - `make test-all`: Run all tests in the repository.
 - `make freeze-r`: Re-extract the frozen R baselines (see below).
 - `make check-r`: Verify the committed R baselines against their manifests.
-- `make check`: Evaluate every test's `expect.yaml` against its latest results.
 
 ---
 
@@ -213,7 +212,6 @@ tests/<model>/
         run.py              # the pypomp entrypoint (always this name)
         run.R               # the R baseline, if there is one
         R_reference/        # frozen R results, committed
-        expect.yaml         # what a run must satisfy
         results/<platform>/ # run outputs; CSV/JSON committed, .pkl not
 ```
 
@@ -240,40 +238,11 @@ question: **what varies across the runs inside the test?**
 | `pfilter_logliks.csv` | yes | per-replicate logLiks (`loglik` kind) |
 | `traces.csv.gz` | yes | per-iteration traces |
 | `timings.csv` | yes | per-phase wall clock |
-| `latest.json` | yes | this run's metrics and provenance |
-| `history.jsonl` | yes | one appended line per run, for tracking drift |
+| `latest.json` | yes | this run's provenance and configuration |
 
-The pickle is the fallback; the text files are the record. `latest.json`
-carries the pypomp and JAX versions, the quant git SHA, the device, the SLURM
-job id and the full algorithmic configuration, so a number that looks wrong
-months later can be traced to a commit.
+The text files are the main record; the pkl is kept as a fallback, although it is not committed. 
+`latest.json` carries various other run info that is not easily recorded in csv files, such as the pypomp and JAX versions, the quant git SHA, the device, the SLURM job id, and algorithmic configuration details.
 
-**Do not commit results from a smoke run.** Level 1 exists to prove the code
-path executes and produces deliberate nonsense (`J=2`); committing it would
-seed `history.jsonl` with junk that the timing regression check then treats as
-a baseline.
-
-### Expectations (`expect.yaml`)
-
-```bash
-make check                                        # everything
-python scripts/check_expectations.py tests/spx/loglik
-python scripts/check_expectations.py tests/spx --all
-```
-
-Exit status is non-zero if any check fails, so running it as the last step of a
-SLURM job turns a failed expectation into a FAILED job and an email.
-
-`min_run_level` gates the whole file, so a smoke run never fails a check it was
-never meant to satisfy. Check types:
-
-| Type | Asserts |
-|---|---|
-| `scalar` | a statistic of a column lies in `[min, max]` |
-| `fraction_above` | the fraction above `threshold` is at least `min_fraction` |
-| `mean_vs_reference` | the mean is within `max_abs_diff` of a reference CSV |
-| `ks_test` | two-sample KS against a reference, `p >= min_p_value` |
-| `timing` | a phase is under `max_seconds`, or under `max_ratio_vs_history` times the median of past runs |
 
 ---
 

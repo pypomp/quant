@@ -73,12 +73,8 @@ metrics = save_run(
         "kind": "loglik",
         "model": "spx",
         "RUN_LEVEL": RUN_LEVEL,
-        "NP_EVAL": NP_EVAL,
-        "NREPS_EVAL": NREPS_EVAL,
         "MAIN_SEED": model.MAIN_SEED,
-        "theta": "sun2024",
     },
-    execution_time=execution_time,
     write_traces=False,
 )
 
@@ -89,7 +85,7 @@ print(
     f"mean {logliks['logLik'].mean():.4f}, sd {logliks['logLik'].std():.4f}"
 )
 
-print(f"logLik stats: {metrics['loglik_stats']}")
-print(
-    f"wrote {out_dir}/ (pfilter_logliks.csv, results.csv, latest.json, history.jsonl)"
-)
+res = spx_obj.results()
+if "logLik" in res.columns:
+    print(f"logLik stats:\n{res['logLik'].describe()}")
+print(f"wrote {out_dir}/ (pfilter_logliks.csv, results.csv, timings.csv, latest.json)")
