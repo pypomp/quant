@@ -37,9 +37,11 @@
     error = function(e) NULL
   )
 
-  cores <- Sys.getenv("SLURM_CPUS_PER_TASK", unset = "")
+  # Mirror what the test scripts register with doParallel: workers come from
+  # SLURM_NTASKS_PER_NODE, not cpus-per-task, which is 1 in these jobs.
+  cores <- Sys.getenv("SLURM_NTASKS_PER_NODE", unset = "")
   if (!nzchar(cores)) {
-    cores <- Sys.getenv("SLURM_NTASKS_PER_NODE", unset = "")
+    cores <- Sys.getenv("SLURM_CPUS_PER_TASK", unset = "")
   }
 
   out <- list(

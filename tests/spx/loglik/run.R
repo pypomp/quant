@@ -1,8 +1,7 @@
 #' SPX: R pomp baseline for the pfilter log-likelihood distribution.
 #'
-#' You should not normally need to run this; R_reference/pfilter_logliks.csv
-#' holds the frozen result. Re-freeze after running with:
-#'     python scripts/freeze_r_results.py freeze --only spx/loglik
+#' You should not normally need to run this; results/R/pfilter_logliks.csv
+#' holds the committed result.
 
 # --- SLURM CONFIG ---
 # importance: low

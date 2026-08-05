@@ -1,7 +1,6 @@
 #' SPX: R pomp baseline for the distribution of IF2 parameter estimates.
 #'
-#' Only needs regenerating when pomp changes. After running it, re-freeze with:
-#'     python scripts/freeze_r_results.py freeze --only spx/estimation
+#' Only needs regenerating when pomp changes; it writes results/R/ itself.
 
 # --- SLURM CONFIG ---
 # importance: low

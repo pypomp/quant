@@ -1,6 +1,6 @@
 """SPX: distribution of the pfilter log-likelihood at a fixed parameter vector.
 
-Compared against R_reference/pfilter_logliks.csv (3600 R replicates).
+Compared against results/R/pfilter_logliks.csv (3600 R replicates).
 """
 
 # --- SLURM CONFIG ---

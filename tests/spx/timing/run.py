@@ -1,6 +1,6 @@
 """SPX: wall-clock timing of mif and pfilter.
 
-Compared against the frozen R baseline in ../estimation/R_reference/timings.csv.
+Compared against the frozen R baseline in ../estimation/results/R/timings.csv.
 """
 
 # --- SLURM CONFIG ---

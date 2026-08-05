@@ -48,8 +48,8 @@ def load_r_reference(filename):
     path = f"results/R/{filename}"
     if not os.path.exists(path):
         raise FileNotFoundError(
-            f"Could not find {path}. Frozen R baselines are committed; regenerate "
-            "with `python scripts/freeze_r_results.py freeze` after a pomp bump."
+            f"Could not find {path}. R baselines are committed; regenerate by "
+            "re-running measles.R after a pomp bump."
         )
     return pd.read_csv(path)
 

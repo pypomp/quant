@@ -1,6 +1,6 @@
 """SPX: distribution of IF2 parameter estimates from a global search.
 
-Compared against the frozen R baseline in R_reference/.
+Compared against the frozen R baseline in results/R/.
 """
 
 # --- SLURM CONFIG ---
