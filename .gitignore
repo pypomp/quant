@@ -73,12 +73,16 @@ tmp*
 
 GEMINI.md
 CLAUDE.md
-tests/measles/R_comparison/speed_comparison/results/r_pomp_results.csv
-tests/measles/R_comparison/speed_comparison/results/r_pomp_timings.csv
 tests/panel_measles/R_comparison/mixed/parameter_comparison/starting_parameters.csv
 tests/panel_measles/R_comparison/mixed/R_covariates.csv
 
-# Test run outputs: the pickle is a fallback, the CSV/JSON alongside it is the
-# record. Keep the text, drop the binary and the logs.
+# Test run outputs: the pickle/rds is a fallback, the CSV/JSON alongside it is
+# the record. Keep the text, drop the binary and the logs.
 tests/**/results/**/*.pkl
 tests/**/results/**/logs/
+
+# The R record. *.csv.gz is ignored globally above, so without these the
+# committed R outputs would silently drop out of tracking.
+!tests/**/results/R/*.csv
+!tests/**/results/R/*.csv.gz
+!tests/**/results/R/latest.json
