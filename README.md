@@ -18,7 +18,9 @@ The quant tests also provide additional examples of pypomp, focused on technical
 Below is a list of quantitative test reports available in this repository:
 
 ### 1. SPX (S&P 500) Model
-* **[SPX Report](tests/spx/report.html)** (`tests/spx`): Compares parameter estimation traces and log-likelihood estimates on the SPX index dataset using `pypomp` (CPU/GPU) and R's `pomp`.
+* **[Parameter Estimation & Convergence](tests/spx/estimation/report.html)** (`tests/spx/estimation`): Compares parameter estimation traces and log-likelihood estimates on the SPX index dataset using `pypomp` (CPU/GPU) and R's `pomp`.
+* **[Runtime & Performance Benchmark](tests/spx/timing/report.html)** (`tests/spx/timing`): Benchmarks execution speed, speedup factors, and CPU/GPU throughput relative to R `pomp`.
+* **[Fixed-Parameter Likelihood Validation](tests/spx/loglik/report.html)** (`tests/spx/loglik`): Evaluates particle filter log-likelihood estimates at fixed parameter values (`rep3600`) via two-sample KS test.
 
 ### 2. Dhaka Cholera Model
 * **[Dhaka Report](tests/dacca/report.html)** (`tests/dacca`): Analyzes the performance, runtime, and parameter convergence of IF2 versus IFAD for the Dhaka cholera model.

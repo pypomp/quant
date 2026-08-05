@@ -1,0 +1,213 @@
+---
+title: "SPX Runtime & Performance Benchmark"
+subtitle: "Execution Speed, Acceleration, and Scalability: R pomp vs. pypomp"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+bibliography: ../references.bib
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
+```
+
+## Introduction
+
+This benchmark evaluates execution speed and throughput of the S&P 500 (SPX) stochastic volatility model [@sun2024] using `pypomp` on CPU and GPU relative to R `pomp` on CPU.
+
+The SPX model features simple random number generation and a single `rproc` step per observation, making it sensitive to framework overhead during IF2 optimization and particle filtering (`pfilter`).
+
+---
+
+## Setup & Environment
+
+::: {.callout-note collapse="true"}
+### System & Environment Information
+```{python Environment Setup}
+import json
+import numpy as np
+import pandas as pd
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+GPU_JSON_PATH = os.path.join("results", "gpu", "latest.json")
+CPU_JSON_PATH = os.path.join("results", "cpu", "latest.json")
+
+gpu_json = json.load(open(GPU_JSON_PATH)) if os.path.exists(GPU_JSON_PATH) else {}
+cpu_json = json.load(open(CPU_JSON_PATH)) if os.path.exists(CPU_JSON_PATH) else {}
+
+gpu_metadata_str = ru.format_metadata(gpu_json)
+cpu_metadata_str = ru.format_metadata(cpu_json)
+
+print("GPU Pomp Object Metadata:")
+print(gpu_metadata_str, end="")
+print("\nCPU Pomp Object Metadata:")
+print(cpu_metadata_str, end="")
+```
+
+:::
+
+---
+
+## Performance & Throughput Comparison
+
+The table below presents execution runtimes, speedup factors, and throughput of each configuration relative to R pomp.
+
+::: {.callout-note}
+### Note on Timing Measurements
+`pypomp` runtimes come from controlled `timing/` benchmarks.
+R figures come either from `results/R/timings.csv` or the scaled reference in `../estimation/R_reference/timings.csv`.
+:::
+
+```{python Performance table}
+R_TIMING_LOCAL = os.path.join("results", "R", "timings.csv")
+R_REFERENCE = os.path.join("..", "estimation", "R_reference", "timings.csv")
+
+if os.path.exists(R_TIMING_LOCAL):
+    r_tm = pd.read_csv(R_TIMING_LOCAL)
+    r_mif_360 = r_tm.loc[r_tm["phase"] == "mif", "time_seconds"].values[0]
+    r_pf_360 = r_tm.loc[r_tm["phase"] == "pfilter_warm", "time_seconds"].values[0]
+    R_STARTS_BASE = 36
+else:
+    r_timings = pd.read_csv(R_REFERENCE)
+    def elapsed_for(stage):
+        return r_timings.loc[(r_timings["stage"] == stage) & (r_timings["metric"] == "elapsed"), "seconds"].values[0]
+    r_mif_360 = elapsed_for("mif")
+    r_pf_360 = elapsed_for("pfilter")
+    R_STARTS_BASE = 360
+
+R_NFITR, R_NP, R_NREPS = 200, 1000, 24
+
+def timing_for(platform):
+    path = os.path.join("results", platform, "timings.csv")
+    json_path = os.path.join("results", platform, "latest.json")
+    if not os.path.exists(path):
+        return {"mif": np.nan, "pf": np.nan, "total": np.nan, "cfg": {}, "source": "missing"}
+
+    tm = pd.read_csv(path)
+    get_time = lambda phase: tm.loc[tm["phase"] == phase, "time_seconds"].values[0]
+
+    cfg = {}
+    if os.path.exists(json_path):
+        try:
+            cfg = json.load(open(json_path)).get("run_config", {}) or {}
+        except Exception:
+            cfg = {}
+
+    return {
+        "mif": get_time("mif"),
+        "pf": get_time("pfilter_warm"),
+        "total": get_time("mif") + get_time("pfilter_warm"),
+        "cfg": cfg,
+        "source": "timing/"
+    }
+
+gpu_t = timing_for("gpu")
+cpu_t = timing_for("cpu")
+
+gpu_mif, gpu_pf, gpu_total = gpu_t["mif"], gpu_t["pf"], gpu_t["total"]
+cpu_mif, cpu_pf, cpu_total = cpu_t["mif"], cpu_t["pf"], cpu_t["total"]
+
+def r_baseline_for(cfg):
+    nstarts = cfg.get("NSTARTS")
+    unrecorded_starts = nstarts is None
+    if unrecorded_starts:
+        nstarts = cfg.get("NREPS", R_STARTS_BASE)
+    nreps = cfg.get("NREPS", R_NREPS)
+    nfitr = cfg.get("NFITR", R_NFITR)
+    npart = cfg.get("NP", R_NP)
+
+    mif_scale = (nstarts / R_STARTS_BASE) * (nfitr / R_NFITR) * (npart / R_NP)
+    pf_scale = (nstarts * nreps) / (R_STARTS_BASE * R_NREPS) * (npart / R_NP)
+
+    r_mif = r_mif_360 * mif_scale
+    r_pf = r_pf_360 * pf_scale
+    return r_mif, r_pf, r_mif + r_pf, nstarts, nreps, unrecorded_starts
+
+r_mif, r_pf, r_total, timing_nstarts, timing_nreps, gpu_starts_missing = r_baseline_for(gpu_t["cfg"])
+r_mif_cpu, r_pf_cpu, r_total_cpu, cpu_nstarts, cpu_nreps, cpu_starts_missing = r_baseline_for(cpu_t["cfg"])
+
+gpu_mif_speedup = r_mif / gpu_mif
+gpu_pf_speedup = r_pf / gpu_pf
+gpu_total_speedup = r_total / gpu_total
+
+cpu_mif_speedup = r_mif_cpu / cpu_mif
+cpu_pf_speedup = r_pf_cpu / cpu_pf
+cpu_total_speedup = r_total_cpu / cpu_total
+
+r_throughput = 36.0
+gpu_throughput = gpu_total_speedup * 36.0
+cpu_throughput = cpu_total_speedup * 36.0
+
+timing_df = pd.DataFrame({
+    "Configuration": [
+        f"R pomp (CPU, 36 Cores, {timing_nstarts} starts x {timing_nreps} reps)",
+        f"pypomp (CPU, 36 Cores, {cpu_nstarts} starts x {cpu_nreps} reps)",
+        f"pypomp (GPU, 1 V100 GPU, {timing_nstarts} starts x {timing_nreps} reps)"
+    ],
+    "IF2 Time": [
+        f"{r_mif:.2f}s ({r_mif/60:.2f}m)",
+        f"{cpu_mif:.2f}s ({cpu_mif/60:.2f}m)",
+        f"{gpu_mif:.2f}s ({gpu_mif/60:.2f}m)"
+    ],
+    "IF2 Speedup": [
+        "1.00x",
+        f"{cpu_mif_speedup:.2f}x",
+        f"{gpu_mif_speedup:.2f}x"
+    ],
+    "Pfilter Time": [
+        f"{r_pf:.2f}s ({r_pf/60:.2f}m)",
+        f"{cpu_pf:.2f}s ({cpu_pf/60:.2f}m)",
+        f"{gpu_pf:.2f}s ({gpu_pf/60:.2f}m)"
+    ],
+    "Pfilter Speedup": [
+        "1.00x",
+        f"{cpu_pf_speedup:.2f}x",
+        f"{gpu_pf_speedup:.2f}x"
+    ],
+    "Total Time": [
+        f"{r_total:.2f}s ({r_total/60:.2f}m)",
+        f"{cpu_total:.2f}s ({cpu_total/60:.2f}m)",
+        f"{gpu_total:.2f}s ({gpu_total/60:.2f}m)"
+    ],
+    "Total Speedup": [
+        "1.00x",
+        f"{cpu_total_speedup:.2f}x",
+        f"{gpu_total_speedup:.2f}x"
+    ],
+    "Throughput (vs 1 CPU Core)": [
+        "36.00x",
+        f"{cpu_throughput:.2f}x",
+        f"{gpu_throughput:.2f}x"
+    ]
+})
+
+display(HTML(timing_df.to_html(classes="table table-striped table-hover", index=False)))
+```
+
+::: {.callout-note}
+### Performance Expectations
+- **GPU Acceleration**: Expect `pypomp` on the V100 GPU to achieve a significant speedup over the 36-core CPU reference R run.
+- **CPU JAX Overhead**: Expect `pypomp` on CPU (using JAX) to outperform serial/multiprocess R pomp.
+:::
+
+---
+
+# References

@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-08-05T10:54:22",
+  "timestamp": "2026-08-05T12:25:03",
   "pypomp_version": "0.4.9.0",
   "jax_version": "0.11.0",
-  "quant_git_sha": "b2646a4ceaec15f0ec44bb3402a8fdbb37795294",
+  "quant_git_sha": "df24bcd4afadc949575286f7be604ec1c432de90",
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "56525172",
+    "job_id": "56527531",
     "partition": "gpu",
     "gpus": "v100:1",
     "gpu_type": "Tesla V100-PCIE-16GB"
@@ -17,11 +17,11 @@
     "model": "spx",
     "RUN_LEVEL": 4,
     "MAIN_SEED": 631409,
-    "NSTARTS": 360
+    "NSTARTS": 36
   },
   "timings": {
-    "mif": 300.85560297966003,
-    "pfilter_cold": 29.816444158554077,
-    "pfilter_warm": 26.25532841682434
+    "mif": 92.91469621658325,
+    "pfilter_cold": 12.692304372787476,
+    "pfilter_warm": 9.516687870025635
   }
 }

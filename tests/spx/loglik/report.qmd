@@ -1,0 +1,118 @@
+---
+title: "SPX Fixed-Parameter Likelihood Validation (rep3600)"
+subtitle: "Particle Filter Distribution Validation: R pomp vs. pypomp"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+bibliography: ../references.bib
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
+```
+
+## Introduction
+
+This section evaluates the particle filter's likelihood calculation itself by running it multiple times on a single, fixed parameter vector [@sun2024 estimates].
+
+---
+
+## Setup & Data Loading
+
+::: {.callout-note collapse="true"}
+### System & Environment Information
+```{python Environment Setup}
+import os
+import numpy as np
+import pandas as pd
+from scipy.stats import ks_2samp
+from plotnine import ggplot, aes, geom_density, labs
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+EVAL_CSV_PATH = os.path.join("results", "gpu", "pfilter_logliks.csv")
+LL_rep3600 = pd.read_csv(EVAL_CSV_PATH)["logLik"].values.tolist()
+
+R_REF_PATH = os.path.join("R_reference", "pfilter_logliks.csv")
+LL_rep3600_R = pd.read_csv(R_REF_PATH)["logLik"].values
+```
+
+:::
+
+---
+
+## Likelihood Evaluation at Fixed Parameter (rep3600 Check)
+
+### Kolmogorov-Smirnov (KS) Test
+
+```{python KS test against the R baseline}
+ks_stat, ks_p = ks_2samp(LL_rep3600, LL_rep3600_R)
+
+ks_table = pd.DataFrame({
+    "Source": ["pypomp (GPU)", "R pomp"],
+    "Replicates": [len(LL_rep3600), len(LL_rep3600_R)],
+    "Mean": [np.mean(LL_rep3600), np.mean(LL_rep3600_R)],
+    "SD": [np.std(LL_rep3600, ddof=1), np.std(LL_rep3600_R, ddof=1)],
+    "Min": [np.min(LL_rep3600), np.min(LL_rep3600_R)],
+    "Max": [np.max(LL_rep3600), np.max(LL_rep3600_R)],
+})
+
+display(HTML(ks_table.round(3).to_html(classes="table table-striped table-hover", index=False)))
+print(
+    f"Mean difference: {np.mean(LL_rep3600) - np.mean(LL_rep3600_R):+.4f} nats\n"
+    f"Two-sample KS:   D = {ks_stat:.4f}, p = {ks_p:.4g}"
+)
+```
+
+---
+
+### Density Comparison
+
+```{python Plot rep3600 combined density, fig.width = 8, fig.height = 5}
+rep3600_df = pd.concat([
+    pd.DataFrame({"LL": LL_rep3600, "source": "python"}),
+    pd.DataFrame({"LL": LL_rep3600_R, "source": "R"})
+], ignore_index=True)
+
+(
+    ggplot(rep3600_df, aes(x="LL", fill="source", color="source"))
+    + geom_density(alpha=0.3)
+    + labs(
+        title="Likelihood Evaluation at Fixed Parameter (rep3600)",
+        subtitle="Log-Likelihood density distribution evaluated at a single benchmark parameter set",
+        x="Log-Likelihood (LL)",
+        y="Density",
+        fill="Source",
+        color="Source"
+    )
+    + ru.scale_fill_premium()
+    + ru.scale_color_premium()
+    + ru.theme_premium
+)
+```
+
+::: {.callout-note}
+### Expectation
+We expect the two log-likelihood density curves (`pypomp` vs `pomp`) to overlap heavily, confirming statistical consistency of particle filter evaluations across implementations.
+:::
+
+---
+
+# References
