@@ -51,6 +51,15 @@
 }
 
 
+#' R's 5-element proc_time vector as the labelled frame the reports expect.
+proc_time_frame <- function(t) {
+  data.frame(
+    stage = c("user.self", "sys.self", "elapsed", "user.child", "sys.child"),
+    seconds = as.numeric(t)[1:5]
+  )
+}
+
+
 #' Which pomp, on what hardware, from which commit, with which knobs.
 run_metadata <- function(run_config = list()) {
   slurm_vars <- c(

@@ -56,9 +56,9 @@ py_results = py_results.drop(
     columns=["logLik", "se", "theta_idx"], errors="ignore"
 ).melt(id_vars=["source", "unit"], var_name="param", value_name="value")
 
-# Load the frozen R parameter baseline (see the sibling MANIFEST.json for
+# Load the frozen R parameter baseline (see the sibling latest.json for
 # provenance; regenerate with `python scripts/freeze_r_results.py freeze`).
-r_param_path = "parameter_comparison/R_reference/mif_coefs.csv"
+r_param_path = "parameter_comparison/results/R/mif_coefs.csv"
 r_results = pd.read_csv(r_param_path)
 r_results["source"] = "R"
 r_results = r_results[["source", "unit", "coef", "names"]].rename(
@@ -70,7 +70,7 @@ r_results = r_results[["source", "unit", "coef", "names"]].rename(
 # ---------------------------------------------------------
 py_pf_32_path = "logLik_comparison/results/pfilter_logliks_f32.pkl"
 py_pf_64_path = "logLik_comparison/results/pfilter_logliks_f64.pkl"
-r_pf_path = "logLik_comparison/R_reference/pfilter_logliks_f64.csv"
+r_pf_path = "logLik_comparison/results/R/pfilter_logliks_f64.csv"
 
 with open(py_pf_32_path, "rb") as f:
     pf_py_results = pickle.load(f)

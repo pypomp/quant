@@ -6,7 +6,7 @@
 #   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
-#   output: "results/logs/slurm-%j.out"
+#   output: "results/R/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:02:00" }
@@ -19,7 +19,7 @@
 # setup: |
 #   module load R/4.4.0
 # command: |
-#   R CMD BATCH --no-restore --no-save measles.R results/logs/measles.Rout
+#   R CMD BATCH --no-restore --no-save measles.R results/R/logs/measles.Rout
 # --- END SLURM CONFIG ---
 
 ## ----prelims,include=FALSE,cache=FALSE-----------------------------------
@@ -36,6 +36,8 @@ library(pomp)
 library(doParallel)
 library(foreach)
 library(doRNG)
+
+source("../../../utils.R")
 
 ## ----rproc-------------------------------------------------
 rproc <- Csnippet(
@@ -287,8 +289,8 @@ registerDoParallel(cores)
 registerDoRNG(594709947L)
 
 ## ----run-pfilter-for-all-units-------------------------------------------------
-dir.create("results/logs", recursive = TRUE, showWarnings = FALSE)
-bake(file = "results/pfilter_logliks_f64.rds", {
+dir.create("results/R/logs", recursive = TRUE, showWarnings = FALSE)
+pfilter_logliks <- bake(file = "results/pfilter_logliks_f64.rds", {
   time0 <- Sys.time()
 
   # Initialize list to store results
@@ -363,3 +365,16 @@ bake(file = "results/pfilter_logliks_f64.rds", {
 
   results_df
 })
+
+save_run(
+  out_dir = file.path("results", "R"),
+  tables = list(pfilter_logliks_f64.csv = pfilter_logliks),
+  run_config = list(
+    kind = "loglik",
+    model = "measles",
+    RUN_LEVEL = run_level,
+    NP_EVAL = NP_EVAL,
+    NREPS_EVAL = NREPS_EVAL,
+    units = units
+  )
+)

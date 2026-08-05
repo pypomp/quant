@@ -6,7 +6,7 @@
 #   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
-#   output: "results/logs/slurm-%j.out"
+#   output: "results/R/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:02:00" }
@@ -19,7 +19,7 @@
 # setup: |
 #   module load R/4.4.0
 # command: |
-#   R CMD BATCH --no-restore --no-save panel_measles.R results/logs/panel_measles.Rout
+#   R CMD BATCH --no-restore --no-save panel_measles.R results/R/logs/panel_measles.Rout
 # --- END SLURM CONFIG ---
 
 stopifnot(getRversion() >= "4.1")
@@ -34,6 +34,7 @@ RUN_LEVEL <- as.numeric(Sys.getenv("RUN_LEVEL", unset = 1))
 NP_EVAL <- switch(RUN_LEVEL, 2, 1000, 5000, 5000)
 NREPS_EVAL <- switch(RUN_LEVEL, 2, 300, 300, 3600)
 
+source("../../../../utils.R")
 source("../panel_measles_shared.R")
 
 
@@ -93,14 +94,26 @@ all_logliks <- foreach(
 t_pf_end <- Sys.time()
 pf_time_total <- as.numeric(t_pf_end - t_pf_start, units = "secs")
 
-dir.create("results", recursive = TRUE, showWarnings = FALSE)
-saveRDS(all_logliks, "results/pfilter_logliks_f64.rds")
-print("Saved results/pfilter_logliks_f64.rds")
-
-# Save timing to CSV
 timings_df <- data.frame(
   phase = c("pfilter"),
   time_seconds = c(pf_time_total)
 )
-write.csv(timings_df, "results/r_pomp_time.csv", row.names = FALSE)
+
+save_run(
+  out_dir = file.path("results", "R"),
+  tables = list(
+    pfilter_logliks_f64.csv = all_logliks,
+    r_pomp_time.csv = timings_df
+  ),
+  run_config = list(
+    kind = "loglik",
+    model = "panel_measles",
+    RUN_LEVEL = RUN_LEVEL,
+    NP_EVAL = NP_EVAL,
+    NREPS_EVAL = NREPS_EVAL,
+    units = units
+  ),
+  raw = all_logliks,
+  raw_name = "pfilter_logliks_f64.rds"
+)
 print(sprintf("Pfilter Total Time: %.2f s", pf_time_total))

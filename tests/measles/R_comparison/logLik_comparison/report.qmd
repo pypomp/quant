@@ -44,8 +44,8 @@ def load_pkl(filename):
 
 
 def load_r_reference(filename):
-    """Load a frozen R baseline. See R_reference/MANIFEST.json for provenance."""
-    path = f"R_reference/{filename}"
+    """Load a frozen R baseline. See results/R/latest.json for provenance."""
+    path = f"results/R/{filename}"
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"Could not find {path}. Frozen R baselines are committed; regenerate "

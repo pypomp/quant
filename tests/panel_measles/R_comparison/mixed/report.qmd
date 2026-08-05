@@ -62,9 +62,9 @@ specific_params = ["iota", "rho", "psi", "S_0", "E_0", "I_0", "R_0"]
 # Load Parameter Comparison Data
 # ---------------------------------------------------------
 py_param_path = "parameter_comparison/results/mif_coefs.pkl"
-# Frozen R baseline; see the sibling MANIFEST.json for provenance. Regenerate
+# Frozen R baseline; see the sibling latest.json for provenance. Regenerate
 # with `python scripts/freeze_r_results.py freeze` only after a pomp bump.
-r_param_path = "parameter_comparison/R_reference/mif_coefs.csv"
+r_param_path = "parameter_comparison/results/R/mif_coefs.csv"
 
 # Python Parameter Results
 try:
@@ -103,7 +103,7 @@ params_combined = pd.concat([py_results, r_results], ignore_index=True)
 # Load Log-Likelihood Data
 # ---------------------------------------------------------
 py_pf_path = "logLik_comparison/results/pfilter_logliks_f32.pkl"
-r_pf_path = "logLik_comparison/R_reference/pfilter_logliks_f64.csv"
+r_pf_path = "logLik_comparison/results/R/pfilter_logliks_f64.csv"
 
 try:
     pf_py_results = pickle.load(open(py_pf_path, "rb"))
@@ -126,7 +126,7 @@ pf_combined = pd.concat([pf_py_results, pf_r_results], ignore_index=True)
 # ---------------------------------------------------------
 py_gpu_speed_path = "speed_comparison/results/pypomp_speed_results_gpu.pkl"
 py_cpu_speed_path = "speed_comparison/results/pypomp_speed_results_cpu.pkl"
-r_speed_path = "speed_comparison/R_reference/r_pomp_timings.csv"
+r_speed_path = "speed_comparison/results/R/r_pomp_timings.csv"
 
 try:
     with open(py_gpu_speed_path, "rb") as f:
@@ -154,7 +154,7 @@ except (FileNotFoundError, IndexError):
 
 # Load High-Replicate Log-Likelihood Evaluation Timings
 py_loglik_speed_path = "logLik_comparison/results/pypomp_time.csv"
-r_loglik_speed_path = "logLik_comparison/R_reference/r_pomp_time.csv"
+r_loglik_speed_path = "logLik_comparison/results/R/r_pomp_time.csv"
 
 try:
     py_loglik_speed_df = pd.read_csv(py_loglik_speed_path)

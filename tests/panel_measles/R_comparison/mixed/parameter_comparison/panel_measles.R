@@ -6,7 +6,7 @@
 #   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
-#   output: "results/logs/slurm-%j.out"
+#   output: "results/R/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:02:00" }
@@ -19,7 +19,7 @@
 # setup: |
 #   module load R/4.4.0
 # command: |
-#   R CMD BATCH --no-restore --no-save panel_measles.R results/logs/panel_measles.Rout
+#   R CMD BATCH --no-restore --no-save panel_measles.R results/R/logs/panel_measles.Rout
 # --- END SLURM CONFIG ---
 
 stopifnot(getRversion() >= "4.1")
@@ -36,6 +36,7 @@ NP_FITR <- switch(RUN_LEVEL, 2, 500, 5000, 5000)
 NFITR <- switch(RUN_LEVEL, 2, 10, 100, 100)
 NREPS_FITR <- switch(RUN_LEVEL, 2, 3, 36, 360)
 
+source("../../../../utils.R")
 source("../panel_measles_shared.R")
 
 
@@ -138,6 +139,18 @@ all_coefs <- all_coefs %>%
   ) %>%
   select(replicate, unit, param, value)
 
-dir.create("results", recursive = TRUE, showWarnings = FALSE)
-saveRDS(all_coefs, "results/mif_coefs.rds")
-print("Saved results/mif_coefs.rds")
+save_run(
+  out_dir = file.path("results", "R"),
+  tables = list(mif_coefs.csv = all_coefs),
+  run_config = list(
+    kind = "parameter",
+    model = "panel_measles",
+    RUN_LEVEL = RUN_LEVEL,
+    NP_FITR = NP_FITR,
+    NFITR = NFITR,
+    NREPS_FITR = NREPS_FITR,
+    units = units
+  ),
+  raw = all_coefs,
+  raw_name = "mif_coefs.rds"
+)

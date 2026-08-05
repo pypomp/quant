@@ -73,12 +73,12 @@ The table below presents execution runtimes, speedup factors, and throughput of 
 ::: {.callout-note}
 ### Note on Timing Measurements
 `pypomp` runtimes come from controlled `timing/` benchmarks.
-R figures come either from `results/R/timings.csv` or the scaled reference in `../estimation/R_reference/timings.csv`.
+R figures come either from `results/R/timings.csv` or the scaled reference in `../estimation/results/R/timings.csv`.
 :::
 
 ```{python Performance table}
 R_TIMING_LOCAL = os.path.join("results", "R", "timings.csv")
-R_REFERENCE = os.path.join("..", "estimation", "R_reference", "timings.csv")
+R_REFERENCE = os.path.join("..", "estimation", "results", "R", "timings.csv")
 
 if os.path.exists(R_TIMING_LOCAL):
     r_tm = pd.read_csv(R_TIMING_LOCAL)

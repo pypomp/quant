@@ -7,7 +7,7 @@
 #   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
-#   output: "results/logs/slurm-%j.out"
+#   output: "results/R/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:02:00" }
@@ -18,7 +18,7 @@
 # setup: |
 #   module load R/4.4.0
 # command: |
-#   R CMD BATCH --no-restore --no-save measles.R results/logs/measles.Rout
+#   R CMD BATCH --no-restore --no-save measles.R results/R/logs/measles.Rout
 # --- END SLURM CONFIG ---
 
 ## ----prelims,include=FALSE,cache=FALSE-----------------------------------
@@ -31,6 +31,8 @@ library(pomp)
 library(doParallel)
 library(foreach)
 library(doRNG)
+
+source("../../../utils.R")
 
 RUN_LEVEL <- as.numeric(Sys.getenv("RUN_LEVEL", unset = 1))
 
@@ -290,7 +292,7 @@ registerDoParallel(cores)
 registerDoRNG(594709947L)
 
 ## ----run-pfilter-for-all-units-------------------------------------------------
-dir.create("results/logs", recursive = TRUE, showWarnings = FALSE)
+dir.create("results/R/logs", recursive = TRUE, showWarnings = FALSE)
 bake(file = "results/mif_speed_results.rds", {
     all_mifs <- list()
     all_unit_results <- list()
@@ -385,8 +387,22 @@ bake(file = "results/mif_speed_results.rds", {
             as.numeric(pf_time_total, units = "secs")
         )
     )
-    write.csv(timings_df, "results/r_pomp_timings.csv", row.names = FALSE)
-    write.csv(results_df, "results/r_pomp_results.csv", row.names = FALSE)
+    save_run(
+        out_dir = file.path("results", "R"),
+        tables = list(
+            r_pomp_timings.csv = timings_df,
+            r_pomp_results.csv = results_df
+        ),
+        run_config = list(
+            kind = "speed",
+            model = "measles",
+            RUN_LEVEL = RUN_LEVEL,
+            NP_FITR = NP_FITR,
+            NFITR = NFITR,
+            NREPS_FITR = NREPS_FITR,
+            units = units
+        )
+    )
 
     results_df
 })

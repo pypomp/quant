@@ -50,7 +50,7 @@ os.environ["JAX_PLATFORMS"] = "cpu"
 EVAL_CSV_PATH = os.path.join("results", "gpu", "pfilter_logliks.csv")
 LL_rep3600 = pd.read_csv(EVAL_CSV_PATH)["logLik"].values.tolist()
 
-R_REF_PATH = os.path.join("R_reference", "pfilter_logliks.csv")
+R_REF_PATH = os.path.join("results", "R", "pfilter_logliks.csv")
 LL_rep3600_R = pd.read_csv(R_REF_PATH)["logLik"].values
 ```
 

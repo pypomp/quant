@@ -14,7 +14,7 @@
 #   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
-#   output: "R_results/logs/slurm-%j.out"
+#   output: "results/R/logs/slurm-%j.out"
 #   time: "03:00:00"
 # setup: |
 #   module load R/4.4.0
@@ -24,6 +24,7 @@ library(doParallel)
 library(foreach)
 library(doRNG)
 
+source("../../utils.R")
 source("../model.R")
 
 cores <- as.numeric(Sys.getenv("SLURM_NTASKS_PER_NODE", unset = NA))
@@ -86,3 +87,50 @@ stew(file = "R_results/spx_results.rda", {
     })
   })
 })
+
+# L.box is a Nreps_global x 2 matrix of (est, se).
+logliks <- as.data.frame(L.box)
+colnames(logliks) <- c("logLik", "se")
+logliks$replicate <- seq_len(nrow(logliks))
+logliks <- logliks[, c("replicate", "logLik", "se")]
+
+traces_df <- do.call(rbind, lapply(seq_along(if.box), function(i) {
+  tr <- as.data.frame(traces(if.box[[i]]))
+  tr$iteration <- seq_len(nrow(tr)) - 1L # iteration 0 is the starting value
+  tr$replicate <- i
+  tr
+}))
+id_cols <- c("replicate", "iteration")
+traces_df <- traces_df[, c(id_cols, setdiff(colnames(traces_df), id_cols))]
+
+proc_rows <- function(tv, label) {
+  data.frame(
+    stage = label,
+    metric = names(tv),
+    seconds = as.numeric(tv),
+    stringsAsFactors = FALSE
+  )
+}
+timings <- rbind(
+  proc_rows(t.if.box, "mif"),
+  proc_rows(t.L.box, "pfilter"),
+  proc_rows(t.box, "total")
+)
+
+save_run(
+  out_dir = file.path("results", "R"),
+  tables = list(
+    pfilter_logliks.csv = logliks,
+    mif_traces.csv.gz = traces_df,
+    timings.csv = timings
+  ),
+  run_config = list(
+    kind = "estimation",
+    model = "spx",
+    RUN_LEVEL = run_level,
+    Np = Np,
+    Nmif = Nmif,
+    Nreps_eval = Nreps_eval,
+    Nreps_global = Nreps_global
+  )
+)

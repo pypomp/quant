@@ -21,6 +21,7 @@ library(doParallel)
 library(foreach)
 library(doRNG)
 
+source("../../utils.R")
 source("../model.R")
 
 cores <- as.numeric(Sys.getenv("SLURM_NTASKS_PER_NODE", unset = NA))
@@ -39,9 +40,6 @@ Nreps_eval <- switch(run_level, 2, 3, 3, 24)
 
 sp500.filt <- spx_filt()
 global_starts <- spx_starts(Nstarts)
-
-out_dir <- file.path("results", "R")
-dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 t_mif <- system.time({
   if.box <- foreach(
@@ -89,5 +87,16 @@ timings_df <- data.frame(
   time_seconds = c(mif_sec, pf_sec)
 )
 
-write.csv(timings_df, file.path(out_dir, "timings.csv"), row.names = FALSE)
-cat(sprintf("R timings written to %s/timings.csv\n", out_dir))
+save_run(
+  out_dir = file.path("results", "R"),
+  tables = list(timings.csv = timings_df),
+  run_config = list(
+    kind = "timing",
+    model = "spx",
+    RUN_LEVEL = run_level,
+    Np = Np,
+    Nmif = Nmif,
+    Nstarts = Nstarts,
+    Nreps_eval = Nreps_eval
+  )
+)

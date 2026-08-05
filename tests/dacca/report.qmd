@@ -526,10 +526,10 @@ except Exception as e:
 
 # Load the frozen R pfilter_check logLiks. This used to read the .rda through
 # pyreadr with an Rscript fallback; both needed a local R and a gitignored file.
-# See pfilter_check/R_reference/MANIFEST.json for provenance.
+# See pfilter_check/results/R/latest.json for provenance.
 try:
     r_logliks = (
-        pd.read_csv("pfilter_check/R_reference/pfilter_logliks.csv")["logLik"]
+        pd.read_csv("pfilter_check/results/R/pfilter_logliks.csv")["logLik"]
         .dropna()
         .tolist()
     )

@@ -40,9 +40,9 @@ from plotnine import *
 
 warnings.filterwarnings("ignore")
 
-# Load the frozen R baseline (see R_reference/MANIFEST.json for provenance).
-r_timings = pd.read_csv("R_reference/r_pomp_timings.csv")
-r_results = pd.read_csv("R_reference/r_pomp_results.csv")
+# Load the frozen R baseline (see results/R/latest.json for provenance).
+r_timings = pd.read_csv("results/R/r_pomp_timings.csv")
+r_results = pd.read_csv("results/R/r_pomp_results.csv")
 
 # Extract R times
 r_mif_time = r_timings[r_timings["phase"] == "mif"]["time_seconds"].values[0]

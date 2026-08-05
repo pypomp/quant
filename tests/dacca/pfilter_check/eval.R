@@ -7,14 +7,14 @@
 #   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
-#   output: "R_results/logs/slurm-%j.out"
+#   output: "results/R/logs/slurm-%j.out"
 # run_levels:
 #   1:
 #     sbatch_args: { time: "02:00:00" }
 # setup: |
 #   module load R/4.4.0
 # command: |
-#   R CMD BATCH --no-restore --no-save eval.R R_results/logs/eval.Rout
+#   R CMD BATCH --no-restore --no-save eval.R results/R/logs/eval.Rout
 # --- END SLURM CONFIG ---
 
 #' This script estimates the distribution of the estimated logLik at the default parameter value.
@@ -25,8 +25,10 @@ library(doParallel)
 library(foreach)
 library(doRNG)
 
+source("../../utils.R")
+
 # Create results directories
-dir.create("R_results/logs", recursive = TRUE, showWarnings = FALSE)
+dir.create("results/R/logs", recursive = TRUE, showWarnings = FALSE)
 
 cores <- as.numeric(Sys.getenv("SLURM_NTASKS_PER_NODE", unset = NA))
 run_level <- as.numeric(Sys.getenv("RUN_LEVEL", unset = "1"))
@@ -78,3 +80,18 @@ results_df <- data.frame(
 rownames(results_df) <- "0"
 
 print(results_df)
+
+save_run(
+  out_dir = file.path("results", "R"),
+  tables = list(
+    pfilter_logliks.csv = data.frame(logLik = as.numeric(L_box)),
+    timings.csv = proc_time_frame(t_pfilter)
+  ),
+  run_config = list(
+    kind = "loglik",
+    model = "dacca",
+    RUN_LEVEL = run_level,
+    NP_EVAL = NP_EVAL,
+    NREPS_EVAL = NREPS_EVAL
+  )
+)

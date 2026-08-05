@@ -81,8 +81,9 @@ tests/panel_measles/R_comparison/mixed/R_covariates.csv
 tests/**/results/**/*.pkl
 tests/**/results/**/logs/
 
-# The R record. *.csv.gz is ignored globally above, so without these the
-# committed R outputs would silently drop out of tracking.
+# The R record. Scoped to results/R/ on purpose: R baselines are re-run rarely,
+# so their *.csv.gz is worth tracking, while the Python results/{cpu,gpu}/
+# equivalents turn over every run and stay ignored by the global pattern.
 !tests/**/results/R/*.csv
 !tests/**/results/R/*.csv.gz
 !tests/**/results/R/latest.json

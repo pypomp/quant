@@ -194,8 +194,6 @@ For convenience, several target shortcuts are defined in the root `makefile` to 
 - `make test-interactive` / `make test-i`: Start the interactive test selection runner.
 - `make test-high`: Run all high (or critical) importance tests.
 - `make test-all`: Run all tests in the repository.
-- `make freeze-r`: Re-extract the frozen R baselines (see below).
-- `make check-r`: Verify the committed R baselines against their manifests.
 
 ---
 
@@ -211,8 +209,8 @@ tests/<model>/
     <kind>/
         run.py              # the pypomp entrypoint (always this name)
         run.R               # the R baseline, if there is one
-        R_reference/        # frozen R results, committed
         results/<platform>/ # run outputs; CSV/JSON committed, .pkl not
+        results/R/          # the R record; CSV/JSON committed, .rds not
 ```
 
 There are five kinds. Which one a test belongs to is decided by a single
@@ -246,68 +244,61 @@ The text files are the main record; the pkl is kept as a fallback, although it i
 
 ---
 
-## 5. Frozen R Baselines (`R_reference/`)
 
-Several tests compare `pypomp` against R's `pomp`/`panelPomp`. The R side is by
-far the more expensive half — the panel measles parameter comparison is
-budgeted **36 hours** of wall clock, against 2 hours for its Python counterpart
-— and its results only change when `pomp` changes. So we do not re-run it.
+## 5. R Results (`results/R/`)
 
-Instead, the small tidy tables each report actually consumes are extracted from
-the `.rds`/`.rda` outputs and committed as CSV under `R_reference/`, next to the
-test that produced them:
+The R half of a comparison test writes its own record, exactly as the Python
+half does. At the end of a run the script calls `save_run()` from
+`tests/utils.R`, which writes into `results/R/`:
 
 ```
 tests/measles/R_comparison/parameter_comparison/
-    measles.R                      # produces results/mif_coefs.rds (gitignored)
-    results/mif_coefs.rds          # scratch output of a fresh run
-    R_reference/
-        mif_coefs.csv              # committed, human-readable, diffable
-        MANIFEST.json              # provenance
-    report.qmd                     # reads R_reference/, never results/
+    measles.R                      # the producing script
+    results/
+        mif_coefs.rds              # bulk output, gitignored
+        R/
+            mif_coefs.csv          # committed, human-readable, diffable
+            latest.json            # committed, provenance
+            logs/                  # gitignored
+    report.qmd                     # reads results/R/
 ```
 
-**`results/` is scratch; `R_reference/` is the record.** Reports read only from
-`R_reference/`, so anyone can render a report from a clean checkout without R,
-without `pyreadr`, and without the gitignored binaries. That was not previously
-true: the SPX report needed a 66 MB `.rda` sitting in a gitignored `_hidden`
-directory, so nobody but its author could rebuild it.
+**Reports read `results/R/` and nothing else**, so anyone can render a report
+from a clean checkout without R, without `pyreadr`, and without the gitignored
+binaries.
 
-Each `MANIFEST.json` records what produced the data, the SHA-256 and mtime of
-the source file, the row counts and column names of each frozen CSV, its
-SHA-256, and the R/`pomp` versions `renv.lock` pins. That last field is
-attribution rather than measurement — for baselines generated before this
-tooling existed, the pinned version is the best available evidence for what
-produced them, not a reading taken from the job itself.
+`latest.json` mirrors the Python one: R/`pomp`/`panelPomp` versions, the quant
+git SHA, the SLURM job details, the algorithmic knobs, and a `hardware` block
+(node, CPU model, cores) that the wall-clock comparisons need. Per-run history
+is git — these files are committed, so `git log -p <latest.json>` is the record.
+
+### Writing results from an R test
+
+```r
+source("../../../utils.R")   # adjust depth to reach tests/utils.R
+
+save_run(
+  out_dir = file.path("results", "R"),
+  tables = list(mif_coefs.csv = coefs_df),
+  run_config = list(kind = "parameter", model = "measles", RUN_LEVEL = RUN_LEVEL)
+)
+```
+
+List names are output filenames; `.csv.gz` is written gzipped. `proc_time_frame()`
+turns R's `system.time()` vector into the `stage,seconds` frame the reports read.
 
 ### Regenerating
 
-Only after bumping `pomp` and re-running the R scripts:
+Just re-run the test — there is no separate extraction step. Only the R results
+need re-running when `pomp` changes; they are otherwise left alone, since the
+panel measles parameter comparison is budgeted **36 hours** of wall clock
+against 2 hours for its Python counterpart.
 
-```bash
-make freeze-r                                             # everything
-python scripts/freeze_r_results.py freeze --only spx      # one entry
-python scripts/freeze_r_results.py list                   # what's in the spec
-```
+Baselines produced before this convention were migrated in place and carry
+`"provenance": "migrated from MANIFEST.json..."` in their `latest.json`, with no
+`hardware` block. Those fill in the next time each test is actually run.
 
-`scripts/freeze_r_results.py` holds the spec of what gets frozen. Most entries
-are read with `pyreadr` and are bit-exact. The SPX global search is the
-exception: its `.rda` holds a 360-element `mif2List` of S4 `pomp` objects that
-`pyreadr` cannot read at all, so `scripts/extract_spx_search360.R` pulls out the
-likelihoods, IF2 traces, and timings with `pomp` loaded. Those pass through R's
-~15-significant-digit CSV output and so agree with the originals to a relative
-5e-15 — far below the Monte Carlo error these numbers carry, but worth knowing
-before treating them as bit-exact.
-
-`--source-root` lets you read the gitignored source files from another checkout,
-which is what makes it possible to freeze into a git worktree.
-
-### Checking
-
-```bash
-make check-r
-```
-
-verifies every committed CSV still hashes to what its manifest records. It needs
-neither R nor the original binaries, so it is cheap enough to run in CI and will
-catch a hand-edited baseline or a half-finished re-freeze.
+Numbers written by `write.csv()` carry 15 significant digits. The pre-migration
+CSVs were written by pandas at 17, so re-running a test changes the last digit
+or two — a relative 1e-15, far below the Monte Carlo error these estimates
+carry, but worth knowing before diffing an old baseline against a fresh one.

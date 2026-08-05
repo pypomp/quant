@@ -33,9 +33,9 @@ py_results = py_results.drop(
     columns=["logLik", "se", "theta_idx"], errors="ignore"
 ).melt(id_vars=["source", "unit"], var_name="param", value_name="value")
 
-# Load the frozen R baseline (see R_reference/MANIFEST.json for provenance).
+# Load the frozen R baseline (see results/R/latest.json for provenance).
 # Regenerate with `python scripts/freeze_r_results.py freeze` only after a pomp bump.
-r_results = pd.read_csv("R_reference/mif_coefs.csv")
+r_results = pd.read_csv("results/R/mif_coefs.csv")
 r_results["source"] = "R"
 r_results = r_results[["source", "unit", "coef", "names"]].rename(
     columns={"coef": "value", "names": "param"}

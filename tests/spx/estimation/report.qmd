@@ -98,7 +98,7 @@ last_iter = traces_gpu["iteration"].max() if "iteration" in traces_gpu.columns e
 gpu_pfilter_last = traces_gpu[(traces_gpu["iteration" if "iteration" in traces_gpu.columns else "iter"] == last_iter) & (traces_gpu["method"] == "pfilter")]
 best_rep = gpu_pfilter_last.groupby("theta_idx" if "theta_idx" in gpu_pfilter_last.columns else "rep")["logLik"].first().idxmax()
 
-R_REF = "R_reference"
+R_REF = os.path.join("results", "R")
 LL_df_R = pd.read_csv(os.path.join(R_REF, "pfilter_logliks.csv"))[["logLik", "se"]].rename(columns={"logLik": "est"})
 
 traces_gpu_t = ru.process_and_transform_traces(traces_gpu, "python (GPU)")
