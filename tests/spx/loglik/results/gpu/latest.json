@@ -1,59 +1,17 @@
 {
-  "timestamp": "2026-08-04T13:05:20",
-  "execution_time": 2206.7900948524475,
+  "timestamp": "2026-08-05T17:01:54",
   "run_config": {
     "kind": "loglik",
     "model": "spx",
     "RUN_LEVEL": 4,
-    "NP_EVAL": 1000,
-    "NREPS_EVAL": 3600,
-    "MAIN_SEED": 631409,
-    "theta": "sun2024"
+    "MAIN_SEED": 631409
   },
-  "loglik": 11850.589214228,
-  "loglik_stats": {
-    "min": 11850.589214228,
-    "25%": 11850.589214228,
-    "median": 11850.589214228,
-    "75%": 11850.589214228,
-    "max": 11850.589214228,
-    "mean": 11850.589214228
-  },
-  "top_5_estimates": {
-    "theta_idx": [
-      0
-    ],
-    "mu": [
-      0.000368
-    ],
-    "kappa": [
-      0.0314
-    ],
-    "theta": [
-      0.000112
-    ],
-    "xi": [
-      0.00227
-    ],
-    "rho": [
-      -0.738
-    ],
-    "V_0": [
-      5.8675600000000005e-05
-    ]
-  },
-  "method_times": [
-    {
-      "method": "pfilter",
-      "time": 2206.5620234012604
-    }
-  ],
   "results_history": [
     {
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 2206.5620234012604,
+      "execution_time": 1795.2919619083405,
       "config": {
         "J": 1000,
         "reps": 3600,
@@ -62,13 +20,15 @@
     }
   ],
   "pypomp_version": "0.4.9.0",
-  "jax_version": "0.9.0.1",
-  "quant_git_sha": "52b69b4e38ae986f9cea17fb32a8336275c66ed3",
+  "jax_version": "0.11.0",
+  "quant_git_sha": "8853fc51d656b756744f43ce6318594df981d279",
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "56269367",
-    "partition": "gpu"
+    "job_id": "56537489",
+    "partition": "gpu",
+    "gpus": "v100:1",
+    "gpu_type": "Tesla V100-PCIE-16GB"
   }
 }

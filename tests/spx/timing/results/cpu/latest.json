@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-08-05T12:21:45",
-  "pypomp_version": "0.4.9.0",
+  "timestamp": "2026-08-06T10:39:50",
+  "pypomp_version": "0.4.10.0",
   "jax_version": "0.11.0",
-  "quant_git_sha": "df24bcd4afadc949575286f7be604ec1c432de90",
+  "quant_git_sha": "8853fc51d656b756744f43ce6318594df981d279",
   "devices": [
     "cpu:0",
     "cpu:1",
@@ -42,7 +42,7 @@
     "cpu:35"
   ],
   "slurm": {
-    "job_id": "56527532",
+    "job_id": "56604959",
     "partition": "standard",
     "cpus": "36"
   },
@@ -54,8 +54,8 @@
     "NSTARTS": 36
   },
   "timings": {
-    "mif": 270.1719341278076,
-    "pfilter_cold": 8.636882066726685,
-    "pfilter_warm": 7.753386735916138
+    "mif": 261.4139099121094,
+    "pfilter_cold": 6.898203134536743,
+    "pfilter_warm": 6.496587753295898
   }
 }

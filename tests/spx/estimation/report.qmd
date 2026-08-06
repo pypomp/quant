@@ -123,7 +123,7 @@ del traces_long_R
 
 traces_pyr = pd.concat([traces_gpu_t, traces_cpu_t, traces_R_t], ignore_index=True)
 del traces_gpu_t, traces_cpu_t, traces_R_t
-gc.collect()
+_ = gc.collect()
 ```
 
 Here, we overlay the trajectories from R, Python (CPU), and Python (GPU) to compare the search paths directly.
@@ -203,7 +203,7 @@ The 10th and 90th percentile ribbons provide a robust view of convergence. The r
 This plot compares the distribution of final estimated parameters across replicates.
 
 ```{python Plot final estimates density, fig.width = 10, fig.height = 7}
-max_iters = traces_pyr.groupby(["language", "quantity"])["iter"].transform("max")
+max_iters = traces_pyr.groupby(["language", "quantity"], observed=True)["iter"].transform("max")
 final_traces = traces_pyr[traces_pyr["iter"] == max_iters].copy()
 final_traces_zoom = final_traces[final_traces["value_T"].between(-10, 10)]
 
@@ -237,7 +237,7 @@ The density of the final parameter values across replicates should overlap heavi
 ```{python Plot initial estimates density, fig.width = 10, fig.height = 7}
 init_traces = traces_pyr[
     (~traces_pyr["quantity"].isin(["logLik", "loglik"])) & 
-    (traces_pyr["iter"] == traces_pyr.groupby(["language", "quantity"])["iter"].transform("min"))
+    (traces_pyr["iter"] == traces_pyr.groupby(["language", "quantity"], observed=True)["iter"].transform("min"))
 ]
 
 (

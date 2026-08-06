@@ -82,10 +82,18 @@ def process_and_transform_traces(df, language):
 
     res = val.copy()
     pos_mask = np.isin(qty, ["mu", "kappa", "theta", "xi", "V_0"])
-    res[pos_mask] = np.where(val[pos_mask] > 0, np.log(val[pos_mask]), np.nan)
+    val_pos = val[pos_mask]
+    pos_valid = val_pos > 0
+    pos_res = np.full_like(val_pos, np.nan, dtype=np.float64)
+    pos_res[pos_valid] = np.log(val_pos[pos_valid])
+    res[pos_mask] = pos_res
 
     rho_mask = (qty == "rho")
-    res[rho_mask] = np.where(np.abs(val[rho_mask]) < 1, np.log((1 + val[rho_mask]) / (1 - val[rho_mask])), np.nan)
+    val_rho = val[rho_mask]
+    rho_valid = np.abs(val_rho) < 1
+    rho_res = np.full_like(val_rho, np.nan, dtype=np.float64)
+    rho_res[rho_valid] = np.log((1 + val_rho[rho_valid]) / (1 - val_rho[rho_valid]))
+    res[rho_mask] = rho_res
 
     ll_mask = np.isin(qty, ["logLik", "loglik"])
     res[ll_mask] = val[ll_mask]

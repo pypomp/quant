@@ -1,4 +1,4 @@
-.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all
+.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports
 
 install_pypi: install_requirements
 	pip install pypomp
@@ -26,5 +26,11 @@ test-high:
 
 test-all:
 	.venv/bin/python scripts/run_tests.py run tests
+
+DIR ?= tests
+
+render-reports:
+	find $(DIR) -name "*.qmd" -exec quarto render {} \;
+
 
 
