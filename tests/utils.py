@@ -1,25 +1,28 @@
 import datetime
 import json
+import logging
 import os
 import pickle
 import subprocess
 from importlib.metadata import PackageNotFoundError, version
-from typing import Any, Dict, Optional
+from typing import Any
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 
+logger = logging.getLogger(__name__)
 
-def _package_version(name: str) -> Optional[str]:
+
+def _package_version(name: str) -> str | None:
     try:
         return version(name)
     except PackageNotFoundError:
         return None
 
 
-def _git_sha() -> Optional[str]:
+def _git_sha() -> str | None:
     """The quant commit a run was produced from, so a regression can be bisected."""
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     try:
@@ -29,11 +32,11 @@ def _git_sha() -> Optional[str]:
             text=True,
             check=True,
         ).stdout.strip()
-    except Exception:
+    except (subprocess.SubprocessError, OSError):
         return None
 
 
-def _gpu_type() -> Optional[str]:
+def _gpu_type() -> str | None:
     """Detect GPU hardware description if running on GPU."""
     try:
         for d in jax.devices():
@@ -41,8 +44,8 @@ def _gpu_type() -> Optional[str]:
                 hasattr(d, "device_kind") and d.device_kind.lower() != "cpu"
             ):
                 return getattr(d, "device_kind", str(d))
-    except Exception:
-        pass
+    except (RuntimeError, OSError) as exc:
+        logger.debug("Failed to detect GPU via JAX: %s", exc)
     for env_var in ("SLURM_JOB_GRES", "SLURM_GPUS"):
         val = os.environ.get(env_var)
         if val:
@@ -50,7 +53,7 @@ def _gpu_type() -> Optional[str]:
     return None
 
 
-def run_metadata(run_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def run_metadata(run_config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Provenance for a single run.
 
     Everything here is needed to answer "which pypomp, on what hardware, from
@@ -58,7 +61,7 @@ def run_metadata(run_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     try:
         devices = [str(d) for d in jax.devices()]
-    except Exception:
+    except (RuntimeError, OSError):
         devices = []
 
     slurm_info = {
@@ -78,7 +81,9 @@ def run_metadata(run_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         slurm_info["gpu_type"] = gpu_type
 
     return {
-        "timestamp": datetime.datetime.now().replace(microsecond=0).isoformat(),
+        "timestamp": datetime.datetime.now(datetime.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat(),
         "pypomp_version": _package_version("pypomp"),
         "jax_version": _package_version("jax"),
         "quant_git_sha": _git_sha(),
@@ -91,11 +96,11 @@ def run_metadata(run_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
 def save_run(
     pomp_obj: Any,
     out_dir: str,
-    run_config: Optional[Dict[str, Any]] = None,
-    execution_time: Optional[float] = None,
+    run_config: dict[str, Any] | None = None,
+    execution_time: float | None = None,
     pickle_name: str = "fitted.pkl",
     write_traces: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Persist one run: pickle as fallback, text as the record.
 
     Writes into `out_dir`:
@@ -125,7 +130,7 @@ def save_run(
                 path = os.path.join(out_dir, name)
                 df.to_csv(path, index=False)
                 return len(df)
-        except Exception as e:
+        except (AttributeError, TypeError, ValueError, OSError, RuntimeError) as e:
             print(f"  note: could not write {name}: {type(e).__name__}: {e}")
         return None
 
@@ -157,7 +162,7 @@ def pfilter_logliks_frame(pomp_obj: Any, history_index: int = -1):
     frozen R references.
     """
     entry = pomp_obj.results_history[history_index]
-    arr = np.asarray(getattr(entry, "logLiks"))
+    arr = np.asarray(entry.logLiks)
     if arr.ndim == 1:
         arr = arr[None, :]
 
@@ -201,7 +206,7 @@ def _json_safe(val, _depth: int = 0):
     return str(val)
 
 
-def _entry_fields(entry: Any) -> Dict[str, Any]:
+def _entry_fields(entry: Any) -> dict[str, Any]:
     """Field mapping for one results_history entry.
 
     pypomp's Result objects expose their contents as properties rather than in
@@ -222,7 +227,7 @@ def _entry_fields(entry: Any) -> Dict[str, Any]:
             continue
         try:
             value = getattr(entry, name)
-        except Exception:
+        except (AttributeError, TypeError, ValueError, RuntimeError):
             continue
         if callable(value):
             continue
@@ -232,9 +237,9 @@ def _entry_fields(entry: Any) -> Dict[str, Any]:
 
 def get_pomp_metrics(
     pomp_obj: Any,
-    run_config: Optional[Dict[str, Any]] = None,
+    run_config: dict[str, Any] | None = None,
     **_kwargs,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Summarise a run for `latest.json`: provenance and the algorithmic
     configuration pypomp actually executed.
@@ -254,7 +259,9 @@ def get_pomp_metrics(
         run_config (dict, optional): Metadata for the run (e.g., N_UNITS, RUN_LEVEL).
     """
     metrics = {
-        "timestamp": datetime.datetime.now().isoformat(),
+        "timestamp": datetime.datetime.now(datetime.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat(),
         "run_config": run_config or {},
     }
 
@@ -293,7 +300,7 @@ def get_pomp_metrics(
                 metrics["results_history"].append(parsed_entry)
         else:
             metrics["results_history"] = []
-    except Exception as e:
+    except (AttributeError, TypeError, ValueError, RuntimeError) as e:
         metrics["results_history"] = {"error": str(e)}
 
     return metrics

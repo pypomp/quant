@@ -48,7 +48,7 @@ If a single script tests both CPU and GPU execution methods, you can group them 
 #       output: "cpu_results/logs/slurm-%j.out"
 #     env:
 #       USE_CPU: "true"
-# 
+#
 # run_levels:
 #   1:
 #     sbatch_args: { time: "00:00:30" }
@@ -199,18 +199,17 @@ For convenience, several target shortcuts are defined in the root `makefile` to 
 
 ## 4. Test Layout: models and kinds
 
-Tests are organised **model first, then kind**. `tests/spx/` is the migrated
-example; the other models still use the older ad-hoc layout.
+Most tests should be organized **model first, then kind**. 
 
 ```
 tests/<model>/
     model.py / model.R      # the benchmark's shared setup, defined once
-    report.qmd              # one report per model, reading from every kind
     <kind>/
         run.py              # the pypomp entrypoint (always this name)
         run.R               # the R baseline, if there is one
+        report.qmd          # one report per kind
         results/<platform>/ # run outputs; CSV/JSON committed, .pkl not
-        results/R/          # the R record; CSV/JSON committed, .rds not
+        results/R/          # the R record; CSV/JSON committed, .rds/.rda not
 ```
 
 There are five kinds. Which one a test belongs to is decided by a single
@@ -252,12 +251,13 @@ half does. At the end of a run the script calls `save_run()` from
 `tests/utils.R`, which writes into `results/R/`:
 
 ```
-tests/measles/R_comparison/parameter_comparison/
-    measles.R                      # the producing script
+tests/spx/loglik/
+    run.R                          # the producing script
     results/
-        mif_coefs.rds              # bulk output, gitignored
         R/
-            mif_coefs.csv          # committed, human-readable, diffable
+            spx_results_eval.rda   # the stew/bake cache, gitignored
+            pfilter_logliks.csv    # committed, human-readable, diffable
+            timings.csv            # committed
             latest.json            # committed, provenance
             logs/                  # gitignored
     report.qmd                     # reads results/R/

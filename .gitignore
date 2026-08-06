@@ -5,6 +5,8 @@ scratch
 pyrightconfig.json
 test_config.yaml
 tests/lotka_volterra
+pypomp_src
+.claude
 
 # Omit profiles (too big)
 measles/gpu/measles_profiler

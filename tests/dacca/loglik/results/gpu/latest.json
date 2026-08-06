@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-08-06T17:04:21+00:00",
+  "run_config": {
+    "kind": "loglik",
+    "model": "dacca",
+    "RUN_LEVEL": 4,
+    "MAIN_SEED": 631409,
+    "NP_EVAL": 5000,
+    "NREPS_EVAL": 3600,
+    "execution_time": 1069.3081002235413
+  },
+  "results_history": [
+    {
+      "method": "pfilter",
+      "kind": "table",
+      "panel": false,
+      "execution_time": 1069.115594625473,
+      "config": {
+        "J": 5000,
+        "reps": 3600,
+        "thresh": 0.0
+      }
+    }
+  ],
+  "pypomp_version": "0.4.10.0",
+  "jax_version": "0.11.0",
+  "quant_git_sha": "3646a0c7c5fe980a7e89f2c949e6597e15b44b39",
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "56607558",
+    "partition": "gpu",
+    "gpus": "v100:1",
+    "gpu_type": "Tesla V100-PCIE-16GB"
+  }
+}

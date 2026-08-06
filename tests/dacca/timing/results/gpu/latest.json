@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-08-06T20:18:36+00:00",
+  "pypomp_version": "0.4.10.0",
+  "jax_version": "0.11.0",
+  "quant_git_sha": "3646a0c7c5fe980a7e89f2c949e6597e15b44b39",
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "56619141",
+    "partition": "gpu-rtx6000",
+    "gpus": "rtx_pro_6000_blackwell:1",
+    "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+  },
+  "run_config": {
+    "kind": "timing",
+    "model": "dacca",
+    "RUN_LEVEL": 4,
+    "USE_CPU": false,
+    "MAIN_SEED": 631409,
+    "NP": 5000,
+    "NFITR": 100,
+    "NSTARTS": 36,
+    "NREPS": 36
+  },
+  "timings": {
+    "mif": 55.610655069351196,
+    "pfilter_cold": 12.078813314437866,
+    "pfilter_warm": 10.578927755355835
+  }
+}

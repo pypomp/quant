@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-06T20:04:43+00:00",
+  "timestamp": "2026-08-06T20:35:02+00:00",
   "pypomp_version": "0.4.10.0",
   "jax_version": "0.11.0",
   "quant_git_sha": "3646a0c7c5fe980a7e89f2c949e6597e15b44b39",
@@ -42,20 +42,24 @@
     "cpu:35"
   ],
   "slurm": {
-    "job_id": "56616030",
+    "job_id": "56619142",
     "partition": "standard",
     "cpus": "36"
   },
   "run_config": {
     "kind": "timing",
-    "model": "spx",
+    "model": "dacca",
     "RUN_LEVEL": 4,
+    "USE_CPU": true,
     "MAIN_SEED": 631409,
-    "NSTARTS": 36
+    "NP": 5000,
+    "NFITR": 100,
+    "NSTARTS": 36,
+    "NREPS": 36
   },
   "timings": {
-    "mif": 283.1346015930176,
-    "pfilter_cold": 8.046361923217773,
-    "pfilter_warm": 7.17952299118042
+    "mif": 516.5988078117371,
+    "pfilter_cold": 86.38866972923279,
+    "pfilter_warm": 87.65334510803223
   }
 }

@@ -43,9 +43,9 @@ Nreps_global <- switch(run_level, 10, 15, 20, 120 * 3)
 sp500.filt <- spx_filt()
 global_starts <- spx_starts(Nreps_global)
 
-dir.create("R_results", showWarnings = FALSE, recursive = TRUE)
+dir.create(file.path("results", "R"), showWarnings = FALSE, recursive = TRUE)
 
-stew(file = "R_results/spx_results.rda", {
+stew(file = file.path("results", "R", "spx_results.rda"), {
   t.box <- system.time({
     t.if.box <- system.time({
       if.box <- foreach(
@@ -93,12 +93,15 @@ colnames(logliks) <- c("logLik", "se")
 logliks$replicate <- seq_len(nrow(logliks))
 logliks <- logliks[, c("replicate", "logLik", "se")]
 
-traces_df <- do.call(rbind, lapply(seq_along(if.box), function(i) {
-  tr <- as.data.frame(traces(if.box[[i]]))
-  tr$iteration <- seq_len(nrow(tr)) - 1L # iteration 0 is the starting value
-  tr$replicate <- i
-  tr
-}))
+traces_df <- do.call(
+  rbind,
+  lapply(seq_along(if.box), function(i) {
+    tr <- as.data.frame(traces(if.box[[i]]))
+    tr$iteration <- seq_len(nrow(tr)) - 1L # iteration 0 is the starting value
+    tr$replicate <- i
+    tr
+  })
+)
 id_cols <- c("replicate", "iteration")
 traces_df <- traces_df[, c(id_cols, setdiff(colnames(traces_df), id_cols))]
 

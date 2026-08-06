@@ -23,8 +23,9 @@ Below is a list of quantitative test reports available in this repository:
 * **[Fixed-Parameter Likelihood Validation](tests/spx/loglik/report.html)** (`tests/spx/loglik`): Evaluates particle filter log-likelihood estimates at fixed parameter values (`rep3600`) via two-sample KS test.
 
 ### 2. Dhaka Cholera Model
-* **[Dhaka Report](tests/dacca/report.html)** (`tests/dacca`): Analyzes the performance, runtime, and parameter convergence of IF2 versus IFAD for the Dhaka cholera model.
-Also checks that the particle filter yields the same distribution of log likelihoods in both `pypomp` and `pomp`.
+* **[IF2 vs IFAD](tests/dacca/algorithms/report.html)** (`tests/dacca/algorithms`): Compares how far iterated filtering alone and iterated filtering with gradient training get on the same likelihood for a comparable wall-clock budget.
+* **[Runtime & Performance Benchmark](tests/dacca/timing/report.html)** (`tests/dacca/timing`): Benchmarks IF2 and particle filter execution speed in `pypomp` (CPU/GPU) against R `pomp`, on identical work.
+* **[Fixed-Parameter Likelihood Validation](tests/dacca/loglik/report.html)** (`tests/dacca/loglik`): Checks that the particle filter yields the same distribution of log-likelihoods in `pypomp` and `pomp` at the published MLE.
 
 ### 3. Random Number Generators
 * **[Random Number Generators Benchmark & Comparison](tests/samplers/test.html)** (`tests/samplers`): Benchmarks the execution speed and validates the statistical accuracy of `pypomp`'s fast approximate inverse CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.

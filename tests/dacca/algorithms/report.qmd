@@ -1,0 +1,318 @@
+---
+title: "Dhaka Cholera: IF2 vs IFAD"
+subtitle: "Which algorithm reaches the higher likelihood for a comparable budget"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML, Markdown
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('algorithms')}</div>"))
+```
+
+## Introduction
+
+This report compares two `pypomp` fitting pipelines on the Dhaka cholera model:
+
+1. **IF2** — iterated filtering alone.
+2. **IFAD** — iterated filtering followed by gradient-based training.
+
+Both arms start from the same points drawn from the same box, and IF2 is given
+enough extra iterations that the two arms cost roughly the same wall clock. The
+question is therefore not which is faster but which gets further for the money.
+
+The Dhaka model has a very fast transition process but many simulator calls per
+observation, so it is unusually sensitive to per-step framework overhead. A wall
+clock that drifts upward here is the first sign of that overhead growing.
+
+A more thorough version of this analysis is available [here](https://github.com/pypomp/dmop).
+
+::: {.callout-note collapse="true"}
+### Parameter definitions
+
+- **`gamma`**: Recovery rate from infection.
+- **`m`**: Cholera mortality rate.
+- **`rho`**: Reporting rate of cholera cases.
+- **`epsilon`**: Rate of waning of immunity for inapparent infections.
+- **`c`**: Fraction of infections that lead to severe infection.
+- **`alpha`**: Non-linear transmission factor.
+- **`delta`**: Cholera-induced mortality rate.
+- **`beta_trend`**: Long-term secular trend in transmission.
+- **`sigma`**: Environmental noise intensity.
+- **`tau`**: Measurement noise (overdispersion parameter).
+- **`bs1` - `bs6`**: Spline coefficients modeling seasonal transmission rates.
+- **`omegas1` - `omegas6`**: Spline coefficients for seasonal environmental reservoir.
+- **`S_0`, `I_0`, `Y_0`, `R1_0`, `R2_0`, `R3_0`**: Initial compartment fractions.
+
+`rho`, `c`, `alpha`, `delta` and `Y_0` are held fixed by both searches.
+:::
+
+---
+
+## Setup & Environment
+
+```{python Environment setup}
+import numpy as np
+import pandas as pd
+from plotnine import (
+    ggplot, aes, geom_line, geom_density, facet_wrap, labs,
+    coord_cartesian, theme
+)
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+ARMS = {"if2": "IF2", "ifad": "IFAD"}
+
+meta = {arm: ru.load_json(os.path.join("results", arm, "latest.json")) for arm in ARMS}
+final = {
+    arm: pd.read_csv(os.path.join("results", arm, "results_final.csv"))
+    for arm in ARMS
+}
+logliks = {
+    arm: pd.read_csv(os.path.join("results", arm, "pfilter_logliks.csv"))
+    for arm in ARMS
+}
+timings = {
+    arm: pd.read_csv(os.path.join("results", arm, "timings.csv")) for arm in ARMS
+}
+traces = {
+    arm: ru.load_traces(os.path.join("results", arm, "traces.csv.gz"), label)
+    for arm, label in ARMS.items()
+}
+```
+
+::: {.callout-note collapse="true"}
+### Run provenance
+```{python Provenance}
+for arm, label in ARMS.items():
+    print(f"{label}:")
+    print(ru.format_metadata(meta[arm]), end="")
+    print(f"Configuration:  {meta[arm].get('run_config', {})}\n")
+```
+
+:::
+
+---
+
+## Runtimes
+
+::: {.callout-note}
+### Validation expectation
+IF2 alone should take a little longer than IFAD overall — the point of the
+comparison is that IFAD reaches a better likelihood in the same or less time.
+`train` should also cost no more than about three times what a `mif` iteration
+costs.
+:::
+
+```{python Runtime tables, output='asis'}
+rows = []
+for arm, label in ARMS.items():
+    tm = timings[arm]
+    cfg = meta[arm].get("run_config", {})
+    per_stage = tm.groupby("method", sort=False)["time"].sum()
+    n_mif = cfg.get("NFITR")
+    n_train = cfg.get("NTRAIN") or 0
+    rows.append({
+        "Pipeline": label,
+        "mif (s)": f"{per_stage.get('mif', np.nan):.1f}",
+        "train (s)": f"{per_stage.get('train', 0.0):.1f}",
+        "pfilter (s)": f"{per_stage.get('pfilter', np.nan):.1f}",
+        "Total (s)": f"{tm['time'].sum():.1f}",
+        "mif iters": n_mif,
+        "train iters": n_train,
+        "s / mif iter": f"{per_stage.get('mif', np.nan) / n_mif:.3f}" if n_mif else "—",
+        "s / train iter": f"{per_stage.get('train', 0.0) / n_train:.3f}" if n_train else "—",
+    })
+
+display(HTML(pd.DataFrame(rows).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+---
+
+## Final log-likelihoods
+
+::: {.callout-note}
+### Validation expectation
+We expect a maximum IFAD log-likelihood around -3744.0 and a maximum IF2
+log-likelihood around -3748.5.
+:::
+
+```{python Loglik summary, output='asis'}
+summary = pd.DataFrame([
+    {
+        "Pipeline": label,
+        "Starts": len(final[arm]),
+        "Mean": final[arm]["logLik"].mean(),
+        "Std": final[arm]["logLik"].std(),
+        "Min": final[arm]["logLik"].min(),
+        "Median": final[arm]["logLik"].median(),
+        "Max": final[arm]["logLik"].max(),
+    }
+    for arm, label in ARMS.items()
+]).round(2)
+
+display(HTML(summary.to_html(classes="table table-striped table-hover", index=False)))
+```
+
+```{python Loglik density, fig.width=8, fig.height=5}
+ll_df = pd.concat(
+    [
+        pd.DataFrame({"logLik": final[arm]["logLik"], "source": label})
+        for arm, label in ARMS.items()
+    ],
+    ignore_index=True,
+)
+# A handful of starts stall far below the mode; clipping keeps the KDE readable.
+ll_df = ll_df[ll_df["logLik"] >= -3800]
+
+(
+    ggplot(ll_df, aes(x="logLik", fill="source", color="source"))
+    + geom_density(alpha=0.4)
+    + labs(
+        title="Final logLik density: IF2 vs IFAD",
+        subtitle="Evaluated likelihood at each start's final parameter vector",
+        x="Log-Likelihood", y="Density", fill="Pipeline", color="Pipeline",
+    )
+    + ru.scale_fill_premium()
+    + ru.scale_color_premium()
+    + ru.theme_premium
+)
+```
+
+---
+
+## Final parameter estimates
+
+::: {.callout-note}
+### Validation expectation
+IFAD tends to yield parameter estimates with lower Monte Carlo variance than
+IF2 alone, so its density curves should be the narrower ones.
+:::
+
+```{python Parameter density, fig.width=10, fig.height=15}
+param_cols = [
+    c for c in final["if2"].columns if c not in ("theta_idx", "logLik", "se")
+]
+params_df = pd.concat(
+    [
+        final[arm][param_cols].melt(var_name="quantity", value_name="param_value").assign(source=label)
+        for arm, label in ARMS.items()
+    ],
+    ignore_index=True,
+)
+
+(
+    ggplot(params_df, aes(x="param_value", fill="source", color="source"))
+    + geom_density(alpha=0.4)
+    + facet_wrap("quantity", scales="free", ncol=3)
+    + labs(
+        title="Final parameter estimates: IF2 vs IFAD",
+        subtitle="Density across all starts",
+        x="Estimated value", y="Density", fill="Pipeline", color="Pipeline",
+    )
+    + ru.scale_fill_premium()
+    + ru.scale_color_premium()
+    + ru.theme_premium
+    + theme(figure_size=(10, 15), panel_spacing=0.02)
+)
+```
+
+---
+
+## Search traces
+
+```{python Traces long}
+have_traces = all(t is not None for t in traces.values())
+if have_traces:
+    long = {arm: ru.to_long(traces[arm]) for arm in ARMS}
+```
+
+::: {.callout-note}
+### Validation expectation
+The IF2 traces should not look terrible, but several parameters in this model
+are weakly identified, so tight convergence is not expected everywhere. Under
+IFAD, most parameters should tighten once the search switches from `mif` to
+`train`.
+:::
+
+```{python IF2 parameter traces, fig.width=10, fig.height=15}
+if have_traces:
+    p = (
+        ggplot(long["if2"], aes(x="iter", y="param_value", group="rep", color="factor(rep)"))
+        + geom_line(show_legend=False, alpha=0.5)
+        + facet_wrap("quantity", scales="free_y", ncol=3)
+        + labs(
+            title="IF2 parameter traces",
+            subtitle="Individual start paths across iterations",
+            x="Iteration", y="Parameter value",
+        )
+        + ru.theme_premium
+        + theme(figure_size=(10, 15), panel_spacing=0.02)
+    )
+    display(p)
+else:
+    display(Markdown("_No traces on disk._"))
+```
+
+```{python IFAD parameter traces, fig.width=10, fig.height=15}
+if have_traces:
+    p = (
+        ggplot(long["ifad"], aes(x="iter", y="param_value", group="rep", color="factor(rep)"))
+        + geom_line(show_legend=False, alpha=0.5)
+        + facet_wrap("quantity", scales="free_y", ncol=3)
+        + labs(
+            title="IFAD parameter traces",
+            subtitle="Individual start paths across mif and train iterations",
+            x="Iteration", y="Parameter value",
+        )
+        + ru.theme_premium
+        + theme(figure_size=(10, 15), panel_spacing=0.02)
+    )
+    display(p)
+else:
+    display(Markdown("_No traces on disk._"))
+```
+
+```{python Loglik traces, fig.width=8, fig.height=8}
+if have_traces:
+    ll_traces = pd.concat(
+        [
+            ru.thin(traces[arm])[["rep", "iter", "logLik", "source"]].dropna(subset=["logLik"])
+            for arm in ARMS
+        ],
+        ignore_index=True,
+    )
+    p = (
+        ggplot(ll_traces, aes(x="iter", y="logLik", group="rep", color="factor(rep)"))
+        + geom_line(show_legend=False, alpha=0.6)
+        + facet_wrap("source", ncol=1, scales="free_x")
+        + coord_cartesian(ylim=(-4000, None))
+        + labs(
+            title="logLik traces",
+            subtitle="Log-likelihood trajectory of each start",
+            x="Iteration", y="Log-Likelihood",
+        )
+        + ru.theme_premium
+        + theme(figure_size=(8, 8))
+    )
+    display(p)
+else:
+    display(Markdown("_No traces on disk._"))
+```
