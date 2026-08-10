@@ -45,7 +45,7 @@ SHARED_PARAMS = ["R0", "sigma", "gamma", "sigmaSE", "cohort", "amplitude"]
 SPECIFIC_PARAMS = ["iota", "rho", "psi", "S_0", "E_0", "I_0", "R_0"]
 
 # Load MLE parameters from CSV
-mle_params = pd.read_csv("../../../../measles/R_comparison/data/AK_mles.csv")
+mle_params = pd.read_csv("../../../../measles/data/AK_mles.csv")
 
 # Extract MLEs for the chosen units
 mles = mle_params.set_index("town").loc[CHOSEN_UNITS]

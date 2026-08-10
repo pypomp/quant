@@ -31,8 +31,10 @@ Below is a list of quantitative test reports available in this repository:
 * **[Random Number Generators Benchmark & Comparison](tests/samplers/test.html)** (`tests/samplers`): Benchmarks the execution speed and validates the statistical accuracy of `pypomp`'s fast approximate inverse CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
 
 ### 4. Measles Model
-* **[Log-Likelihood and Parameter Comparison: Pypomp vs R](tests/measles/R_comparison/report.html)** (`tests/measles/R_comparison`): Compares distributions of log-likelihood and parameter estimates obtained via `pypomp` versus R's `pomp`.
-* **[Runtime Comparison: Pypomp vs R](tests/measles/R_comparison/speed_comparison/report.html)** (`tests/measles/R_comparison/speed_comparison`): Benchmarks runtime of IF2 on a discrete measles model using `pypomp` versus `pomp`. This demonstrates the utility of the fast samplers in `pypomp.random`.
+* **[Fixed-Parameter Likelihood Validation](tests/measles/loglik/report.html)** (`tests/measles/loglik`): Compares the distribution of particle filter log-likelihoods at the He et al. (2010) estimates in `pypomp` (32- and 64-bit) against R's `pomp`.
+* **[Parameter Estimation](tests/measles/estimation/report.html)** (`tests/measles/estimation`): Compares the distribution of IF2 parameter estimates from a global search in `pypomp` versus `pomp`, from identical starting points.
+* **[Runtime & Throughput Benchmark](tests/measles/timing/report.html)** (`tests/measles/timing`): Benchmarks IF2 and particle filter execution speed on the discrete measles model. Contrasts `pypomp` on GPU and CPU with R `pomp`, and the fast samplers in `pypomp.random` with stock JAX samplers.
+* **[IF2 vs IFAD](tests/measles/algorithms/report.html)** (`tests/measles/algorithms`): Compares how far iterated filtering alone and iterated filtering with gradient training get on the continuous-time measles model for a comparable wall-clock budget.
 
 ### 5. Panel Measles Model
 * **[Panel Measles (mixed parameters)](tests/panel_measles/R_comparison/mixed/report.html)** (`tests/panel_measles/R_comparison/mixed`): Compares parameter and log-likelihood estimates on a panel measles dataset using `pypomp` and R's `pomp`.

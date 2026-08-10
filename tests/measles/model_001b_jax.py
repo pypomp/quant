@@ -207,7 +207,7 @@ def rmeas(
     v = m * (1.0 - rho + psi**2 * m)
     tol = 1.0e-18
     cases = jax.random.normal(key) * (jnp.sqrt(v) + tol) + m
-    return jnp.where(cases > 0.0, jnp.round(cases), 0.0)
+    return {"cases": jnp.where(cases > 0.0, jnp.round(cases), 0.0)}
 
 
 def to_est(theta: ParamDict) -> ParamDict:

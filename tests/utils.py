@@ -149,6 +149,63 @@ def save_run(
     return metrics
 
 
+def save_run_multi(
+    pomp_objs: dict[str, Any],
+    out_dir: str,
+    run_config: dict[str, Any] | None = None,
+    group_column: str = "unit",
+    pickle_name: str = "fitted.pkl",
+    write_traces: bool = True,
+) -> dict[str, Any]:
+    """`save_run` for a test that fits one object per group.
+
+    Measles fits each town separately, so there is no single object whose
+    `results()` is the run. The tables written here are the per-group tables
+    concatenated with a leading `group_column`, so a report reads the same
+    filenames it would for a single-object run and simply groups by that
+    column. The pickle holds the whole mapping.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    with open(os.path.join(out_dir, pickle_name), "wb") as f:
+        pickle.dump(pomp_objs, f)
+
+    def _try_write(name, method):
+        frames = []
+        for group, obj in pomp_objs.items():
+            try:
+                df = getattr(obj, method)()
+            except (AttributeError, TypeError, ValueError, RuntimeError) as e:
+                print(f"  note: could not build {name} for {group}: {e}")
+                continue
+            if isinstance(df, pd.DataFrame) and not df.empty:
+                df = df.copy()
+                df.insert(0, group_column, group)
+                frames.append(df)
+        if not frames:
+            return None
+        out = pd.concat(frames, ignore_index=True)
+        out.to_csv(os.path.join(out_dir, name), index=False)
+        return len(out)
+
+    _try_write("results.csv", "results")
+    _try_write("timings.csv", "time")
+    if write_traces:
+        _try_write("traces.csv.gz", "traces")
+
+    metrics = run_metadata(run_config)
+    metrics["results_history"] = {
+        group: get_pomp_metrics(obj).get("results_history", [])
+        for group, obj in pomp_objs.items()
+    }
+
+    with open(os.path.join(out_dir, "latest.json"), "w") as f:
+        json.dump(metrics, f, indent=2, default=str)
+        f.write("\n")
+
+    return metrics
+
+
 def pfilter_logliks_frame(pomp_obj: Any, history_index: int = -1):
     """Per-replicate pfilter log-likelihoods as a tidy frame.
 

@@ -39,7 +39,7 @@ source("../panel_measles_shared.R")
 
 
 # Load MLE parameters and build panel parameters
-mle_params <- read.csv("../../../../measles/R_comparison/data/AK_mles.csv", stringsAsFactors = FALSE)
+mle_params <- read.csv("../../../../measles/data/AK_mles.csv", stringsAsFactors = FALSE)
 mles <- mle_params %>% filter(town %in% units)
 
 shared_names <- c("R0", "sigma", "gamma", "sigmaSE", "cohort", "amplitude")

@@ -1,0 +1,223 @@
+---
+title: "Measles Runtime & Throughput Benchmark"
+subtitle: "Execution speed of IF2 and pfilter: R pomp vs. pypomp"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
+```
+
+## Introduction
+
+Measles is the expensive end of the benchmark suite: 365 Euler steps per year
+over 14 years of weekly London data, with a covariate table interpolated at
+every step. That makes it the case where acceleration matters most.
+
+Four configurations run identical work — same model, same committed starting
+points, same iteration and particle counts:
+
+| Configuration | What it isolates |
+|---|---|
+| R `pomp`, 36 CPU cores | the baseline |
+| `pypomp` GPU, fast samplers | end-to-end acceleration |
+| `pypomp` GPU, stock JAX samplers | what `pypomp.random` contributes |
+| `pypomp` 36 CPU cores | acceleration without a GPU |
+
+The GPU pair is the interesting one: both run the same model on the same
+device and differ only in how random variates are drawn.
+
+---
+
+## Setup & Environment
+
+::: {.callout-note collapse="true"}
+### System & Environment Information
+```{python Environment Setup}
+import numpy as np
+import pandas as pd
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+CONFIGS = {
+    "R": os.path.join("results", "R"),
+    "pypomp (GPU)": os.path.join("results", "gpu"),
+    "pypomp (GPU, JAX samplers)": os.path.join("results", "gpu_jax"),
+    "pypomp (CPU)": os.path.join("results", "cpu"),
+}
+
+timings = {}
+configs = {}
+missing = []
+for label, d in CONFIGS.items():
+    tm = ru.read_if_exists(os.path.join(d, "timings.csv"))
+    if tm is None:
+        missing.append((label, os.path.join(d, "timings.csv")))
+        continue
+    timings[label] = dict(zip(tm["phase"], tm["time_seconds"]))
+    configs[label] = ru.load_json(os.path.join(d, "latest.json")).get("run_config", {}) or {}
+
+for label, d in CONFIGS.items():
+    meta = ru.load_json(os.path.join(d, "latest.json"))
+    print(f"{label}:")
+    print(ru.format_r_metadata(meta) if label == "R" else ru.format_metadata(meta), end="")
+    print()
+```
+
+:::
+
+```{python Missing sources, results='asis'}
+for label, path in missing:
+    display(HTML(ru.missing_note(label, path)))
+```
+
+---
+
+## Timing Comparison
+
+`pfilter_warm` is the timed figure: the first `pfilter` call pays JIT
+compilation, which is a one-off cost and not what the throughput comparison is
+about. The cold time is reported separately below.
+
+```{python Timing table}
+def phase(label, name):
+    """Look up a phase time, tolerating the pre-refactor R label `pfilter`."""
+    row = timings.get(label, {})
+    if name in row:
+        return row[name]
+    if name == "pfilter_warm" and "pfilter" in row:
+        return row["pfilter"]
+    return np.nan
+
+r_mif = phase("R", "mif")
+r_pf = phase("R", "pfilter_warm")
+r_total = r_mif + r_pf
+
+rows = []
+for label in CONFIGS:
+    if label not in timings:
+        continue
+    mif = phase(label, "mif")
+    pf = phase(label, "pfilter_warm")
+    total = mif + pf
+    cfg = configs.get(label, {})
+    rows.append({
+        "Configuration": label,
+        "Starts x reps": f"{cfg.get('NSTARTS', '?')} x {cfg.get('NREPS', '?')}",
+        "IF2 (s)": mif,
+        "IF2 speedup": r_mif / mif if mif else np.nan,
+        "Pfilter (s)": pf,
+        "Pfilter speedup": r_pf / pf if pf else np.nan,
+        "Total (s)": total,
+        "Total speedup": r_total / total if total else np.nan,
+    })
+
+timing_df = pd.DataFrame(rows)
+display(HTML(timing_df.round(2).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+::: {.callout-important}
+### Comparability
+Speedups are only meaningful when every row ran the same run level and the
+same starts-by-reps grid. Check the `Starts x reps` column before reading the
+factors; a row that ran a different level is timing different work.
+:::
+
+```{python Cold vs warm}
+cold_rows = [
+    {
+        "Configuration": label,
+        "Pfilter cold (s)": phase(label, "pfilter_cold"),
+        "Pfilter warm (s)": phase(label, "pfilter_warm"),
+        "Compilation overhead (s)": phase(label, "pfilter_cold") - phase(label, "pfilter_warm"),
+    }
+    for label in CONFIGS
+    if label in timings and not np.isnan(phase(label, "pfilter_cold"))
+]
+
+if cold_rows:
+    display(HTML(
+        pd.DataFrame(cold_rows).round(2).to_html(
+            classes="table table-striped table-hover", index=False
+        )
+    ))
+else:
+    display(HTML("<p><em>No cold-start timings recorded (R does not compile per call).</em></p>"))
+```
+
+---
+
+## Are the fast configurations getting the same answer?
+
+A speedup is only worth anything if the estimates agree. Each configuration
+writes the log-likelihoods its timed run produced; those distributions should
+overlap.
+
+```{python Loglik agreement, fig.width = 9, fig.height = 5}
+from plotnine import ggplot, aes, geom_density, labs
+
+ll_frames = []
+for label, d in CONFIGS.items():
+    res = ru.read_if_exists(os.path.join(d, "results.csv"))
+    if res is None:
+        continue
+    col = "mean_logLik" if "mean_logLik" in res.columns else "logLik"
+    if col not in res.columns:
+        continue
+    sub = res[[col]].dropna().drop_duplicates().rename(columns={col: "logLik"})
+    sub["source"] = label
+    ll_frames.append(sub)
+
+if ll_frames:
+    ll = pd.concat(ll_frames, ignore_index=True)
+    display(HTML(
+        ru.summarize(ll, ["source"]).round(3).to_html(
+            classes="table table-striped table-hover", index=False
+        )
+    ))
+    display(
+        ggplot(ll, aes(x="logLik", fill="source", color="source"))
+        + geom_density(alpha=0.35)
+        + labs(
+            title="Log-likelihood reached by each timed configuration",
+            x="Log-likelihood",
+            y="Density",
+            fill="Source",
+            color="Source",
+        )
+        + ru.scale_fill_premium()
+        + ru.scale_color_premium()
+        + ru.theme_premium
+    )
+else:
+    display(HTML("<p><em>No results.csv found for any configuration.</em></p>"))
+```
+
+::: {.callout-note}
+### Expectation
+- **GPU acceleration**: `pypomp` on the GPU should be substantially faster than
+  36 R cores on a model this step-heavy.
+- **Fast samplers**: the fast-sampler GPU run should beat the stock-JAX GPU run;
+  the gap between them is what `pypomp.random` is worth here.
+- **Agreement**: the log-likelihood densities should overlap regardless of
+  configuration.
+:::

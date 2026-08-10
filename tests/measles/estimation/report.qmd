@@ -1,0 +1,174 @@
+---
+title: "Measles Parameter Estimation"
+subtitle: "Distribution of IF2 parameter estimates: R pomp vs. pypomp"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('estimation')}</div>"))
+```
+
+## Introduction
+
+This report compares where IF2 ends up. Both implementations run the same
+number of iterations from the same committed starting points
+(`../starting_parameters.csv`) with the same perturbation sizes, so the
+distribution of final parameter estimates should agree.
+
+What varies within each run is the starting point; the seed varies too, so the
+comparison is between distributions rather than between individual fits.
+
+---
+
+## Setup & Data Loading
+
+::: {.callout-note collapse="true"}
+### System & Environment Information
+```{python Environment Setup}
+import numpy as np
+import pandas as pd
+from plotnine import ggplot, aes, geom_density, facet_wrap, labs
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+PY_DIR = os.path.join("results", "gpu")
+R_DIR = os.path.join("results", "R")
+
+py_results = ru.read_if_exists(os.path.join(PY_DIR, "results.csv"))
+r_coefs = ru.read_if_exists(os.path.join(R_DIR, "mif_coefs.csv"))
+
+missing = []
+if py_results is None:
+    missing.append(("pypomp results", os.path.join(PY_DIR, "results.csv")))
+if r_coefs is None:
+    missing.append(("R baseline", os.path.join(R_DIR, "mif_coefs.csv")))
+
+print("pypomp:")
+print(ru.format_metadata(ru.load_json(os.path.join(PY_DIR, "latest.json"))), end="")
+print("\nR pomp:")
+print(ru.format_r_metadata(ru.load_json(os.path.join(R_DIR, "latest.json"))), end="")
+```
+
+:::
+
+```{python Missing sources, results='asis'}
+for label, path in missing:
+    display(HTML(ru.missing_note(label, path)))
+```
+
+```{python Build the long frame}
+long_frames = []
+if py_results is not None:
+    long_frames.append(ru.wide_results_to_long(py_results, "pypomp"))
+if r_coefs is not None:
+    long_frames.append(ru.r_coefs_to_long(r_coefs))
+
+combined = pd.concat(long_frames, ignore_index=True) if long_frames else pd.DataFrame()
+combined = combined[combined["param"].isin(ru.LOG_PARAMS + ru.LOGIT_PARAMS)]
+transformed = ru.to_estimation_scale(combined)
+```
+
+---
+
+## Summary Statistics
+
+Reported on the estimation scale (log for rates, logit for probabilities and
+initial-state fractions), which is the scale IF2 perturbs on.
+
+```{python Summary table}
+summary = (
+    transformed.groupby(["unit", "source", "param"])["value"]
+    .agg(n="count", mean="mean", sd="std", min="min", max="max")
+    .reset_index()
+    .sort_values(["unit", "param", "source"])
+)
+
+display(HTML(summary.round(4).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+---
+
+## Parameter Distributions
+
+```{python Density plots, fig.width = 11, fig.height = 8}
+for unit in sorted(transformed["unit"].dropna().unique()):
+    unit_data = transformed[transformed["unit"] == unit]
+    display(
+        ggplot(unit_data, aes(x="value", fill="source", color="source"))
+        + geom_density(alpha=0.35)
+        + facet_wrap("~param", scales="free")
+        + labs(
+            title=f"IF2 parameter estimates: {unit}",
+            subtitle="Estimation scale; one density per implementation",
+            x="Parameter value",
+            y="Density",
+            fill="Source",
+            color="Source",
+        )
+        + ru.scale_fill_premium()
+        + ru.scale_color_premium()
+        + ru.theme_premium
+    )
+```
+
+::: {.callout-note}
+### Expectation
+The `pypomp` and `pomp` densities should cover the same region for each
+parameter. IF2 from a scattered start is a stochastic search, so exact overlap
+is not expected; a parameter whose two densities are disjoint is the signal
+worth chasing.
+:::
+
+---
+
+## Convergence Traces
+
+```{python Traces, fig.width = 11, fig.height = 8}
+from plotnine import geom_line, scale_color_gradient
+
+traces = ru.read_if_exists(os.path.join(PY_DIR, "traces.csv.gz"))
+if traces is None:
+    display(HTML(ru.missing_note("pypomp traces", os.path.join(PY_DIR, "traces.csv.gz"))))
+else:
+    mif_traces = traces[traces["method"] == "mif"] if "method" in traces.columns else traces
+    id_vars = [c for c in ["unit", "replicate", "iteration"] if c in mif_traces.columns]
+    value_vars = [c for c in mif_traces.columns if c in ru.LOG_PARAMS + ru.LOGIT_PARAMS + ["logLik"]]
+    long_traces = mif_traces.melt(
+        id_vars=id_vars, value_vars=value_vars, var_name="param", value_name="value"
+    )
+
+    for unit in sorted(long_traces["unit"].dropna().unique()):
+        unit_data = long_traces[long_traces["unit"] == unit]
+        display(
+            ggplot(unit_data, aes(x="iteration", y="value", group="replicate", color="replicate"))
+            + geom_line(alpha=0.6, size=0.4)
+            + facet_wrap("~param", scales="free_y")
+            + labs(
+                title=f"IF2 iteration traces: {unit}",
+                x="IF2 iteration",
+                y="Value",
+                color="Start",
+            )
+            + scale_color_gradient(low="#3498db", high="#1abc9c")
+            + ru.theme_premium
+        )
+```

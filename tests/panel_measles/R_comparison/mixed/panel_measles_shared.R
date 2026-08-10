@@ -102,10 +102,10 @@ rmeas <- Csnippet(
 "
 )
 
-# Load demographic and case data (relative path to measles/R_comparison/data)
-measles <- read.csv("../../../../measles/R_comparison/data/measles.csv")
+# Load demographic and case data (relative path to measles/data)
+measles <- read.csv("../../../../measles/data/measles.csv")
 measles$date <- as.Date(measles$date)
-demog <- read.csv("../../../../measles/R_comparison/data/demog.csv")
+demog <- read.csv("../../../../measles/data/demog.csv")
 
 units <- c("London", "Halesworth", "Hastings", "Cardiff")
 

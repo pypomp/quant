@@ -1,0 +1,170 @@
+---
+title: "Measles Fixed-Parameter Likelihood Validation"
+subtitle: "Particle filter log-likelihood distribution: R pomp vs. pypomp"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
+```
+
+## Introduction
+
+This report evaluates the particle filter's likelihood calculation itself, by
+running it many times at a single fixed parameter vector — the He et al. (2010)
+maximum likelihood estimates for each town. Nothing varies across replicates
+except the random seed, so any systematic difference between `pypomp` and
+`pomp` is a difference between the implementations.
+
+`pypomp` is run twice, in single and in double precision. Measles is the model
+where 32-bit accumulation has been suspected of shifting the likelihood, and
+`pomp` computes in double throughout, so the 64-bit arm is the like-for-like
+comparison and the 32-bit arm measures what the default costs.
+
+Two towns are used: London, the largest unit, and Halesworth, among the
+smallest.
+
+---
+
+## Setup & Data Loading
+
+::: {.callout-note collapse="true"}
+### System & Environment Information
+```{python Environment Setup}
+import numpy as np
+import pandas as pd
+from scipy.stats import ks_2samp
+from plotnine import ggplot, aes, geom_density, facet_wrap, labs
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+SOURCES = {
+    "pypomp (32-bit)": os.path.join("results", "f32"),
+    "pypomp (64-bit)": os.path.join("results", "f64"),
+    "R": os.path.join("results", "R"),
+}
+
+frames = []
+missing = []
+for label, d in SOURCES.items():
+    df = ru.read_if_exists(os.path.join(d, "pfilter_logliks.csv"))
+    if df is None:
+        missing.append((label, os.path.join(d, "pfilter_logliks.csv")))
+        continue
+    df = df[["unit", "replicate", "logLik"]].copy()
+    df["source"] = label
+    frames.append(df)
+
+combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+print("pypomp (64-bit):")
+print(ru.format_metadata(ru.load_json(os.path.join("results", "f64", "latest.json"))), end="")
+print("\nR pomp:")
+print(ru.format_r_metadata(ru.load_json(os.path.join("results", "R", "latest.json"))), end="")
+```
+
+:::
+
+```{python Missing sources, results='asis'}
+for label, path in missing:
+    display(HTML(ru.missing_note(label, path)))
+```
+
+---
+
+## Summary Statistics
+
+`logmeanexp` is the log of the mean likelihood and sits above the mean
+log-likelihood by roughly `sd^2/2`. It is the quantity `pomp` reports as the
+likelihood estimate, so it is listed alongside the raw mean.
+
+```{python Summary table}
+summary = (
+    combined.groupby(["unit", "source"])["logLik"]
+    .agg(
+        n="count",
+        mean="mean",
+        sd="std",
+        min="min",
+        max="max",
+        logmeanexp=ru.logmeanexp,
+    )
+    .reset_index()
+    .sort_values(["unit", "source"])
+)
+
+display(HTML(summary.round(3).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+### Kolmogorov-Smirnov tests against the R baseline
+
+```{python KS tests}
+rows = []
+if not combined.empty and "R" in set(combined["source"]):
+    for unit in sorted(combined["unit"].unique()):
+        r_ll = combined[(combined["unit"] == unit) & (combined["source"] == "R")]["logLik"]
+        for label in ["pypomp (32-bit)", "pypomp (64-bit)"]:
+            py_ll = combined[(combined["unit"] == unit) & (combined["source"] == label)]["logLik"]
+            if len(py_ll) == 0 or len(r_ll) == 0:
+                continue
+            d, p = ks_2samp(py_ll, r_ll)
+            rows.append({
+                "Unit": unit,
+                "Comparison": f"{label} vs R",
+                "Mean difference (nats)": py_ll.mean() - r_ll.mean(),
+                "KS D": d,
+                "KS p": p,
+            })
+
+ks_table = pd.DataFrame(rows)
+display(HTML(ks_table.round(4).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+---
+
+## Density Comparison
+
+```{python Density plot, fig.width = 10, fig.height = 6}
+(
+    ggplot(combined, aes(x="logLik", fill="source", color="source"))
+    + geom_density(alpha=0.35)
+    + facet_wrap("~unit", scales="free")
+    + labs(
+        title="Particle filter log-likelihood at the He et al. (2010) estimates",
+        subtitle="One density per implementation, per town",
+        x="Log-likelihood",
+        y="Density",
+        fill="Source",
+        color="Source",
+    )
+    + ru.scale_fill_premium()
+    + ru.scale_color_premium()
+    + ru.theme_premium
+)
+```
+
+::: {.callout-note}
+### Expectation
+The three densities should overlap heavily within each town. A shift in the
+32-bit curve relative to the other two localises the difference to floating
+point precision rather than to the filter.
+:::
