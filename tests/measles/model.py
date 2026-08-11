@@ -14,6 +14,7 @@ Measles is the slow end of the benchmark suite: 365 Euler steps per year over
 """
 
 import os
+from typing import Literal
 
 import pandas as pd
 import pypomp as pp
@@ -110,7 +111,10 @@ MLE_NAMES = [
 ]
 
 
-def measles(unit, theta, model="001b"):
+MeaslesModelVariant = Literal["001", "001b", "001d", "002", "002d", "003"]
+
+
+def measles(unit, theta, model: MeaslesModelVariant = "001b"):
     """The measles model for one unit, at `theta`."""
     return pp.models.UKMeasles.Pomp(
         unit=unit,

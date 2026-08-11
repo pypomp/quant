@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-08-10T21:19:23+00:00",
+  "pypomp_version": "0.4.10.0",
+  "jax_version": "0.11.0",
+  "quant_git_sha": "7f9ea97691d09505594e06a1f90272ab427e89b0",
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "56880071",
+    "partition": "gpu-rtx6000",
+    "gpus": "rtx_pro_6000_blackwell:1",
+    "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+  },
+  "run_config": {
+    "kind": "estimation",
+    "model": "measles",
+    "RUN_LEVEL": 4,
+    "USE_CPU": false,
+    "MAIN_SEED": 594709947,
+    "UNITS": [
+      "London",
+      "Halesworth"
+    ],
+    "NP_FITR": 5000,
+    "NFITR": 100,
+    "NSTARTS": 360,
+    "execution_time": 944.5670809745789
+  },
+  "results_history": {
+    "London": [
+      {
+        "method": "mif",
+        "kind": "trace",
+        "panel": false,
+        "execution_time": 472.00569343566895,
+        "config": {
+          "J": 5000,
+          "M": 100,
+          "rw_sd": "RWSigma(sigmas={'R0': 0.02, 'sigma': 0.02, 'gamma': 0.01, 'iota': 0.02, 'rho': 0.01, 'sigmaSE': 0.02, 'psi': 0.005, 'cohort': 0.01, 'amplitude': 0.01, 'S_0': 0.24, 'E_0': 0.24, 'I_0': 0.24, 'R_0': 0.24}, init_names=('S_0', 'E_0', 'I_0', 'R_0'), cooling='geometric')",
+          "thresh": 0.0,
+          "n_monitors": 0
+        }
+      }
+    ],
+    "Halesworth": [
+      {
+        "method": "mif",
+        "kind": "trace",
+        "panel": false,
+        "execution_time": 468.729451417923,
+        "config": {
+          "J": 5000,
+          "M": 100,
+          "rw_sd": "RWSigma(sigmas={'R0': 0.02, 'sigma': 0.02, 'gamma': 0.01, 'iota': 0.02, 'rho': 0.01, 'sigmaSE': 0.02, 'psi': 0.005, 'cohort': 0.01, 'amplitude': 0.01, 'S_0': 0.24, 'E_0': 0.24, 'I_0': 0.24, 'R_0': 0.24}, init_names=('S_0', 'E_0', 'I_0', 'R_0'), cooling='geometric')",
+          "thresh": 0.0,
+          "n_monitors": 0
+        }
+      }
+    ]
+  }
+}

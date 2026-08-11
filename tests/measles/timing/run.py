@@ -53,7 +53,7 @@ All four start from the same committed parameter vectors
 #   3:
 #     sbatch_args: { time: "01:00:00" }
 #   4:
-#     sbatch_args: { time: "02:00:00" }
+#     sbatch_args: { time: "03:00:00" }
 # --- END SLURM CONFIG ---
 
 import json
@@ -135,9 +135,9 @@ timed(
 key, subkey = jax.random.split(key)
 timed(
     "pfilter_cold",
-    lambda: measles_obj.pfilter(J=NP, reps=NREPS, key=subkey, theta=starts),
+    lambda: measles_obj.pfilter(J=NP, reps=NREPS, key=subkey),
 )
-timed("pfilter_warm", lambda: measles_obj.pfilter(J=NP, reps=NREPS, theta=starts))
+timed("pfilter_warm", lambda: measles_obj.pfilter(J=NP, reps=NREPS))
 
 platform = jax.devices()[0].platform
 out_dir = os.path.join("results", f"{platform}_jax" if SAMPLERS == "jax" else platform)
@@ -167,7 +167,5 @@ with open(os.path.join(out_dir, "latest.json"), "w") as f:
     json.dump(record, f, indent=2, default=str)
     f.write("\n")
 
-measles_obj.results().to_csv(os.path.join(out_dir, "results.csv"), index=False)
-
 print(f"\n{timings_df.to_string(index=False)}")
-print(f"wrote {out_dir}/ (timings.csv, results.csv, latest.json)")
+print(f"wrote {out_dir}/ (timings.csv, latest.json)")

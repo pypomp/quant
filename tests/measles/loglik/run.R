@@ -2,7 +2,7 @@
 #' using R pomp. The baseline that run.py is compared against.
 
 # --- SLURM CONFIG ---
-# importance: medium
+# importance: low
 # description: "Measles: distribution of pfilter logLik at the He et al. (2010) estimates (R pomp)"
 # tags: [loglik, measles, r-pomp, cpu]
 # sbatch_args:
@@ -19,9 +19,9 @@
 #   2:
 #     sbatch_args: { time: "00:30:00" }
 #   3:
-#     sbatch_args: { time: "02:00:00" }
+#     sbatch_args: { time: "01:00:00" }
 #   4:
-#     sbatch_args: { time: "08:00:00" }
+#     sbatch_args: { time: "01:30:00" }
 # setup: |
 #   module load R/4.4.0
 # command: |
@@ -59,7 +59,12 @@ t_pf <- system.time({
   all_logliks <- list()
 
   for (unit_name in MEASLES_UNITS) {
-    cat(sprintf("unit %s: %d pfilters with Np = %d\n", unit_name, NREPS_EVAL, NP_EVAL))
+    cat(sprintf(
+      "unit %s: %d pfilters with Np = %d\n",
+      unit_name,
+      NREPS_EVAL,
+      NP_EVAL
+    ))
     pomp_obj <- pomp_objects[[unit_name]]
     unit_params <- measles_mle(unit_name)
 

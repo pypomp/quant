@@ -39,6 +39,8 @@ color_palette = {
     "pypomp (32-bit)": "#1abc9c",
     "pypomp (64-bit)": "#3498db",
     "R": "#e74c3c",
+    "R pomp": "#e74c3c",
+    "pomp": "#e74c3c",
     "IF2": "#3498db",
     "IFAD": "#1abc9c",
 }
@@ -134,7 +136,7 @@ def wide_results_to_long(df, source, id_cols=("unit",)):
     return long
 
 
-def r_coefs_to_long(df, source="R", id_cols=("unit",)):
+def r_coefs_to_long(df, source="R pomp", id_cols=("unit",)):
     """The R `mif_coefs.csv` long frame, renamed onto the shared column names."""
     keep_ids = [c for c in id_cols if c in df.columns]
     out = df[list(keep_ids) + ["coef", "names"]].rename(

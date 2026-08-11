@@ -36,7 +36,7 @@ Compared against results/R/pfilter_logliks.csv, which pomp computes in double.
 #   3:
 #     sbatch_args: { time: "00:15:00" }
 #   4:
-#     sbatch_args: { time: "08:00:00" }
+#     sbatch_args: { time: "02:00:00" }
 # --- END SLURM CONFIG ---
 
 import os

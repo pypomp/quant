@@ -30,15 +30,13 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
 ## Introduction
 
 This report evaluates the particle filter's likelihood calculation itself, by
-running it many times at a single fixed parameter vector — the He et al. (2010)
-maximum likelihood estimates for each town. Nothing varies across replicates
-except the random seed, so any systematic difference between `pypomp` and
+running it many times at the He et al. (2010) maximum likelihood estimates for each town. 
+Nothing varies across replicates except the random seed, so any systematic difference between `pypomp` and
 `pomp` is a difference between the implementations.
 
-`pypomp` is run twice, in single and in double precision. Measles is the model
-where 32-bit accumulation has been suspected of shifting the likelihood, and
-`pomp` computes in double throughout, so the 64-bit arm is the like-for-like
-comparison and the 32-bit arm measures what the default costs.
+`pypomp` is run twice, in single and in double precision. 
+We have seen some indication that single precision slightly shifts the estimated log-likelihood for the measles model so we check that here. 
+`pomp` computes in double precision throughout, so the 64-bit arm is the like-for-like comparison and the 32-bit arm measures what the default costs.
 
 Two towns are used: London, the largest unit, and Halesworth, among the
 smallest.

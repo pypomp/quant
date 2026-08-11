@@ -2,7 +2,7 @@
 #' pypomp configurations in run.py are measured against.
 
 # --- SLURM CONFIG ---
-# importance: high
+# importance: low
 # description: "Measles: wall-clock timing of mif and pfilter (R pomp)"
 # tags: [timing, measles, r-pomp, cpu]
 # sbatch_args:
@@ -19,9 +19,9 @@
 #   2:
 #     sbatch_args: { time: "00:30:00" }
 #   3:
-#     sbatch_args: { time: "02:00:00" }
+#     sbatch_args: { time: "01:30:00" }
 #   4:
-#     sbatch_args: { time: "04:00:00" }
+#     sbatch_args: { time: "01:30:00" }
 # setup: |
 #   module load R/4.4.0
 # command: |
@@ -108,27 +108,9 @@ cat(sprintf(
   timings_df$time_seconds[2]
 ))
 
-# The estimates the timed work actually produced, so the report can check that
-# the faster configurations are arriving at the same answer.
-coefs <- do.call(rbind, lapply(seq_len(NSTARTS), function(i) {
-  cf <- coef(mifs[[i]])
-  data.frame(replicate = i, names = names(cf), coef = as.numeric(cf))
-}))
-
-ll_summary <- aggregate(logLik ~ replicate, data = pf_logliks, FUN = mean)
-names(ll_summary)[2] <- "mean_logLik"
-ll_sd <- aggregate(logLik ~ replicate, data = pf_logliks, FUN = sd)
-ll_summary$sd_logLik <- ll_sd$logLik
-
-results_df <- merge(coefs, ll_summary, by = "replicate")
-results_df$unit <- UNIT
-
 save_run(
   out_dir = file.path("results", "R"),
-  tables = list(
-    timings.csv = timings_df,
-    results.csv = results_df
-  ),
+  tables = list(timings.csv = timings_df),
   run_config = list(
     kind = "timing",
     model = "measles",

@@ -29,13 +29,9 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('estimation')}</div
 
 ## Introduction
 
-This report compares where IF2 ends up. Both implementations run the same
-number of iterations from the same committed starting points
-(`../starting_parameters.csv`) with the same perturbation sizes, so the
-distribution of final parameter estimates should agree.
-
-What varies within each run is the starting point; the seed varies too, so the
-comparison is between distributions rather than between individual fits.
+This report compares IF2 parameter estimates.
+Both implementations run the same number of iterations from the same committed starting points (`../starting_parameters.csv`) with the same perturbation sizes, so the distribution of final parameter estimates should agree.
+Traces should also look similar.
 
 ---
 
@@ -91,8 +87,7 @@ transformed = ru.to_estimation_scale(combined)
 
 ## Summary Statistics
 
-Reported on the estimation scale (log for rates, logit for probabilities and
-initial-state fractions), which is the scale IF2 perturbs on.
+Reported on the estimation scale (log for rates, logit for probabilities and initial-state fractions), which is the scale IF2 perturbs on.
 
 ```{python Summary table}
 summary = (
@@ -132,10 +127,7 @@ for unit in sorted(transformed["unit"].dropna().unique()):
 
 ::: {.callout-note}
 ### Expectation
-The `pypomp` and `pomp` densities should cover the same region for each
-parameter. IF2 from a scattered start is a stochastic search, so exact overlap
-is not expected; a parameter whose two densities are disjoint is the signal
-worth chasing.
+The `pypomp` and `pomp` densities should overlap heavily for each parameter. 
 :::
 
 ---
@@ -143,32 +135,75 @@ worth chasing.
 ## Convergence Traces
 
 ```{python Traces, fig.width = 11, fig.height = 8}
-from plotnine import geom_line, scale_color_gradient
+from plotnine import geom_line
 
-traces = ru.read_if_exists(os.path.join(PY_DIR, "traces.csv.gz"))
-if traces is None:
-    display(HTML(ru.missing_note("pypomp traces", os.path.join(PY_DIR, "traces.csv.gz"))))
-else:
-    mif_traces = traces[traces["method"] == "mif"] if "method" in traces.columns else traces
-    id_vars = [c for c in ["unit", "replicate", "iteration"] if c in mif_traces.columns]
-    value_vars = [c for c in mif_traces.columns if c in ru.LOG_PARAMS + ru.LOGIT_PARAMS + ["logLik"]]
-    long_traces = mif_traces.melt(
-        id_vars=id_vars, value_vars=value_vars, var_name="param", value_name="value"
+py_traces = ru.read_if_exists(os.path.join(PY_DIR, "traces.csv.gz"))
+r_traces = ru.read_if_exists(os.path.join(R_DIR, "mif_traces.csv.gz"))
+
+trace_frames = []
+
+if py_traces is not None:
+    py_mif = py_traces[py_traces["method"] == "mif"] if "method" in py_traces.columns else py_traces
+    py_mif = py_mif.rename(
+        columns={"theta_idx": "replicate", "rep": "replicate", "iter": "iteration", "loglik": "logLik"}
     )
+    if "replicate" not in py_mif.columns:
+        py_mif["replicate"] = 1
+    id_vars = [c for c in ["unit", "replicate", "iteration"] if c in py_mif.columns]
+    value_vars = [c for c in py_mif.columns if c in ru.LOG_PARAMS + ru.LOGIT_PARAMS + ["logLik"]]
+    py_long = py_mif.melt(id_vars=id_vars, value_vars=value_vars, var_name="param", value_name="value")
+    py_params = ru.to_estimation_scale(py_long[py_long["param"] != "logLik"])
+    py_loglik = py_long[py_long["param"] == "logLik"].copy()
+    py_combined = pd.concat([py_params, py_loglik], ignore_index=True)
+    py_combined["source"] = "pypomp"
+    trace_frames.append(py_combined)
 
-    for unit in sorted(long_traces["unit"].dropna().unique()):
-        unit_data = long_traces[long_traces["unit"] == unit]
+if r_traces is not None:
+    r_mif = r_traces.rename(
+        columns={"theta_idx": "replicate", "rep": "replicate", "iter": "iteration", "loglik": "logLik"}
+    )
+    if "replicate" not in r_mif.columns:
+        r_mif["replicate"] = 1
+    id_vars = [c for c in ["unit", "replicate", "iteration"] if c in r_mif.columns]
+    value_vars = [c for c in r_mif.columns if c in ru.LOG_PARAMS + ru.LOGIT_PARAMS + ["logLik"]]
+    r_long = r_mif.melt(id_vars=id_vars, value_vars=value_vars, var_name="param", value_name="value")
+    r_params = ru.to_estimation_scale(r_long[r_long["param"] != "logLik"])
+    r_loglik = r_long[r_long["param"] == "logLik"].copy()
+    r_combined = pd.concat([r_params, r_loglik], ignore_index=True)
+    r_combined["source"] = "R pomp"
+    trace_frames.append(r_combined)
+
+missing_traces = []
+if py_traces is None:
+    missing_traces.append(("pypomp traces", os.path.join(PY_DIR, "traces.csv.gz")))
+if r_traces is None:
+    missing_traces.append(("R pomp traces", os.path.join(R_DIR, "mif_traces.csv.gz")))
+
+for label, path in missing_traces:
+    display(HTML(ru.missing_note(label, path)))
+
+if trace_frames:
+    combined_traces = pd.concat(trace_frames, ignore_index=True)
+    combined_traces["group_id"] = combined_traces["source"] + "_" + combined_traces["replicate"].astype(str)
+
+    for unit in sorted(combined_traces["unit"].dropna().unique()):
+        unit_data = combined_traces[combined_traces["unit"] == unit]
         display(
-            ggplot(unit_data, aes(x="iteration", y="value", group="replicate", color="replicate"))
-            + geom_line(alpha=0.6, size=0.4)
+            ggplot(unit_data, aes(x="iteration", y="value", group="group_id", color="source"))
+            + geom_line(alpha=0.4, size=0.4)
             + facet_wrap("~param", scales="free_y")
             + labs(
                 title=f"IF2 iteration traces: {unit}",
                 x="IF2 iteration",
                 y="Value",
-                color="Start",
+                color="Source",
             )
-            + scale_color_gradient(low="#3498db", high="#1abc9c")
+            + ru.scale_color_premium()
             + ru.theme_premium
         )
 ```
+
+::: {.callout-note}
+### Expectation
+The `pypomp` and `pomp` traces should overlap heavily for each parameter. 
+:::

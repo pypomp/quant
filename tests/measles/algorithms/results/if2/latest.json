@@ -1,0 +1,69 @@
+{
+  "timestamp": "2026-08-11T14:14:04+00:00",
+  "run_config": {
+    "kind": "algorithms",
+    "model": "measles",
+    "variant": "003 (continuous)",
+    "ALGORITHM": "if2",
+    "RUN_LEVEL": 4,
+    "USE_CPU": false,
+    "MAIN_SEED": 594709947,
+    "NSTARTS": 36,
+    "NFITR": 350,
+    "NTRAIN": 0,
+    "NP_FITR": 5000,
+    "NP_EVAL": 5000,
+    "NREPS_EVAL": 36,
+    "execution_time": 122.801922082901,
+    "platform": "gpu"
+  },
+  "results_history": [
+    {
+      "method": "mif",
+      "kind": "trace",
+      "panel": false,
+      "execution_time": 102.63779973983765,
+      "config": {
+        "J": 5000,
+        "M": 350,
+        "rw_sd": "RWSigma(sigmas={'R0': 0.005, 'sigma': 0.005, 'gamma': 0.01, 'iota': 0.02, 'rho': 0.01, 'sigmaSE': 0.02, 'psi': 0.005, 'cohort': 0.01, 'amplitude': 0.01, 'S_0': 0.24, 'E_0': 0.24, 'I_0': 0.24, 'R_0': 0.24}, init_names=('S_0', 'E_0', 'I_0', 'R_0'), cooling='geometric')",
+        "thresh": 0.0,
+        "n_monitors": 0
+      }
+    },
+    {
+      "method": "pfilter",
+      "kind": "table",
+      "panel": false,
+      "execution_time": 12.16407322883606,
+      "config": {
+        "J": 5000,
+        "reps": 36,
+        "thresh": 0.0
+      }
+    },
+    {
+      "method": "pfilter",
+      "kind": "table",
+      "panel": false,
+      "execution_time": 7.967083692550659,
+      "config": {
+        "J": 5000,
+        "reps": 36,
+        "thresh": 0.0
+      }
+    }
+  ],
+  "pypomp_version": "0.4.10.0",
+  "jax_version": "0.11.0",
+  "quant_git_sha": "7f9ea97691d09505594e06a1f90272ab427e89b0",
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "56937438",
+    "partition": "gpu-rtx6000",
+    "gpus": "rtx_pro_6000_blackwell:1",
+    "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+  }
+}
