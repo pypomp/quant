@@ -1,7 +1,7 @@
 #' Dhaka: wall-clock timing of mif and pfilter using R pomp.
 
 # --- SLURM CONFIG ---
-# importance: high
+# importance: low
 # description: "Dhaka: wall-clock timing of mif and pfilter (R pomp)"
 # tags: [timing, dacca, r-pomp, cpu]
 # sbatch_args:
