@@ -36,5 +36,7 @@ Below is a list of quantitative test reports available in this repository:
 * **[Runtime & Throughput Benchmark](tests/measles/timing/report.html)** (`tests/measles/timing`): Benchmarks IF2 and particle filter execution speed on the discrete measles model. Contrasts `pypomp` on GPU and CPU with R `pomp`, and the fast samplers in `pypomp.random` with stock JAX samplers.
 
 ### 5. Panel Measles Model
-* **[Panel Measles (mixed parameters)](tests/panel_measles/R_comparison/mixed/report.html)** (`tests/panel_measles/R_comparison/mixed`): Compares parameter and log-likelihood estimates on a panel measles dataset using `pypomp` and R's `pomp`.
+* **[Fixed-Parameter Likelihood Validation](tests/panel_measles/loglik/report.html)** (`tests/panel_measles/loglik`): Compares the distribution of panel particle filter log-likelihoods at the He et al. (2010) estimates in `pypomp` against R's `panelPomp`.
+* **[Parameter Estimation](tests/panel_measles/estimation/report.html)** (`tests/panel_measles/estimation`): Compares the distribution of block-IF2 parameter estimates from a global search in `pypomp` versus `panelPomp`, from identical starting points, and reports the `pypomp`-only mix-and-match step.
+* **[Runtime & Throughput Benchmark](tests/panel_measles/timing/report.html)** (`tests/panel_measles/timing`): Benchmarks block-IF2 and particle filter execution speed on the 4-unit mixed panel model, contrasting `pypomp` on GPU and CPU with R `panelPomp`.
 

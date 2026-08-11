@@ -75,8 +75,6 @@ tmp*
 
 GEMINI.md
 CLAUDE.md
-tests/panel_measles/R_comparison/mixed/parameter_comparison/starting_parameters.csv
-tests/panel_measles/R_comparison/mixed/R_covariates.csv
 
 # Test run outputs: the pickle/rds is a fallback, the CSV/JSON alongside it is
 # the record. Keep the text, drop the binary and the logs.

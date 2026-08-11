@@ -1,0 +1,236 @@
+---
+title: "Panel Measles Fixed-Parameter Likelihood Validation"
+subtitle: "Particle filter log-likelihood distribution: R panelPomp vs. pypomp"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
+```
+
+## Introduction
+
+This report evaluates the panel particle filter's likelihood calculation itself,
+by running it many times at the He et al. (2010) maximum likelihood estimates.
+Nothing varies across replicates except the random seed, so any systematic
+difference between `pypomp` and `panelPomp` is a difference between the
+implementations.
+
+The panel has **4 units** — London, Halesworth, Hastings and Cardiff — with a
+mixed parameter structure: `R0`, `sigma`, `gamma`, `sigmaSE`, `cohort` and
+`amplitude` are shared across units, while `iota`, `rho`, `psi`, `S_0`, `E_0`,
+`I_0` and `R_0` are estimated separately per unit. The panel log-likelihood is
+the sum over units, so the per-unit likelihoods below are the components that
+have to agree.
+
+::: {.callout-note collapse="true"}
+### Why the covariates are imported from `pomp`
+The `python` and `R` smoothing spline implementations interpolate the birthrate
+and population covariates differently — noticeably so for Cardiff — which on its
+own shifts the log-likelihood. Since the point here is to compare the two
+*filter* implementations rather than two slightly different models, the final
+interpolated covariate grid is exported from `pomp` into
+`../R_covariates.csv` and injected into the `pypomp` objects
+(`model.align_covariates`). Both packages therefore filter the identical model.
+:::
+
+---
+
+## Setup & Data Loading
+
+::: {.callout-note collapse="true"}
+### System & Environment Information
+```{python Environment Setup}
+import numpy as np
+import pandas as pd
+from scipy.stats import ks_2samp
+from plotnine import ggplot, aes, geom_density, facet_wrap, labs
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+PY_DIR = ru.platform_dir()
+R_DIR = os.path.join("results", "R")
+
+SOURCES = {"pypomp": PY_DIR, "R panelPomp": R_DIR}
+
+frames = []
+missing = []
+for label, d in SOURCES.items():
+    path = os.path.join(d, "pfilter_logliks.csv")
+    df = ru.read_if_exists(path)
+    if df is None:
+        missing.append((label, path))
+        continue
+    df = df[["unit", "replicate", "logLik"]].copy()
+    df["source"] = label
+    frames.append(df)
+
+combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(
+    columns=["unit", "replicate", "logLik", "source"]
+)
+
+print("pypomp:")
+print(ru.format_metadata(ru.load_json(os.path.join(PY_DIR, "latest.json"))), end="")
+print("\nR panelPomp:")
+print(ru.format_r_metadata(ru.load_json(os.path.join(R_DIR, "latest.json"))), end="")
+```
+
+:::
+
+```{python Missing sources, results='asis'}
+for label, path in missing:
+    display(HTML(ru.missing_note(label, path)))
+```
+
+---
+
+## Summary Statistics
+
+`logmeanexp` is the log of the mean likelihood and sits above the mean
+log-likelihood by roughly `sd^2/2`. It is the quantity `panelPomp` reports as
+the likelihood estimate, so it is listed alongside the raw mean.
+
+```{python Summary table}
+if combined.empty:
+    display(HTML("<p><em>No log-likelihood data available.</em></p>"))
+else:
+    summary = (
+        combined.groupby(["unit", "source"])["logLik"]
+        .agg(n="count", mean="mean", sd="std", min="min", max="max", logmeanexp=ru.logmeanexp)
+        .reset_index()
+        .sort_values(["unit", "source"])
+    )
+    display(HTML(summary.round(3).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+### Panel log-likelihood
+
+The panel likelihood is the sum of the per-unit likelihoods. Summing the
+`logmeanexp` of each unit gives the estimate each package would report for the
+whole panel.
+
+```{python Panel total}
+if combined.empty:
+    display(HTML("<p><em>No log-likelihood data available.</em></p>"))
+else:
+    panel = (
+        combined.groupby(["unit", "source"])["logLik"]
+        .agg(logmeanexp=ru.logmeanexp)
+        .reset_index()
+        .groupby("source")["logmeanexp"]
+        .sum()
+        .reset_index()
+        .rename(columns={"logmeanexp": "panel logLik"})
+    )
+    display(HTML(panel.round(3).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+### Kolmogorov-Smirnov tests against the R baseline
+
+```{python KS tests}
+rows = []
+if not combined.empty and "R panelPomp" in set(combined["source"]):
+    for unit in sorted(combined["unit"].unique()):
+        r_ll = combined[(combined["unit"] == unit) & (combined["source"] == "R panelPomp")]["logLik"]
+        py_ll = combined[(combined["unit"] == unit) & (combined["source"] == "pypomp")]["logLik"]
+        if len(py_ll) == 0 or len(r_ll) == 0:
+            continue
+        d, p = ks_2samp(py_ll, r_ll)
+        rows.append({
+            "Unit": unit,
+            "Comparison": "pypomp vs R panelPomp",
+            "Mean difference (nats)": py_ll.mean() - r_ll.mean(),
+            "KS D": d,
+            "KS p": p,
+        })
+
+ks_table = pd.DataFrame(rows)
+if ks_table.empty:
+    display(HTML("<p><em>Both sources are needed for a KS comparison.</em></p>"))
+else:
+    display(HTML(ks_table.round(4).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+---
+
+## Density Comparison
+
+```{python Density plot, fig.width = 10, fig.height = 7}
+if combined.empty:
+    display(HTML("<p><em>No log-likelihood data available.</em></p>"))
+else:
+    display(
+        ggplot(combined, aes(x="logLik", fill="source", color="source"))
+        + geom_density(alpha=0.35)
+        + facet_wrap("~unit", scales="free")
+        + labs(
+            title="Panel particle filter log-likelihood at the He et al. (2010) estimates",
+            subtitle="One density per implementation, per unit",
+            x="Log-likelihood",
+            y="Density",
+            fill="Source",
+            color="Source",
+        )
+        + ru.scale_fill_premium()
+        + ru.scale_color_premium()
+        + ru.theme_premium
+    )
+```
+
+::: {.callout-note}
+### Expectation
+The two densities should overlap heavily within each unit. A shift confined to
+one unit points at that unit's model or covariates; a shift present in all four
+points at the filter.
+:::
+
+---
+
+## Evaluation Cost
+
+Wall clock for the full block of likelihood evaluations. The two arms run on
+different hardware, so this is context for the distributions above rather than
+the timing benchmark — see the [timing report](../timing/report.html) for a
+controlled comparison.
+
+```{python Timing}
+rows = []
+for label, d in SOURCES.items():
+    tm = ru.normalize_timings(ru.read_if_exists(os.path.join(d, "timings.csv")))
+    if tm is None:
+        continue
+    cfg = ru.load_json(os.path.join(d, "latest.json")).get("run_config", {}) or {}
+    for _, r in tm.iterrows():
+        rows.append({
+            "Source": label,
+            "Phase": r["phase"],
+            "Time (s)": r["time_seconds"],
+            "Particles": cfg.get("NP_EVAL", "?"),
+            "Replicates": cfg.get("NREPS_EVAL", "?"),
+        })
+
+timing_df = pd.DataFrame(rows)
+if timing_df.empty:
+    display(HTML("<p><em>No timings recorded.</em></p>"))
+else:
+    display(HTML(timing_df.round(2).to_html(classes="table table-striped table-hover", index=False)))
+```

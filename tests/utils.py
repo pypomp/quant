@@ -217,9 +217,29 @@ def pfilter_logliks_frame(pomp_obj: Any, history_index: int = -1):
 
     Returns columns theta_idx, replicate, logLik, matching the shape of the
     frozen R references.
+
+    A PanelPomp carries a unit dimension too, and gains a `unit` column.
+    pypomp names that dimension `unit` on most result types and `ll_unit` on
+    the ones where it would collide with the parameter frame's own `unit`, so
+    both spellings are accepted.
     """
     entry = pomp_obj.results_history[history_index]
-    arr = np.asarray(entry.logLiks)
+    logliks = entry.logLiks
+
+    dims = tuple(getattr(logliks, "dims", ()))
+    unit_dim = next((d for d in dims if d in ("unit", "ll_unit")), None)
+    rep_dims = [d for d in dims if d not in ("theta_idx", unit_dim)]
+
+    if unit_dim is not None and rep_dims:
+        df = logliks.to_dataframe(name="logLik").reset_index()
+        df = df.rename(columns={unit_dim: "unit"})
+        if "theta_idx" not in df.columns:
+            df["theta_idx"] = 0
+        # The rep coordinate is 0-based; the R references count from 1.
+        df["replicate"] = df[rep_dims[0]].astype(int) + 1
+        return df[["theta_idx", "unit", "replicate", "logLik"]].reset_index(drop=True)
+
+    arr = np.asarray(logliks)
     if arr.ndim == 1:
         arr = arr[None, :]
 

@@ -1,0 +1,311 @@
+---
+title: "Panel Measles Parameter Estimation"
+subtitle: "Distribution of block-IF2 parameter estimates: R panelPomp vs. pypomp"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('estimation')}</div>"))
+```
+
+## Introduction
+
+This report compares block-IF2 parameter estimates for the mixed panel measles
+model. Both implementations run the same number of iterations from the same
+committed starting points (`../starting_parameters.csv`) with the same
+perturbation sizes, so the distribution of final estimates should agree.
+
+The parameter structure is mixed across the panel's 4 units — London,
+Halesworth, Hastings and Cardiff:
+
+- **Shared** across units: `R0`, `sigma`, `gamma`, `sigmaSE`, `cohort`, `amplitude`.
+- **Unit-specific**: `iota`, `rho`, `psi`, `S_0`, `E_0`, `I_0`, `R_0`.
+
+`pypomp` reports the shared parameters on every unit's row; they are collapsed
+here to a single `shared` entry so a shared density is not drawn four times over.
+
+::: {.callout-note collapse="true"}
+### Why the covariates are imported from `pomp`
+The `python` and `R` smoothing spline implementations interpolate the birthrate
+and population covariates differently — noticeably so for Cardiff — which on its
+own shifts the estimates. The final interpolated covariate grid is therefore
+exported from `pomp` into `../R_covariates.csv` and injected into the `pypomp`
+objects, so both packages search over the identical model.
+:::
+
+The `pypomp` run continues past the search into the panel-specific part of the
+workflow: mix-and-match across units, then pruning to the single best
+combination. R `panelPomp` has no equivalent, so the like-for-like comparison
+below uses `results_final.csv`, captured before that step. The mix-and-match
+outcome is reported separately as a `pypomp`-only result.
+
+---
+
+## Setup & Data Loading
+
+::: {.callout-note collapse="true"}
+### System & Environment Information
+```{python Environment Setup}
+import numpy as np
+import pandas as pd
+from plotnine import ggplot, aes, geom_density, facet_wrap, labs
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+PY_DIR = ru.platform_dir()
+R_DIR = os.path.join("results", "R")
+
+py_results = ru.read_if_exists(os.path.join(PY_DIR, "results_final.csv"))
+r_coefs = ru.read_if_exists(os.path.join(R_DIR, "mif_coefs.csv"))
+
+missing = []
+if py_results is None:
+    missing.append(("pypomp results", os.path.join(PY_DIR, "results_final.csv")))
+if r_coefs is None:
+    missing.append(("R baseline", os.path.join(R_DIR, "mif_coefs.csv")))
+
+print("pypomp:")
+print(ru.format_metadata(ru.load_json(os.path.join(PY_DIR, "latest.json"))), end="")
+print("\nR panelPomp:")
+print(ru.format_r_metadata(ru.load_json(os.path.join(R_DIR, "latest.json"))), end="")
+```
+
+:::
+
+```{python Missing sources, results='asis'}
+for label, path in missing:
+    display(HTML(ru.missing_note(label, path)))
+```
+
+```{python Build the long frame}
+long_frames = []
+if py_results is not None:
+    long_frames.append(
+        ru.split_shared_specific(ru.wide_results_to_long(py_results, "pypomp"))
+    )
+if r_coefs is not None:
+    long_frames.append(ru.r_coefs_to_long(r_coefs))
+
+combined = pd.concat(long_frames, ignore_index=True) if long_frames else pd.DataFrame(
+    columns=["unit", "param", "value", "source"]
+)
+combined = combined[combined["param"].isin(ru.LOG_PARAMS + ru.LOGIT_PARAMS)]
+transformed = ru.to_estimation_scale(combined)
+```
+
+---
+
+## Summary Statistics
+
+Reported on the estimation scale (log for rates, logit for probabilities and
+initial-state fractions), which is the scale block-IF2 perturbs on.
+
+```{python Summary table}
+if transformed.empty:
+    display(HTML("<p><em>No parameter estimates available.</em></p>"))
+else:
+    summary = (
+        transformed.groupby(["unit", "source", "param"])["value"]
+        .agg(n="count", mean="mean", sd="std", min="min", max="max")
+        .reset_index()
+        .sort_values(["unit", "param", "source"])
+    )
+    display(HTML(summary.round(4).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+---
+
+## Shared Parameter Distributions
+
+The parameters estimated jointly across all four units.
+
+```{python Shared densities, fig.width = 11, fig.height = 7}
+shared = transformed[transformed["unit"] == "shared"]
+if shared.empty:
+    display(HTML("<p><em>No shared parameter estimates available.</em></p>"))
+else:
+    display(
+        ggplot(shared, aes(x="value", fill="source", color="source"))
+        + geom_density(alpha=0.35)
+        + facet_wrap("~param", scales="free")
+        + labs(
+            title="Block-IF2 estimates of the shared parameters",
+            subtitle="Estimation scale; one density per implementation",
+            x="Parameter value",
+            y="Density",
+            fill="Source",
+            color="Source",
+        )
+        + ru.scale_fill_premium()
+        + ru.scale_color_premium()
+        + ru.theme_premium
+    )
+```
+
+---
+
+## Unit-Specific Parameter Distributions
+
+```{python Specific densities, fig.width = 11, fig.height = 8}
+specific = transformed[transformed["unit"] != "shared"]
+if specific.empty:
+    display(HTML("<p><em>No unit-specific parameter estimates available.</em></p>"))
+else:
+    for unit in sorted(specific["unit"].dropna().unique()):
+        unit_data = specific[specific["unit"] == unit]
+        display(
+            ggplot(unit_data, aes(x="value", fill="source", color="source"))
+            + geom_density(alpha=0.35)
+            + facet_wrap("~param", scales="free")
+            + labs(
+                title=f"Block-IF2 estimates of the unit-specific parameters: {unit}",
+                subtitle="Estimation scale; one density per implementation",
+                x="Parameter value",
+                y="Density",
+                fill="Source",
+                color="Source",
+            )
+            + ru.scale_fill_premium()
+            + ru.scale_color_premium()
+            + ru.theme_premium
+        )
+```
+
+::: {.callout-note}
+### Expectation
+The `pypomp` and `panelPomp` densities should overlap heavily for each
+parameter, both shared and unit-specific.
+:::
+
+---
+
+## Log-Likelihood at the Search Endpoints
+
+Each start's final parameter vector is re-evaluated by particle filter. The
+distribution over starts shows how consistently the search reaches the same
+region.
+
+```{python Endpoint logliks, fig.width = 10, fig.height = 6}
+py_ll = ru.read_if_exists(os.path.join(PY_DIR, "pfilter_logliks.csv"))
+
+if py_ll is None:
+    display(HTML(ru.missing_note("pypomp endpoint log-likelihoods",
+                                 os.path.join(PY_DIR, "pfilter_logliks.csv"))))
+else:
+    panel_ll = (
+        py_ll.groupby(["theta_idx", "replicate"])["logLik"].sum().reset_index()
+        if "theta_idx" in py_ll.columns
+        else py_ll.groupby("replicate")["logLik"].sum().reset_index()
+    )
+    by_start = (
+        panel_ll.groupby("theta_idx")["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
+        if "theta_idx" in panel_ll.columns
+        else panel_ll.assign(theta_idx=0).groupby("theta_idx")["logLik"]
+        .agg(logmeanexp=ru.logmeanexp).reset_index()
+    )
+    display(HTML(
+        by_start.round(2).sort_values("logmeanexp", ascending=False)
+        .to_html(classes="table table-striped table-hover", index=False)
+    ))
+
+    per_unit = (
+        py_ll.groupby(["unit", "theta_idx"])["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
+        if "theta_idx" in py_ll.columns
+        else py_ll.groupby("unit")["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
+    )
+    display(
+        ggplot(per_unit, aes(x="logmeanexp"))
+        + geom_density(alpha=0.35, fill="#1abc9c", color="#1abc9c")
+        + facet_wrap("~unit", scales="free")
+        + labs(
+            title="Per-unit log-likelihood across search endpoints",
+            subtitle="pypomp; one value per start",
+            x="Log-likelihood",
+            y="Density",
+        )
+        + ru.theme_premium
+    )
+```
+
+---
+
+## Mix-and-Match
+
+`panelPomp` fits each start as one coherent parameter vector. `pypomp` can
+additionally recombine the best unit-specific blocks across starts and re-fit,
+which has no counterpart in the R baseline. The table below is the pruned best
+combination after that step.
+
+```{python Mix and match}
+pruned = ru.read_if_exists(os.path.join(PY_DIR, "results.csv"))
+if pruned is None:
+    display(HTML(ru.missing_note("pypomp mix-and-match result",
+                                 os.path.join(PY_DIR, "results.csv"))))
+else:
+    display(HTML(pruned.round(4).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+---
+
+## Convergence Traces
+
+```{python Traces, fig.width = 11, fig.height = 8}
+from plotnine import geom_line
+
+py_traces = ru.load_traces(os.path.join(PY_DIR, "traces.csv.gz"), "pypomp")
+
+if py_traces is None:
+    display(HTML(ru.missing_note("pypomp traces", os.path.join(PY_DIR, "traces.csv.gz"))))
+else:
+    if "method" in py_traces.columns:
+        py_traces = py_traces[py_traces["method"] == "mif"]
+    long = ru.to_long(py_traces)
+    long = long[long["quantity"].isin(ru.LOG_PARAMS + ru.LOGIT_PARAMS)]
+    long = ru.to_estimation_scale(long, param_col="quantity", value_col="param_value")
+    long["group_id"] = long["source"].astype(str) + "_" + long["rep"].astype(str)
+
+    unit_col = "unit" if "unit" in long.columns else None
+    groups = sorted(long[unit_col].dropna().unique()) if unit_col else [None]
+    for unit in groups:
+        data = long[long[unit_col] == unit] if unit_col else long
+        if data.empty:
+            continue
+        display(
+            ggplot(data, aes(x="iter", y="param_value", group="group_id", color="source"))
+            + geom_line(alpha=0.4, size=0.4)
+            + facet_wrap("~quantity", scales="free_y")
+            + labs(
+                title=f"Block-IF2 iteration traces{f': {unit}' if unit else ''}",
+                x="IF2 iteration",
+                y="Value",
+                color="Source",
+            )
+            + ru.scale_color_premium()
+            + ru.theme_premium
+        )
+```
+
+::: {.callout-note}
+### Expectation
+Traces from independent starts should converge toward a common region rather
+than each settling at its own starting neighbourhood.
+:::
