@@ -90,7 +90,7 @@ for label, path in missing:
 ## Timing Comparison
 
 `pfilter_cold` is the timed figure: the first `pfilter` call includes JIT
-compilation overhead. Warm timings are reported separately below.
+compilation overhead. Warm timings are reported separately below. 
 
 ```{python Timing table}
 def phase(label, name):
@@ -108,6 +108,13 @@ r_mif = phase("R", "mif")
 r_pf = phase("R", "pfilter_cold")
 r_total = r_mif + r_pf
 
+r_meta = ru.load_json(os.path.join(CONFIGS["R"], "latest.json")) if "R" in CONFIGS else {}
+r_cores = (
+    r_meta.get("hardware", {}).get("cores", 36)
+    if r_meta and isinstance(r_meta.get("hardware"), dict)
+    else 36
+)
+
 rows = []
 for label in CONFIGS:
     if label not in timings:
@@ -116,6 +123,8 @@ for label in CONFIGS:
     pf = phase(label, "pfilter_cold")
     total = mif + pf
     cfg = configs.get(label, {})
+    total_speedup = r_total / total if total else np.nan
+    throughput = total_speedup * r_cores if not np.isnan(total_speedup) else np.nan
     rows.append({
         "Configuration": label,
         "Starts x reps": f"{cfg.get('NSTARTS', '?')} x {cfg.get('NREPS', '?')}",
@@ -124,7 +133,8 @@ for label in CONFIGS:
         "Pfilter (s)": pf,
         "Pfilter speedup": r_pf / pf if pf else np.nan,
         "Total (s)": total,
-        "Total speedup": r_total / total if total else np.nan,
+        "Total speedup": total_speedup,
+        "Throughput (vs 1 R CPU core)": throughput,
     })
 
 timing_df = pd.DataFrame(rows)

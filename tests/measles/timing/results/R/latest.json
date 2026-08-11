@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-08-10T22:08:47",
+  "timestamp": "2026-08-11T12:22:19",
   "r_version": "4.4.0",
   "pomp_version": "6.3",
   "panelPomp_version": "1.7.0.0",
-  "quant_git_sha": "7f9ea97691d09505594e06a1f90272ab427e89b0",
+  "quant_git_sha": "ea2b3d17ffa694185ca529a7ffdfb3fa93c177fa",
   "hardware": {
-    "nodelist": "gl3093",
+    "nodelist": "gl3153",
     "cpu_model": "Intel(R) Xeon(R) Gold 6154 CPU @ 3.00GHz",
     "cores": 36
   },
   "slurm": {
-    "job_id": "56880076",
+    "job_id": "56947815",
     "partition": "standard",
     "cpus": "1"
   },
