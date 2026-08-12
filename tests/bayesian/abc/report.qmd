@@ -1,0 +1,417 @@
+---
+title: "SIR: ABC"
+subtitle: "Does pypomp's approximate Bayesian computation agree with pomp's, and behave as epsilon shrinks?"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML, Markdown
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('abc')}</div>"))
+```
+
+## Introduction
+
+ABC has no exact target of its own. Its limit as the tolerance shrinks is
+`p(theta | s(y_obs))` — the posterior given the **probes** — which equals the
+full posterior only when the probes are sufficient. The probes used here (mean,
+standard deviation, lag-1 autocorrelation) are **not** sufficient for the SIR
+model, so the ABC limit is a genuinely different and generally wider distribution
+than the grid reference computed in the reference report.
+
+This matters for what can be claimed. "The ABC posterior converges to the
+reference as epsilon shrinks" would be a **false** prediction. What must hold:
+
+1. successive tolerances converge to *each other* — the sequence has a limit;
+2. pypomp and R reach the **same** limit;
+3. that limit is **no tighter** than the full posterior, and still covers the truth;
+4. at an enormous tolerance, everything is accepted and the ABC posterior
+   collapses onto the **prior**.
+
+Because there is no exact target, agreement with a mature independent
+implementation is the primary correctness statement here — the reverse of the
+PMCMC report, where the grid reference carries that weight.
+
+```{python Setup}
+import glob
+import re
+
+import numpy as np
+import pandas as pd
+from plotnine import (
+    aes,
+    geom_density,
+    geom_hline,
+    geom_line,
+    geom_point,
+    geom_vline,
+    ggplot,
+    labs,
+    scale_x_log10,
+)
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+GPU = os.path.join("results", "gpu")
+R_DIR = os.path.join("results", "R")
+REFERENCE = os.path.join("..", "reference", "results", "gpu", "grid_posterior.csv")
+
+PARAMS = ["beta1", "rho"]
+BURN_FRAC = 0.5
+
+truth = pd.read_csv("../data/true_theta.csv")
+truth = dict(zip(truth["parameter"], truth["value"]))
+
+sweeps = {}
+for path in sorted(glob.glob(os.path.join(GPU, "eps*"))):
+    m = re.search(r"eps([0-9.e+-]+)$", path)
+    if not m:
+        continue
+    tr = ru.load_mcmc_traces(os.path.join(path, "traces.csv.gz"), "pypomp")
+    if tr is not None:
+        sweeps[float(m.group(1))] = {
+            "traces": tr,
+            "acceptance": ru.read_if_exists(os.path.join(path, "acceptance.csv")),
+            "meta": ru.load_json(os.path.join(path, "latest.json")),
+        }
+
+r_traces = ru.load_mcmc_traces(os.path.join(R_DIR, "traces.csv.gz"), "R pomp")
+r_meta = ru.load_json(os.path.join(R_DIR, "latest.json"))
+grid = ru.read_if_exists(REFERENCE)
+
+have_py = len(sweeps) > 0
+have_r = r_traces is not None
+have_grid = grid is not None
+
+
+def burned(tr):
+    return ru.drop_burnin(tr, BURN_FRAC)
+```
+
+```{python Provenance, results='asis'}
+for note in (
+    ru.missing_note("pypomp ABC sweeps", os.path.join(GPU, "eps*")) if not have_py else None,
+    ru.missing_note("R pomp traces", R_DIR) if not have_r else None,
+    ru.missing_note("Reference posterior", REFERENCE) if not have_grid else None,
+):
+    if note:
+        display(HTML(note))
+
+if have_py:
+    display(Markdown("### pypomp\n\n" + ru.format_metadata(sweeps[min(sweeps)]["meta"])))
+if have_r:
+    display(Markdown("### R pomp\n\n" + ru.format_r_metadata(r_meta)))
+```
+
+## 1. Precondition: do the probes agree?
+
+The ABC distance is
+`sum_i ((s_i(y*) - s_i(y)) / w_i)^2`, so if the two languages compute different
+summary statistics they are running different algorithms and any posterior
+comparison is meaningless.
+
+This is not a formality. `pomp::probe_acf(type="correlation")` carries an
+n/(n-1) small-sample correction that `stats::acf` does not: on this dataset pomp
+returns 0.8430387 where the uncorrected ratio returns 0.8389856, and
+0.8389856 x 208/207 = 0.8430385. The JAX twin in `model.py` applies that factor,
+and this section verifies it rather than trusting it.
+
+```{python Probe precondition}
+py_probes = ru.read_if_exists(os.path.join(GPU, "probe_values.csv"))
+r_probes = ru.read_if_exists(os.path.join(R_DIR, "probe_values.csv"))
+
+if py_probes is not None and r_probes is not None:
+    merged = py_probes.merge(r_probes, on="probe", suffixes=("_pypomp", "_R"))
+    merged["abs_diff"] = (merged["value_pypomp"] - merged["value_R"]).abs()
+    merged["rel_diff"] = merged["abs_diff"] / merged["value_R"].abs()
+    display(HTML(merged.to_html(
+        classes="table table-striped table-hover", index=False, float_format="%.8f"
+    )))
+
+    worst = merged["rel_diff"].max()
+    verdict = "PASS" if worst < 1e-6 else "FAIL"
+    display(Markdown(
+        f"**Precondition: {verdict}.** Largest relative difference "
+        f"{worst:.2e}. These are deterministic functions of the same series, so "
+        "they should agree to floating-point precision, not merely closely."
+    ))
+else:
+    display(Markdown("_Probe values not on disk; run both run.py and run.R._"))
+```
+
+## 2. Cross-check against R pomp
+
+Identical probes, scale, tolerance, prior, proposal family, and data. As in the
+PMCMC report the proposals are not bit-identical — pypomp perturbs on the
+estimation scale, pomp on the natural scale — so acceptance rates differ while
+the stationary distributions should not.
+
+```{python R cross-check}
+if have_py and have_r:
+    common = sorted(set(sweeps) & set(r_traces["epsilon"].unique()))
+    if not common:
+        display(Markdown("_No tolerance is present in both languages._"))
+    else:
+        eps = min(common)
+        py_post = burned(sweeps[eps]["traces"])
+        r_post = burned(r_traces[r_traces["epsilon"] == eps])
+        both = pd.concat([
+            py_post[PARAMS].assign(source="pypomp"),
+            r_post[PARAMS].assign(source="R pomp"),
+        ])
+        display(Markdown(f"Comparing at the smallest shared tolerance, epsilon = {eps:g}."))
+        for param in PARAMS:
+            display(
+                ggplot(both, aes(x=param, fill="source", color="source"))
+                + geom_density(alpha=0.35)
+                + geom_vline(xintercept=truth[param],
+                             color=ru.color_palette["truth"], linetype="dashed")
+                + labs(
+                    title=f"ABC posterior: {param}",
+                    subtitle=f"epsilon = {eps:g}; dashed line is the simulating value",
+                    x=param,
+                )
+                + ru.scale_fill_premium()
+                + ru.scale_color_premium()
+                + ru.theme_premium
+            )
+
+        rows = [
+            ru.posterior_summary(py_post, PARAMS, "pypomp"),
+            ru.posterior_summary(r_post, PARAMS, "R pomp"),
+        ]
+        table = pd.concat(rows, ignore_index=True)
+        display(HTML(table.to_html(
+            classes="table table-striped table-hover", index=False, float_format="%.4f"
+        )))
+
+        ks = [
+            {"parameter": p, "KS pypomp vs R": ru.ks_stat(py_post[p], r_post[p])}
+            for p in PARAMS
+        ]
+        display(HTML(pd.DataFrame(ks).to_html(
+            classes="table table-striped table-hover", index=False, float_format="%.4f"
+        )))
+```
+
+## 3. Tolerance sensitivity
+
+```{python Epsilon marginals}
+if have_py and len(sweeps) > 1:
+    stacked = pd.concat([
+        burned(s["traces"])[PARAMS].assign(epsilon=f"{eps:g}")
+        for eps, s in sorted(sweeps.items())
+    ])
+    for param in PARAMS:
+        display(
+            ggplot(stacked, aes(x=param, color="epsilon"))
+            + geom_density(size=1)
+            + geom_vline(xintercept=truth[param],
+                         color=ru.color_palette["truth"], linetype="dashed")
+            + labs(
+                title=f"ABC posterior as the tolerance shrinks: {param}",
+                subtitle="Should stabilize to a limit, not collapse onto the full posterior",
+                x=param,
+            )
+            + ru.theme_premium
+        )
+```
+
+### Does the sequence converge?
+
+The claim under test is that successive tolerances stop differing — not that they
+approach the grid reference.
+
+```{python Successive convergence}
+if have_py and len(sweeps) > 1:
+    ordered = sorted(sweeps, reverse=True)  # largest epsilon first
+    rows = []
+    for a, b in zip(ordered[:-1], ordered[1:]):
+        pa, pb = burned(sweeps[a]["traces"]), burned(sweeps[b]["traces"])
+        for param in PARAMS:
+            rows.append({
+                "from epsilon": a,
+                "to epsilon": b,
+                "parameter": param,
+                "KS between successive": ru.ks_stat(pa[param], pb[param]),
+            })
+    display(HTML(pd.DataFrame(rows).to_html(
+        classes="table table-striped table-hover", index=False, float_format="%.4f"
+    )))
+    display(Markdown(
+        "Falling values down this table mean the sequence is settling. Values "
+        "that stop falling indicate the ABC limit has been reached; values that "
+        "stay large mean the tolerance ladder has not gone far enough."
+    ))
+```
+
+### Acceptance and width against tolerance
+
+```{python Acceptance vs epsilon}
+if have_py:
+    rows = []
+    for eps, sweep in sorted(sweeps.items()):
+        post = burned(sweep["traces"])
+        acc = sweep["acceptance"]
+        row = {
+            "epsilon": eps,
+            "acceptance": acc["acceptance_rate"].mean() if acc is not None else np.nan,
+        }
+        for param in PARAMS:
+            row[f"sd {param}"] = post[param].std(ddof=1)
+        rows.append(row)
+    eff = pd.DataFrame(rows)
+    display(HTML(eff.to_html(
+        classes="table table-striped table-hover", index=False, float_format="%.4f"
+    )))
+
+    if len(eff) > 1:
+        display(
+            ggplot(eff, aes(x="epsilon", y="acceptance"))
+            + geom_line(color=ru.color_palette["pypomp"], size=1)
+            + geom_point(color=ru.color_palette["pypomp"], size=2)
+            + scale_x_log10()
+            + labs(
+                title="Acceptance rate against tolerance",
+                subtitle="Falls as epsilon tightens; the cost of a sharper posterior",
+                x="epsilon (log scale)",
+                y="acceptance rate",
+            )
+            + ru.theme_premium
+        )
+```
+
+### Is the ABC limit wider than the full posterior?
+
+With insufficient probes the ABC limit discards information, so its spread should
+be **at least** that of the full posterior. A tighter ABC posterior would indicate
+a bug, not a better answer.
+
+```{python Width against reference}
+if have_py and have_grid:
+    rows = []
+    smallest = min(sweeps)
+    post = burned(sweeps[smallest]["traces"])
+    for param, other in (("beta1", "rho"), ("rho", "beta1")):
+        axis, dens = ru.grid_marginals(grid, param, other)
+        w = np.gradient(axis)
+        mean = float(np.sum(axis * dens * w))
+        ref_sd = float(np.sqrt(np.sum((axis - mean) ** 2 * dens * w)))
+        abc_sd = float(post[param].std(ddof=1))
+        rows.append({
+            "parameter": param,
+            "ABC sd (smallest epsilon)": abc_sd,
+            "full posterior sd (reference)": ref_sd,
+            "ratio": abc_sd / ref_sd if ref_sd else np.nan,
+            "at least as wide": bool(abc_sd >= ref_sd),
+        })
+    display(HTML(pd.DataFrame(rows).to_html(
+        classes="table table-striped table-hover", index=False, float_format="%.4f"
+    )))
+```
+
+## 4. Large-tolerance sanity: does ABC return the prior?
+
+At the enormous leading tolerance every proposal is accepted, so the chain is a
+random walk over the prior with no data influence. Its stationary distribution
+must be the prior. This is cheap and catches sign or normalization errors in the
+distance that the other checks would miss.
+
+```{python Prior recovery}
+if have_py:
+    biggest = max(sweeps)
+    post = burned(sweeps[biggest]["traces"])
+    meta_cfg = sweeps[biggest]["meta"].get("run_config") or {}
+    box = meta_cfg.get("prior_box", {})
+
+    acc = sweeps[biggest]["acceptance"]
+    acc_mean = acc["acceptance_rate"].mean() if acc is not None else np.nan
+    display(Markdown(
+        f"At epsilon = {biggest:g} the mean acceptance rate is {acc_mean:.3f}. "
+        "Values near 1 confirm the tolerance is effectively infinite."
+    ))
+
+    rows = []
+    for param in PARAMS:
+        lo, hi = box.get(param, (np.nan, np.nan))
+        rows.append({
+            "parameter": param,
+            "ABC mean": post[param].mean(),
+            "prior mean": (lo + hi) / 2,
+            "ABC sd": post[param].std(ddof=1),
+            "prior sd": (hi - lo) / np.sqrt(12),
+        })
+    display(HTML(pd.DataFrame(rows).to_html(
+        classes="table table-striped table-hover", index=False, float_format="%.4f"
+    )))
+    display(Markdown(
+        "The chain explores the prior by random walk, so at finite M it will not "
+        "have covered the box uniformly; expect the ABC sd to approach the prior "
+        "sd from below rather than to match it. A *large* shortfall, or a mean "
+        "far from the box centre, indicates the chain is still near its start."
+    ))
+```
+
+## 5. Convergence
+
+```{python Diagnostics}
+if have_py:
+    rows = []
+    for eps, sweep in sorted(sweeps.items()):
+        rows.append(
+            ru.posterior_summary(burned(sweep["traces"]), PARAMS, f"pypomp eps={eps:g}")
+        )
+    if have_r:
+        # One row per tolerance: pooling them would mix distinct posteriors into
+        # a single R-hat and report convergence failure that is not there.
+        for eps in sorted(r_traces["epsilon"].unique()):
+            rows.append(
+                ru.posterior_summary(
+                    burned(r_traces[r_traces["epsilon"] == eps]),
+                    PARAMS,
+                    f"R pomp eps={eps:g}",
+                )
+            )
+    diag = pd.concat(rows, ignore_index=True)[
+        ["source", "parameter", "split_rhat", "bulk_ess"]
+    ]
+    display(HTML(diag.to_html(
+        classes="table table-striped table-hover", index=False, float_format="%.3f"
+    )))
+```
+
+```{python Trace plots}
+if have_py:
+    smallest = min(sweeps)
+    tr = sweeps[smallest]["traces"]
+    thin = tr.iloc[:: max(1, len(tr) // 4000)]
+    for param in PARAMS:
+        display(
+            ggplot(thin, aes(x="iter", y=param, group="chain", color="factor(chain)"))
+            + geom_line(alpha=0.7, size=0.4)
+            + labs(
+                title=f"ABC chains at epsilon={smallest:g}: {param}",
+                x="iteration",
+                color="chain",
+            )
+            + ru.theme_premium
+        )
+```

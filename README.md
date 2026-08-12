@@ -40,3 +40,9 @@ Below is a list of quantitative test reports available in this repository:
 * **[Parameter Estimation](tests/panel_measles/estimation/report.html)** (`tests/panel_measles/estimation`): Compares the distribution of block-IF2 parameter estimates from a global search in `pypomp` versus `panelPomp`, from identical starting points, and reports the `pypomp`-only mix-and-match step.
 * **[Runtime & Throughput Benchmark](tests/panel_measles/timing/report.html)** (`tests/panel_measles/timing`): Benchmarks block-IF2 and particle filter execution speed on the 4-unit mixed panel model, contrasting `pypomp` on GPU and CPU with R `panelPomp`.
 
+### 6. Bayesian Inference (PMCMC & ABC)
+Organized by method rather than by model: all three read one shared SIR benchmark defined in `tests/bayesian/model.py` and `model.R`, estimating `beta1` and `rho` under a flat bounded prior.
+* **[Reference Posterior](tests/bayesian/reference/report.html)** (`tests/bayesian/reference`): Builds a grid-quadrature posterior over `(beta1, rho)` from batched particle filter evaluations, giving the samplers an absolute target on a model with no analytic posterior.
+* **[PMCMC](tests/bayesian/pmcmc/report.html)** (`tests/bayesian/pmcmc`): Checks that `pypomp`'s particle marginal Metropolis-Hastings targets the reference posterior, agrees with R `pomp`'s `pmcmc`, and is invariant to the particle count `J` as the exact-approximate property requires.
+* **[ABC](tests/bayesian/abc/report.html)** (`tests/bayesian/abc`): Compares `pypomp`'s approximate Bayesian computation against R `pomp`'s `abc` at identical probes and tolerance, and checks that the posterior converges as the tolerance shrinks and collapses onto the prior when it does not bind.
+
