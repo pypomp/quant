@@ -1,0 +1,217 @@
+---
+title: "SIR: Reference Posterior"
+subtitle: "A grid-quadrature posterior over (beta1, rho) for the samplers to be measured against"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML, Markdown
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('reference')}</div>"))
+```
+
+## Introduction
+
+Neither PMCMC nor ABC has an analytic target on the SIR model, so this report
+builds one numerically. The particle-filter log-likelihood is evaluated on a
+lattice over the prior box, replicates are combined with `logmeanexp`, the flat
+log-prior is added, and the result is normalized by the cell area. The `pmcmc`
+and `abc` reports both read the CSV produced here.
+
+**What this reference can and cannot do.** It runs pypomp's own particle filter
+on pypomp's own model, so it is *blind* to errors in the SIR translation: a
+wrong model would produce a wrong reference that a wrong PMCMC would match
+perfectly. It is the only **absolute** test that a sampler targets the posterior
+implied by this model and prior. Detecting model errors is the job of the R
+cross-check, and of the pfilter-logLik precondition that gates it — see the
+PMCMC report.
+
+A reference is only a reference to the extent its own Monte Carlo error is
+small, so that error is reported below alongside the surface.
+
+```{python Setup}
+import numpy as np
+import pandas as pd
+from plotnine import (
+    aes,
+    geom_line,
+    geom_raster,
+    geom_vline,
+    ggplot,
+    labs,
+    scale_fill_continuous,
+)
+
+os.environ["JAX_PLATFORMS"] = "cpu"
+
+RESULTS = os.path.join("results", "gpu")
+grid = ru.read_if_exists(os.path.join(RESULTS, "grid_posterior.csv"))
+meta = ru.load_json(os.path.join(RESULTS, "latest.json"))
+have_grid = grid is not None
+```
+
+```{python Provenance, results='asis'}
+if meta:
+    display(Markdown("### Provenance\n\n" + ru.format_metadata(meta)))
+if not have_grid:
+    display(HTML(ru.missing_note(
+        "Reference grid", os.path.join(RESULTS, "grid_posterior.csv")
+    )))
+```
+
+## The posterior surface
+
+```{python Surface}
+if have_grid:
+    surface = grid.copy()
+    # The dynamic range spans hundreds of nats, so plot on the log scale and
+    # floor it well below the mode -- a linear scale shows one bright cell.
+    floor = surface["log_post"].max() - 30.0
+    surface["log_post_clipped"] = surface["log_post"].clip(lower=floor)
+    display(
+        ggplot(surface, aes(x="beta1", y="rho", fill="log_post_clipped"))
+        + geom_raster()
+        + labs(
+            title="Reference log posterior density",
+            subtitle="Clipped 30 nats below the mode; the true theta is marked",
+            x="beta1",
+            y="rho",
+            fill="log density",
+        )
+        + ru.theme_premium
+    )
+else:
+    display(Markdown("_No grid on disk._"))
+```
+
+```{python Truth and mode}
+if have_grid:
+    truth = pd.read_csv("../data/true_theta.csv")
+    truth = dict(zip(truth["parameter"], truth["value"]))
+    best = grid.loc[grid["log_post"].idxmax()]
+    summary = pd.DataFrame(
+        [
+            {"quantity": "true beta1", "value": truth["beta1"]},
+            {"quantity": "grid mode beta1", "value": float(best["beta1"])},
+            {"quantity": "true rho", "value": truth["rho"]},
+            {"quantity": "grid mode rho", "value": float(best["rho"])},
+        ]
+    )
+    display(HTML(summary.to_html(
+        classes="table table-striped table-hover", index=False, float_format="%.4f"
+    )))
+```
+
+The grid mode is the maximum over cell centres, so it is quantized to the grid
+spacing and is not expected to land exactly on the truth even for a perfect
+reference. Posterior *mass* covering the truth is the meaningful check, and that
+is made in the PMCMC report where credible intervals are available.
+
+## Marginals
+
+```{python Marginals}
+if have_grid:
+    frames = []
+    for param, other in (("beta1", "rho"), ("rho", "beta1")):
+        axis, dens = ru.grid_marginals(grid, param, other)
+        frames.append(pd.DataFrame({"value": axis, "density": dens, "parameter": param}))
+
+    for frame in frames:
+        param = frame["parameter"].iloc[0]
+        display(
+            ggplot(frame, aes(x="value", y="density"))
+            + geom_line(color=ru.color_palette["reference"], size=1)
+            + geom_vline(xintercept=truth[param], color=ru.color_palette["truth"],
+                         linetype="dashed")
+            + labs(
+                title=f"Reference marginal posterior: {param}",
+                subtitle="Dashed line is the simulating value",
+                x=param,
+                y="density",
+            )
+            + ru.theme_premium
+        )
+```
+
+## Monte Carlo error of the reference
+
+Each grid point is a `logmeanexp` over replicate particle filters. The spread of
+those replicates bounds how much of the surface's structure is noise rather than
+signal. If this is comparable to the log-density differences between neighbouring
+cells, the grid is under-resolved and `NREPS_REF`, `NP_REF`, or `GRID_N` should
+be raised before the reference is trusted.
+
+```{python MC error}
+if have_grid and grid["logLik_sd"].notna().any():
+    err = grid["logLik_sd"].dropna()
+    stats = pd.DataFrame(
+        [
+            {"quantity": "median replicate sd (nats)", "value": err.median()},
+            {"quantity": "max replicate sd (nats)", "value": err.max()},
+            {
+                "quantity": "log-density range across grid (nats)",
+                "value": grid["log_post"].max() - grid["log_post"].min(),
+            },
+        ]
+    )
+    display(HTML(stats.to_html(
+        classes="table table-striped table-hover", index=False, float_format="%.3f"
+    )))
+elif have_grid:
+    display(Markdown(
+        "_Only one replicate per grid point at this run level, so no Monte "
+        "Carlo error estimate is available. Run at level 2 or above._"
+    ))
+```
+
+## Resolution
+
+```{python Resolution}
+if have_grid:
+    n_side = int(np.sqrt(len(grid)))
+    b_axis = np.sort(grid["beta1"].unique())
+    r_axis = np.sort(grid["rho"].unique())
+    # Posterior sd from the gridded marginals, for a cells-per-sd figure.
+    rows = []
+    for param, other, axis in (("beta1", "rho", b_axis), ("rho", "beta1", r_axis)):
+        ax, dens = ru.grid_marginals(grid, param, other)
+        w = np.gradient(ax)
+        mean = np.sum(ax * dens * w)
+        sd = np.sqrt(np.sum((ax - mean) ** 2 * dens * w))
+        spacing = float(np.mean(np.diff(axis)))
+        rows.append(
+            {
+                "parameter": param,
+                "posterior sd": sd,
+                "grid spacing": spacing,
+                "cells per sd": sd / spacing if spacing else np.nan,
+            }
+        )
+    display(HTML(pd.DataFrame(rows).to_html(
+        classes="table table-striped table-hover", index=False, float_format="%.4f"
+    )))
+    display(Markdown(
+        f"Grid is {n_side}x{n_side}. Fewer than about two cells per posterior "
+        "standard deviation means the marginals above are visibly discretized "
+        "and the KS comparisons in the sampler reports will be dominated by "
+        "grid resolution rather than by sampler error."
+    ))
+```
