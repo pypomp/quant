@@ -240,6 +240,32 @@ question: **what varies across the runs inside the test?**
 The text files are the main record; the pkl is kept as a fallback, although it is not committed. 
 `latest.json` carries various other run info that is not easily recorded in csv files, such as the pypomp and JAX versions, the quant git SHA, the device, the SLURM job id, and algorithmic configuration details.
 
+### Reports open with the run metadata
+
+Every `report.qmd` begins with
+
+```python
+ru.show_run_metadata()
+```
+
+which is `tests/report_meta.py`, re-exported through each model's
+`report_utils.py`. It discovers the arms under `results/*/latest.json`, and
+renders one table whose columns are the arms and whose rows are the particle
+counts, iteration counts, starting points and replicate counts they ran with,
+followed by the versions, hardware, SLURM job and commit behind each. Values
+the arms agree on are merged across their columns, so what differs is what
+stands out.
+
+The reader should not have to hunt for what produced a number, so a report
+states this before it shows any result. Nothing needs passing in: a new test
+that writes a `latest.json` in the standard layout is picked up on its own. A
+test whose results are not laid out that way passes them explicitly, as
+`tests/bif/sir_dacca_pmcmc/report.qmd` does.
+
+When a test records a new configuration key, add it to `CONFIG_LABELS` in
+`tests/report_meta.py` so it renders with a readable name; unknown keys still
+appear, under their raw name.
+
 
 ---
 

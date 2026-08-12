@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -13,6 +14,14 @@ from plotnine import (
     theme_minimal,
 )
 from scipy.special import logit
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from report_meta import (  # noqa: E402, F401
+    discover_arms,
+    load_json,
+    run_metadata_html,
+    show_run_metadata,
+)
 
 # Hide noisy JAX CUDA log messages
 logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
@@ -77,15 +86,6 @@ def format_r_metadata(data):
         f"Node / cores:   {hw.get('nodelist', 'N/A')} / {hw.get('cores', 'N/A')}\n"
         f"Timestamp:      {data.get('timestamp', 'N/A')}\n"
     )
-
-
-def load_json(path):
-    if not os.path.exists(path):
-        return {}
-    import json
-
-    with open(path) as f:
-        return json.load(f)
 
 
 # The scales the model is actually estimated on. Comparing raw values would put

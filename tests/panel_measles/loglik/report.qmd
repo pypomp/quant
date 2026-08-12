@@ -27,6 +27,10 @@ from IPython.display import display, HTML
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 This report evaluates the panel particle filter's likelihood calculation itself,
@@ -87,11 +91,6 @@ for label, d in SOURCES.items():
 combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(
     columns=["unit", "replicate", "logLik", "source"]
 )
-
-print("pypomp:")
-print(ru.format_metadata(ru.load_json(os.path.join(PY_DIR, "latest.json"))), end="")
-print("\nR panelPomp:")
-print(ru.format_r_metadata(ru.load_json(os.path.join(R_DIR, "latest.json"))), end="")
 ```
 
 :::

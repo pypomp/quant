@@ -27,6 +27,10 @@ from IPython.display import display, HTML
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 This report evaluates the particle filter's likelihood calculation itself, by
@@ -73,11 +77,6 @@ for label, d in SOURCES.items():
     frames.append(df)
 
 combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-
-print("pypomp (64-bit):")
-print(ru.format_metadata(ru.load_json(os.path.join("results", "f64", "latest.json"))), end="")
-print("\nR pomp:")
-print(ru.format_r_metadata(ru.load_json(os.path.join("results", "R", "latest.json"))), end="")
 ```
 
 :::

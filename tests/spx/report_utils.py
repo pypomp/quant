@@ -1,9 +1,20 @@
 import logging
+import os
+import sys
+
 import numpy as np
 import pandas as pd
 from plotnine import (
     theme_minimal, theme, element_text, element_rect, element_line,
     scale_color_manual, scale_fill_manual
+)
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from report_meta import (  # noqa: E402, F401
+    discover_arms,
+    load_json,
+    run_metadata_html,
+    show_run_metadata,
 )
 
 # Hide noisy JAX CUDA log messages

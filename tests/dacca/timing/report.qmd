@@ -28,6 +28,10 @@ from IPython.display import display, HTML, Markdown
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 This benchmark times IF2 and the particle filter on the Dhaka cholera model in
@@ -73,25 +77,6 @@ def load(platform):
 runs = {p: load(p) for p in PLATFORMS}
 available = {p: r for p, r in runs.items() if r is not None}
 ```
-
-::: {.callout-note collapse="true"}
-### Run provenance
-```{python Provenance}
-for platform, label in PLATFORMS.items():
-    run = runs[platform]
-    print(f"{label}:")
-    if run is None:
-        print("  not yet run\n")
-        continue
-    fmt = ru.format_r_metadata if platform == "R" else ru.format_metadata
-    print(fmt(run["meta"]), end="")
-    print(f"Configuration:  {run['cfg']}")
-    if run["meta"].get("provenance"):
-        print(f"Provenance:     {run['meta']['provenance']}")
-    print()
-```
-
-:::
 
 ---
 

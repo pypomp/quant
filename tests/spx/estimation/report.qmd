@@ -28,6 +28,10 @@ from IPython.display import display, HTML
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('estimation')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 This report compares parameter convergence and likelihood evaluation of the S&P 500 (SPX) stochastic volatility model used in @sun2024 using the `pypomp` package (on CPU and GPU) and the R `pomp` package (on CPU).

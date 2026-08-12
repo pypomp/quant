@@ -16,12 +16,16 @@ execute:
 # | echo: false
 import json
 import logging
+import sys
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from IPython.display import Markdown, display
+
+sys.path.append(str(Path("../..").resolve()))
+import report_meta as rm
 
 logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
 
@@ -33,6 +37,14 @@ RUNS = {
 }
 
 print("Report generated on:", datetime.now())
+```
+
+```{python}
+# | label: run-metadata
+# | echo: false
+rm.show_run_metadata(
+    {label: str(path) for label, path in RUNS.items()}, marker="config.json"
+)
 ```
 
 This report summarizes two preliminary BIF versus PMCMC benchmarks for

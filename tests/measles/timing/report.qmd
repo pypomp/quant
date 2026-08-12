@@ -27,6 +27,10 @@ from IPython.display import display, HTML
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 The measles is on the expensive end of the benchmark suite: 365 Euler steps per year
@@ -70,12 +74,6 @@ for label, d in CONFIGS.items():
         continue
     timings[label] = dict(zip(tm["phase"], tm["time_seconds"]))
     configs[label] = ru.load_json(os.path.join(d, "latest.json")).get("run_config", {}) or {}
-
-for label, d in CONFIGS.items():
-    meta = ru.load_json(os.path.join(d, "latest.json"))
-    print(f"{label}:")
-    print(ru.format_r_metadata(meta) if label == "R" else ru.format_metadata(meta), end="")
-    print()
 ```
 
 :::

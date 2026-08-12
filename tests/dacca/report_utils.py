@@ -1,8 +1,8 @@
 """Shared plotting and loading helpers for the Dhaka reports."""
 
-import json
 import logging
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -14,6 +14,14 @@ from plotnine import (
     scale_fill_manual,
     theme,
     theme_minimal,
+)
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from report_meta import (  # noqa: E402, F401
+    discover_arms,
+    load_json,
+    run_metadata_html,
+    show_run_metadata,
 )
 
 # Hide noisy JAX CUDA log messages
@@ -53,13 +61,6 @@ def scale_color_premium():
 
 def scale_fill_premium():
     return scale_fill_manual(values=color_palette)
-
-
-def load_json(path):
-    if not os.path.exists(path):
-        return {}
-    with open(path) as f:
-        return json.load(f)
 
 
 def format_metadata(data):

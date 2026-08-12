@@ -27,6 +27,10 @@ from IPython.display import display, HTML
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('estimation')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 This report compares block-IF2 parameter estimates for the mixed panel measles
@@ -82,11 +86,6 @@ if py_results is None:
     missing.append(("pypomp results", os.path.join(PY_DIR, "results_final.csv")))
 if r_coefs is None:
     missing.append(("R baseline", os.path.join(R_DIR, "mif_coefs.csv")))
-
-print("pypomp:")
-print(ru.format_metadata(ru.load_json(os.path.join(PY_DIR, "latest.json"))), end="")
-print("\nR panelPomp:")
-print(ru.format_r_metadata(ru.load_json(os.path.join(R_DIR, "latest.json"))), end="")
 ```
 
 :::

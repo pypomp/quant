@@ -28,6 +28,10 @@ from IPython.display import display, HTML
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 This benchmark evaluates execution speed and throughput of the S&P 500 (SPX) stochastic volatility model [@sun2024] using `pypomp` on CPU and GPU relative to R `pomp` on CPU.
@@ -46,20 +50,6 @@ import numpy as np
 import pandas as pd
 
 os.environ["JAX_PLATFORMS"] = "cpu"
-
-GPU_JSON_PATH = os.path.join("results", "gpu", "latest.json")
-CPU_JSON_PATH = os.path.join("results", "cpu", "latest.json")
-
-gpu_json = json.load(open(GPU_JSON_PATH)) if os.path.exists(GPU_JSON_PATH) else {}
-cpu_json = json.load(open(CPU_JSON_PATH)) if os.path.exists(CPU_JSON_PATH) else {}
-
-gpu_metadata_str = ru.format_metadata(gpu_json)
-cpu_metadata_str = ru.format_metadata(cpu_json)
-
-print("GPU Pomp Object Metadata:")
-print(gpu_metadata_str, end="")
-print("\nCPU Pomp Object Metadata:")
-print(cpu_metadata_str, end="")
 ```
 
 :::

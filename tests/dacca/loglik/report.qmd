@@ -27,6 +27,10 @@ from IPython.display import display, HTML
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 To check that `pypomp`'s particle filter is doing the same arithmetic as R
@@ -51,21 +55,7 @@ os.environ["JAX_PLATFORMS"] = "cpu"
 PY = pd.read_csv(os.path.join("results", "gpu", "pfilter_logliks.csv"))["logLik"].values
 R = pd.read_csv(os.path.join("results", "R", "pfilter_logliks.csv"))["logLik"].dropna().values
 
-py_meta = ru.load_json(os.path.join("results", "gpu", "latest.json"))
-r_meta = ru.load_json(os.path.join("results", "R", "latest.json"))
 ```
-
-::: {.callout-note collapse="true"}
-### Run provenance
-```{python Provenance}
-print("pypomp (GPU):")
-print(ru.format_metadata(py_meta), end="")
-print(f"Configuration:  {py_meta.get('run_config', {})}\n")
-print("R pomp:")
-print(ru.format_r_metadata(r_meta), end="")
-print(f"Configuration:  {r_meta.get('run_config', {})}")
-```
-:::
 
 ---
 

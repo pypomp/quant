@@ -27,6 +27,10 @@ from IPython.display import display, HTML, Markdown
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('algorithms')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 This report compares two `pypomp` fitting pipelines on the Dhaka cholera model:
@@ -97,17 +101,6 @@ traces = {
     for arm, label in ARMS.items()
 }
 ```
-
-::: {.callout-note collapse="true"}
-### Run provenance
-```{python Provenance}
-for arm, label in ARMS.items():
-    print(f"{label}:")
-    print(ru.format_metadata(meta[arm]), end="")
-    print(f"Configuration:  {meta[arm].get('run_config', {})}\n")
-```
-
-:::
 
 ---
 

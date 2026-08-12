@@ -28,6 +28,10 @@ from IPython.display import display, HTML
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
 ```
 
+```{python Run metadata}
+ru.show_run_metadata()
+```
+
 ## Introduction
 
 This section evaluates the particle filter's likelihood calculation itself by running it multiple times on a single, fixed parameter vector [@sun2024 estimates].
