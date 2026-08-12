@@ -224,7 +224,7 @@ def missing_note(label, path):
     )
 
 
-def load_traces(path, label):
+def load_traces(path, label, usecols=None, max_iters=None):
     """Read a traces.csv.gz into the long form the reports plot.
 
     Returns None when the file is absent: the Python traces are gitignored
@@ -232,7 +232,15 @@ def load_traces(path, label):
     """
     if not os.path.exists(path):
         return None
-    traces = pd.read_csv(path).rename(
+
+    if usecols is not None:
+        header = pd.read_csv(path, nrows=0).columns.tolist()
+        valid_cols = [c for c in usecols if c in header]
+        traces = pd.read_csv(path, usecols=valid_cols)
+    else:
+        traces = pd.read_csv(path)
+
+    traces = traces.rename(
         columns={
             "theta_idx": "rep",
             "replicate": "rep",
@@ -241,6 +249,10 @@ def load_traces(path, label):
         }
     )
     traces["source"] = label
+
+    if max_iters is not None and "iter" in traces.columns:
+        traces = thin(traces, max_iters=max_iters)
+
     return traces
 
 

@@ -29,19 +29,11 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
 
 ## Introduction
 
-The panel measles model runs the measles dynamics — 365 Euler steps per year of
-weekly data, with an `rproc` drawing 8 random variates from 3 distributions — over
-4 units at once, under a mixed parameter structure that `panelPomp` fits with
-block-IF2.
+The panel measles model runs the measles dynamics over 4 units at once, under a parameter structure containing both shared and unit-specific parameter values, and is fit using marginalized panel iterated filtering.  
+The model runs 365 Euler steps per year of weekly data, with an `rproc` drawing 8 random variates from 3 distributions per step.
 
-Three configurations are timed on identical work, all starting from the same
-committed parameter vectors (`../starting_parameters.csv`):
-
-| Configuration | What it isolates |
-|---|---|
-| R `panelPomp`, 36 CPU cores | the baseline |
-| `pypomp` GPU | end-to-end acceleration |
-| `pypomp` 36 CPU cores | acceleration without a GPU |
+Two configurations are timed on identical work, all starting from the same
+committed parameter vectors (`../starting_parameters.csv`).
 
 ---
 
@@ -58,7 +50,6 @@ os.environ["JAX_PLATFORMS"] = "cpu"
 CONFIGS = {
     "R panelPomp": os.path.join("results", "R"),
     "pypomp (GPU)": os.path.join("results", "gpu"),
-    "pypomp (CPU)": os.path.join("results", "cpu"),
 }
 
 timings = {}
@@ -86,13 +77,27 @@ for label, path in missing:
     display(HTML(ru.missing_note(label, path)))
 ```
 
+```{python Benchmark Workload, results='asis'}
+ref_cfg = next((cfg for cfg in configs.values() if cfg), {})
+
+if ref_cfg:
+    params_df = pd.DataFrame([
+        {"Parameter": "Run Level", "Value": str(ref_cfg.get("RUN_LEVEL", "N/A"))},
+        {"Parameter": "Starting Parameter Searches (Nstarts)", "Value": f"{ref_cfg.get('NSTARTS', 'N/A'):,}" if isinstance(ref_cfg.get('NSTARTS'), int) else ref_cfg.get('NSTARTS', 'N/A')},
+        {"Parameter": "Block-IF2 Iterations (Nmif)", "Value": f"{ref_cfg.get('NFITR', 'N/A'):,}" if isinstance(ref_cfg.get('NFITR'), int) else ref_cfg.get('NFITR', 'N/A')},
+        {"Parameter": "Block-IF2 Particles / Unit (Np_fit)", "Value": f"{ref_cfg.get('NP_FITR', 'N/A'):,}" if isinstance(ref_cfg.get('NP_FITR'), int) else ref_cfg.get('NP_FITR', 'N/A')},
+        {"Parameter": "Pfilter Evaluation Particles / Unit (Np_eval)", "Value": f"{ref_cfg.get('NP_EVAL', 'N/A'):,}" if isinstance(ref_cfg.get('NP_EVAL'), int) else ref_cfg.get('NP_EVAL', 'N/A')},
+        {"Parameter": "Pfilter Evaluation Replicates (Nreps)", "Value": f"{ref_cfg.get('NREPS_EVAL', 'N/A'):,}" if isinstance(ref_cfg.get('NREPS_EVAL'), int) else ref_cfg.get('NREPS_EVAL', 'N/A')},
+    ])
+    display(HTML("<h4 style='margin-top: 20px;'>Workload & Algorithmic Parameters</h4>" + params_df.to_html(classes="table table-striped table-hover", index=False)))
+```
+
 ---
 
 ## Timing Comparison
 
-`pfilter_cold` is the timed figure: the first `pfilter` call includes JIT
-compilation overhead. Warm timings are reported separately below. R has no
-compilation step, so its single `pfilter` timing serves as both.
+`pfilter_cold` is the timed figure: the first `pfilter` call includes JIT compilation overhead. 
+Warm timings are reported separately below. R has no compilation step, so its single `pfilter` timing serves as both.
 
 ```{python Timing table}
 def phase(label, name):

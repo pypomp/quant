@@ -1,15 +1,14 @@
 """Panel measles: wall-clock timing of block-IF2 and pfilter.
 
-Two pypomp configurations are timed against the R baseline in
-results/R/timings.csv: one GPU, and 36 CPU cores. All three start from the same
-committed parameter vectors (../starting_parameters.csv), so every
-configuration times the same work.
+The pypomp GPU configuration is timed against the R baseline in
+results/R/timings.csv. Both start from the same committed parameter vectors
+(../starting_parameters.csv), so every configuration times the same work.
 """
 
 # --- SLURM CONFIG ---
 # importance: high
-# description: "Panel measles: wall-clock timing of block-IF2 and pfilter (GPU / CPU)"
-# tags: [timing, panel_measles, gpu, cpu]
+# description: "Panel measles: wall-clock timing of block-IF2 and pfilter"
+# tags: [timing, panel_measles, gpu]
 # jobs:
 #   gpu:
 #     sbatch_args:
@@ -19,15 +18,6 @@ configuration times the same work.
 #       cpus-per-gpu: 1
 #       mem: 6GB
 #       output: "results/gpu/logs/slurm-%j.out"
-#   cpu:
-#     sbatch_args:
-#       job-name: "panel measles timing (cpu)"
-#       partition: standard
-#       cpus-per-task: 36
-#       mem: 80GB
-#       output: "results/cpu/logs/slurm-%j.out"
-#     env:
-#       USE_CPU: "true"
 #
 # run_levels:
 #   1:
@@ -52,16 +42,6 @@ model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if model_dir not in sys.path:
     sys.path.append(model_dir)
 
-# JAX reads these at import time, so they must be set before it is imported.
-USE_CPU = os.environ.get("USE_CPU", "false").lower() == "true"
-if USE_CPU:
-    os.environ["JAX_PLATFORMS"] = "cpu"
-    if "SLURM_CPUS_PER_TASK" in os.environ:
-        os.environ["XLA_FLAGS"] = (
-            os.environ.get("XLA_FLAGS", "")
-            + f" --xla_force_host_platform_device_count={os.environ['SLURM_CPUS_PER_TASK']}"
-        )
-
 import jax
 import model
 import numpy as np
@@ -69,7 +49,6 @@ import pandas as pd
 from utils import run_metadata
 
 print(jax.devices())
-print("Using CPU:", USE_CPU)
 
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 print(f"Running at level {RUN_LEVEL}")
@@ -125,7 +104,6 @@ record = run_metadata(
         "kind": "timing",
         "model": "panel_measles",
         "RUN_LEVEL": RUN_LEVEL,
-        "USE_CPU": USE_CPU,
         "MAIN_SEED": model.MAIN_SEED,
         "UNITS": model.UNITS,
         "SHARED_PARAMS": model.SHARED_PARAMS,

@@ -1,26 +1,26 @@
 {
-  "timestamp": "2026-08-11T08:51:34",
+  "timestamp": "2026-08-12T09:39:45",
   "r_version": "4.4.0",
   "pomp_version": "6.3",
   "panelPomp_version": "1.7.0.0",
-  "quant_git_sha": "7f9ea97691d09505594e06a1f90272ab427e89b0",
+  "quant_git_sha": "b4cc16011341b01eef2439f23ad5dfe1b891564c",
   "hardware": {
-    "nodelist": "gl3177",
+    "nodelist": "gl3141",
     "cpu_model": "Intel(R) Xeon(R) Gold 6154 CPU @ 3.00GHz",
     "cores": 36
   },
   "slurm": {
-    "job_id": "56880069",
+    "job_id": "57201574",
     "partition": "standard",
     "cpus": "1"
   },
   "run_config": {
     "kind": "estimation",
     "model": "measles",
-    "RUN_LEVEL": 4,
-    "NP_FITR": 5000,
-    "NFITR": 100,
-    "NSTARTS": 360,
+    "RUN_LEVEL": 1,
+    "NP_FITR": 2,
+    "NFITR": 2,
+    "NSTARTS": 2,
     "UNITS": ["London", "Halesworth"]
   }
 }

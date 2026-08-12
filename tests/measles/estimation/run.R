@@ -69,8 +69,7 @@ t_mif <- system.time({
     unit_mifs <- foreach(
       i = 1:NSTARTS,
       .packages = "pomp",
-      .combine = list,
-      .multicombine = TRUE,
+      .combine = c,
       .options.multicore = list(set.seed = TRUE)
     ) %dopar%
       {

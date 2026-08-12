@@ -90,9 +90,9 @@ def align_covariates(pomp_dict, covar_file=COVARS_PATH):
         print(f"Warning: {covar_file} not found; using pypomp's own splines.")
         return
 
-    all_covars = pd.read_csv(covar_file)
+    all_covars: pd.DataFrame = pd.read_csv(covar_file)
     for unit, pomp_obj in pomp_dict.items():
-        unit_covars = all_covars[all_covars["unit"] == unit].sort_values(by="time")
+        unit_covars = all_covars.loc[all_covars["unit"] == unit].sort_values(by="time")
 
         if pomp_obj.covars is None:
             raise ValueError(f"{unit} has no covariate table to align")
@@ -164,7 +164,7 @@ def fixed_starts(n, path=STARTS_PATH, units=UNITS):
     """
     if not os.path.exists(path):
         raise FileNotFoundError(f"starting parameters not found at {path}")
-    df = pd.read_csv(path)
+    df: pd.DataFrame = pd.read_csv(path)
 
     available = df["replicate"].nunique()
     if available < n:
@@ -172,9 +172,11 @@ def fixed_starts(n, path=STARTS_PATH, units=UNITS):
 
     reps = []
     for j in sorted(df["replicate"].unique())[:n]:
-        rep = df[df["replicate"] == j]
-        shared = rep[rep["unit"] == "shared"].set_index("param")["value"]
-        specific = rep[rep["unit"] != "shared"].pivot(
+        rep: pd.DataFrame = df.loc[df["replicate"] == j]
+        shared_df: pd.DataFrame = rep.loc[rep["unit"] == "shared"]
+        shared = shared_df.set_index("param")["value"]
+        specific_df: pd.DataFrame = rep.loc[rep["unit"] != "shared"]
+        specific = specific_df.pivot(
             index="param", columns="unit", values="value"
         )
         reps.append(
