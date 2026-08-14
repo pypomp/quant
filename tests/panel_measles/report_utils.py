@@ -118,7 +118,7 @@ def to_estimation_scale(df, param_col="param", value_col="value"):
     out[value_col] = values
     labels = {p: f"log({p})" for p in LOG_PARAMS}
     labels.update({p: f"logit({p})" for p in LOGIT_PARAMS})
-    out[param_col] = out[param_col].replace(labels)
+    out[param_col] = out[param_col].astype(str).replace(labels)
     return out
 
 
@@ -155,6 +155,55 @@ def split_shared_specific(df):
     shared = shared.drop_duplicates()
 
     specific = df[df["param"].isin(SPECIFIC_PARAMS)].copy()
+    return pd.concat([shared, specific], ignore_index=True)
+
+
+def split_traces_shared_specific(df):
+    """Split panel traces into shared and unit-specific blocks.
+
+    Ensures that shared parameters appear only under `unit == 'shared'` and
+    unit-specific parameters appear only under their respective unit. If the
+    input frame lacks explicit `unit == 'shared'` rows (e.g. from R runs where
+    shared parameters were attached to every unit's row), the shared parameter
+    values are extracted once per start/iteration into a 'shared' unit block.
+    """
+    if df is None or df.empty:
+        return df
+
+    # 1. Extract shared parameter rows
+    if (df["unit"] == "shared").any():
+        shared = df[df["unit"] == "shared"].copy()
+        shared_cols = [
+            c
+            for c in ["rep", "iter", "logLik", "method", "source", "unit"]
+            if c in shared.columns
+        ] + [p for p in SHARED_PARAMS if p in shared.columns]
+        shared = shared[[c for c in shared_cols if c in shared.columns]]
+    else:
+        shared_cols = [
+            c
+            for c in ["rep", "iter", "logLik", "method", "source"]
+            if c in df.columns
+        ] + [p for p in SHARED_PARAMS if p in df.columns]
+        id_subset = [c for c in ["rep", "iter", "source"] if c in shared_cols]
+        shared = (
+            df[shared_cols]
+            .drop_duplicates(subset=id_subset)
+            .copy()
+            if id_subset
+            else df[shared_cols].drop_duplicates().copy()
+        )
+        shared["unit"] = "shared"
+
+    # 2. Extract unit-specific parameter rows
+    specific = df[df["unit"] != "shared"].copy()
+    specific_cols = [
+        c
+        for c in ["unit", "rep", "iter", "logLik", "method", "source"]
+        if c in specific.columns
+    ] + [p for p in SPECIFIC_PARAMS if p in specific.columns]
+    specific = specific[[c for c in specific_cols if c in specific.columns]]
+
     return pd.concat([shared, specific], ignore_index=True)
 
 
@@ -236,7 +285,7 @@ def load_traces(path, label, usecols=None, max_iters=None):
     if usecols is not None:
         header = pd.read_csv(path, nrows=0).columns.tolist()
         valid_cols = [c for c in usecols if c in header]
-        traces = pd.read_csv(path, usecols=valid_cols)
+        traces = pd.read_csv(path, usecols=valid_cols)  # type: ignore
     else:
         traces = pd.read_csv(path)
 
@@ -280,8 +329,8 @@ def to_long(traces, max_iters=150):
         var_name="quantity",
         value_name="param_value",
     )
+    long = long.dropna(subset=["param_value"])
     long["param_value"] = long["param_value"].astype(np.float32)
-    long["quantity"] = long["quantity"].astype("category")
     return long
 
 

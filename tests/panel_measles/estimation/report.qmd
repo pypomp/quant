@@ -206,42 +206,48 @@ region.
 
 ```{python Endpoint logliks, fig.width = 10, fig.height = 6}
 py_ll = ru.read_if_exists(os.path.join(PY_DIR, "pfilter_logliks.csv"))
+r_ll = ru.read_if_exists(os.path.join(R_DIR, "pfilter_logliks.csv"))
 
+ll_frames = []
+if py_ll is not None:
+    py_ll = py_ll.copy()
+    py_ll["source"] = "pypomp"
+    ll_frames.append(py_ll)
+if r_ll is not None:
+    r_ll = r_ll.copy()
+    r_ll["source"] = "R panelPomp"
+    ll_frames.append(r_ll)
+
+missing_ll = []
 if py_ll is None:
-    display(HTML(ru.missing_note("pypomp endpoint log-likelihoods",
-                                 os.path.join(PY_DIR, "pfilter_logliks.csv"))))
-else:
-    panel_ll = (
-        py_ll.groupby(["theta_idx", "replicate"])["logLik"].sum().reset_index()
-        if "theta_idx" in py_ll.columns
-        else py_ll.groupby("replicate")["logLik"].sum().reset_index()
-    )
-    by_start = (
-        panel_ll.groupby("theta_idx")["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
-        if "theta_idx" in panel_ll.columns
-        else panel_ll.assign(theta_idx=0).groupby("theta_idx")["logLik"]
-        .agg(logmeanexp=ru.logmeanexp).reset_index()
-    )
-    display(HTML(
-        by_start.round(2).sort_values("logmeanexp", ascending=False)
-        .to_html(classes="table table-striped table-hover", index=False)
-    ))
+    missing_ll.append(("pypomp endpoint log-likelihoods", os.path.join(PY_DIR, "pfilter_logliks.csv")))
+if r_ll is None:
+    missing_ll.append(("R panelPomp endpoint log-likelihoods", os.path.join(R_DIR, "pfilter_logliks.csv")))
 
+for label, path in missing_ll:
+    display(HTML(ru.missing_note(label, path)))
+
+if ll_frames:
+    combined_ll = pd.concat(ll_frames, ignore_index=True)
     per_unit = (
-        py_ll.groupby(["unit", "theta_idx"])["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
-        if "theta_idx" in py_ll.columns
-        else py_ll.groupby("unit")["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
+        combined_ll.groupby(["source", "unit", "theta_idx"])["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
+        if "theta_idx" in combined_ll.columns
+        else combined_ll.groupby(["source", "unit"])["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
     )
     display(
-        ggplot(per_unit, aes(x="logmeanexp"))
-        + geom_density(alpha=0.35, fill="#1abc9c", color="#1abc9c")
+        ggplot(per_unit, aes(x="logmeanexp", fill="source", color="source"))
+        + geom_density(alpha=0.35)
         + facet_wrap("~unit", scales="free")
         + labs(
             title="Per-unit log-likelihood across search endpoints",
-            subtitle="pypomp; one value per start",
+            subtitle="One logmeanexp value per start per implementation",
             x="Log-likelihood",
             y="Density",
+            fill="Source",
+            color="Source",
         )
+        + ru.scale_fill_premium()
+        + ru.scale_color_premium()
         + ru.theme_premium
     )
 ```
@@ -272,15 +278,41 @@ else:
 from plotnine import geom_line
 
 target_cols = ["unit", "theta_idx", "replicate", "iteration", "method", "logLik", "loglik"] + ru.LOG_PARAMS + ru.LOGIT_PARAMS
+
 py_traces = ru.load_traces(os.path.join(PY_DIR, "traces.csv.gz"), "pypomp", usecols=target_cols, max_iters=20)
 
-if py_traces is None:
-    display(HTML(ru.missing_note("pypomp traces", os.path.join(PY_DIR, "traces.csv.gz"))))
-else:
+r_trace_path = os.path.join(R_DIR, "mif_traces.csv.gz")
+if not os.path.exists(r_trace_path):
+    r_trace_path = os.path.join(R_DIR, "traces.csv.gz")
+r_traces = ru.load_traces(r_trace_path, "R panelPomp", usecols=target_cols, max_iters=20)
+
+trace_frames = []
+if py_traces is not None:
     if "method" in py_traces.columns:
         py_traces = py_traces[py_traces["method"] == "mif"]
+    py_traces = ru.split_traces_shared_specific(py_traces)
+    py_long = ru.to_long(py_traces, max_iters=20)
+    trace_frames.append(py_long)
 
-    long = ru.to_long(py_traces, max_iters=20)
+if r_traces is not None:
+    if "method" in r_traces.columns:
+        r_traces = r_traces[r_traces["method"] == "mif"]
+    r_traces = ru.split_traces_shared_specific(r_traces)
+    r_long = ru.to_long(r_traces, max_iters=20)
+    trace_frames.append(r_long)
+
+missing_traces = []
+if py_traces is None:
+    missing_traces.append(("pypomp traces", os.path.join(PY_DIR, "traces.csv.gz")))
+if r_traces is None:
+    missing_traces.append(("R panelPomp traces", os.path.join(R_DIR, "mif_traces.csv.gz")))
+
+for label, path in missing_traces:
+    display(HTML(ru.missing_note(label, path)))
+
+if trace_frames:
+    long = pd.concat(trace_frames, ignore_index=True)
+    long = long.dropna(subset=["param_value"])
     long = ru.to_estimation_scale(long, param_col="quantity", value_col="param_value")
     long["group_id"] = long["source"].astype(str) + "_" + long["rep"].astype(str)
 
@@ -290,9 +322,11 @@ else:
         data = long[long[unit_col] == unit] if unit_col else long
         if data.empty:
             continue
+        data = data.copy()
+        data["quantity"] = data["quantity"].astype(str)
         display(
             ggplot(data, aes(x="iter", y="param_value", group="group_id", color="source"))
-            + geom_line(alpha=0.4, size=0.4)
+            + geom_line(alpha=0.2, size=0.4)
             + facet_wrap("~quantity", scales="free_y")
             + labs(
                 title=f"Block-IF2 iteration traces{f': {unit}' if unit else ''}",
