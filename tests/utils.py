@@ -381,3 +381,444 @@ def get_pomp_metrics(
         metrics["results_history"] = {"error": str(e)}
 
     return metrics
+
+
+# --- Timing Benchmark Reporting Helpers ---
+
+def load_timing_data(platform_dirs: dict[str, str]) -> dict[str, dict[str, Any]]:
+    """Load timings.csv and latest.json for each platform/configuration.
+
+    Args:
+        platform_dirs: dict mapping display label -> results directory path.
+
+    Returns:
+        dict mapping display label -> {
+            "phases": dict[phase_name, seconds],
+            "cfg": run_config dict,
+            "meta": full latest.json dict,
+            "dir": results directory path,
+            "available": bool,
+        }
+    """
+    runs = {}
+    for label, d in platform_dirs.items():
+        timing_path = os.path.join(d, "timings.csv")
+        json_path = os.path.join(d, "latest.json")
+
+        phases = {}
+        if os.path.exists(timing_path):
+            try:
+                tm = pd.read_csv(timing_path)
+                if "phase" in tm.columns and "time_seconds" in tm.columns:
+                    phases = dict(zip(tm["phase"], tm["time_seconds"]))
+                elif "stage" in tm.columns and "seconds" in tm.columns:
+                    phases = dict(zip(tm["stage"], tm["seconds"]))
+            except Exception as e:
+                logger.warning("Error reading %s: %s", timing_path, e)
+
+        meta = {}
+        if os.path.exists(json_path):
+            try:
+                with open(json_path) as f:
+                    meta = json.load(f)
+            except Exception as e:
+                logger.warning("Error reading %s: %s", json_path, e)
+
+        cfg = meta.get("run_config", {}) or {}
+        runs[label] = {
+            "phases": phases,
+            "cfg": cfg,
+            "meta": meta,
+            "dir": d,
+            "available": bool(phases or meta),
+        }
+    return runs
+
+
+def _extract_algorithmic_settings(runs: dict[str, dict[str, Any]], is_panel: bool = False):
+    """Extract rows for algorithmic & workload settings."""
+    rows = []
+
+    # Run level
+    run_levels = [r["cfg"].get("RUN_LEVEL", "—") for r in runs.values()]
+    rows.append(("Run Level", run_levels))
+
+    # Starting points
+    def get_starts(cfg):
+        val = cfg.get("NSTARTS", cfg.get("Nstarts"))
+        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+
+    rows.append(("Starting Searches ($N_{starts}$)", [get_starts(r["cfg"]) for r in runs.values()]))
+
+    # Optimization iterations
+    def get_iters(cfg):
+        val = cfg.get("NFITR", cfg.get("Nmif"))
+        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+
+    iter_label = "MPIF Iterations ($N_{iter}$)" if is_panel else "IF2 Iterations ($N_{iter}$)"
+    rows.append((iter_label, [get_iters(r["cfg"]) for r in runs.values()]))
+
+    # Particles for estimation
+    def get_fit_particles(cfg):
+        val = cfg.get("NP_FITR", cfg.get("NP", cfg.get("Np")))
+        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+
+    part_label = "MPIF Particles / Unit ($N_{p,fit}$)" if is_panel else "IF2 Particles ($N_p$)"
+    rows.append((part_label, [get_fit_particles(r["cfg"]) for r in runs.values()]))
+
+    # Eval particles (if panel or explicitly distinct)
+    if is_panel or any(r["cfg"].get("NP_EVAL") for r in runs.values()):
+        def get_eval_particles(cfg):
+            val = cfg.get("NP_EVAL", cfg.get("NP", cfg.get("Np")))
+            return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+
+        eval_label = "Pfilter Particles / Unit ($N_{p,eval}$)" if is_panel else "Pfilter Particles ($N_{p,eval}$)"
+        rows.append((eval_label, [get_eval_particles(r["cfg"]) for r in runs.values()]))
+
+    # Evaluation replicates
+    def get_reps(cfg):
+        val = cfg.get("NREPS_EVAL", cfg.get("NREPS", cfg.get("Nreps_eval", cfg.get("Nreps"))))
+        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+
+    rows.append(("Evaluation Replicates ($N_{reps}$)", [get_reps(r["cfg"]) for r in runs.values()]))
+
+    # Units
+    has_units = any(r["cfg"].get("UNIT") or r["cfg"].get("UNITS") or r["cfg"].get("units") for r in runs.values())
+    if has_units:
+        def get_units(cfg):
+            u = cfg.get("UNIT") or cfg.get("UNITS") or cfg.get("units")
+            if isinstance(u, list):
+                return f"{', '.join(u)} ({len(u)} units)"
+            return str(u) if u is not None else "—"
+
+        rows.append(("Unit(s)", [get_units(r["cfg"]) for r in runs.values()]))
+
+    # Samplers (if measles / present)
+    has_samplers = any(r["cfg"].get("SAMPLERS") for r in runs.values())
+    if has_samplers:
+        def get_samplers(label, r):
+            if label.startswith("R") or ("r " in label.lower() and "pomp" in label.lower() and "pypomp" not in label.lower()):
+                return "Compiled C snippets"
+            s = r["cfg"].get("SAMPLERS")
+            if s == "fast":
+                return "fast (pypomp.random)"
+            elif s == "jax":
+                return "stock JAX (jax.random)"
+            return str(s) if s else "—"
+
+        rows.append(("Sampler Implementation", [get_samplers(label, r) for label, r in runs.items()]))
+
+    # Shared parameters (panel)
+    has_shared = any(r["cfg"].get("SHARED_PARAMS") for r in runs.values())
+    if has_shared:
+        def get_shared(cfg):
+            sp = cfg.get("SHARED_PARAMS")
+            if isinstance(sp, list):
+                return f"{', '.join(sp)} ({len(sp)} params)"
+            return str(sp) if sp is not None else "—"
+
+        rows.append(("Shared Parameters", [get_shared(r["cfg"]) for r in runs.values()]))
+
+    # Random seed
+    def get_seed(cfg):
+        s = cfg.get("MAIN_SEED", cfg.get("seed"))
+        return str(s) if s is not None else "—"
+
+    rows.append(("Random Seed", [get_seed(r["cfg"]) for r in runs.values()]))
+
+    return rows
+
+
+def _extract_software_settings(runs: dict[str, dict[str, Any]], is_panel: bool = False):
+    """Extract rows for software & environment."""
+    rows = []
+
+    # Framework / package version
+    def get_framework(label, meta):
+        if is_panel and meta.get("panelPomp_version"):
+            pomp_v = meta.get("pomp_version")
+            return f"panelPomp {meta['panelPomp_version']}" + (f" (pomp {pomp_v})" if pomp_v else "")
+        elif "pomp_version" in meta and meta.get("pomp_version"):
+            return f"pomp {meta['pomp_version']}"
+        elif "pypomp_version" in meta and meta.get("pypomp_version"):
+            return f"pypomp {meta['pypomp_version']}"
+        return "—"
+
+    rows.append(("Pomp Framework", [get_framework(label, r["meta"]) for label, r in runs.items()]))
+
+    # Backend runtime
+    def get_backend(label, meta):
+        if "jax_version" in meta and meta.get("jax_version"):
+            return f"JAX {meta['jax_version']}"
+        elif "r_version" in meta and meta.get("r_version"):
+            return f"R {meta['r_version']}"
+        return "—"
+
+    rows.append(("Backend / Engine", [get_backend(label, r["meta"]) for label, r in runs.items()]))
+
+    # Git SHA
+    def get_git(meta):
+        sha = meta.get("quant_git_sha")
+        return f"<code>{sha[:7]}</code>" if sha else "—"
+
+    rows.append(("Quant Git Commit", [get_git(r["meta"]) for r in runs.values()]))
+
+    # Timestamp
+    def get_time(meta):
+        ts = meta.get("timestamp")
+        if not ts:
+            return "—"
+        try:
+            return ts.replace("T", " ")[:19]
+        except Exception:
+            return str(ts)
+
+    rows.append(("Run Timestamp", [get_time(r["meta"]) for r in runs.values()]))
+
+    return rows
+
+
+def _extract_hardware_settings(runs: dict[str, dict[str, Any]]):
+    """Extract rows for hardware & compute."""
+    rows = []
+
+    # Compute device
+    def get_device(label, meta, cfg):
+        slurm = meta.get("slurm", {}) or {}
+        hw = meta.get("hardware", {}) or {}
+        devices = meta.get("devices", [])
+
+        if slurm.get("gpu_type"):
+            return f"{slurm['gpu_type']} (1 GPU)"
+        if any("cuda" in d.lower() for d in devices):
+            return "CUDA GPU"
+        if slurm.get("gpus"):
+            return f"GPU ({slurm['gpus']})"
+
+        if hw.get("cpu_model"):
+            cores = hw.get("cores", "—")
+            model = hw.get("cpu_model", "CPU")
+            return f"{model} ({cores} cores)"
+        if devices and any("cpu" in d.lower() for d in devices):
+            cpus = slurm.get("cpus", len(devices))
+            return f"CPU ({len(devices)} host devices / {cpus} cores)"
+        if slurm.get("cpus"):
+            return f"CPU ({slurm['cpus']} cores)"
+        return "CPU"
+
+    rows.append(("Compute Device", [get_device(label, r["meta"], r["cfg"]) for label, r in runs.items()]))
+
+    # Slurm Partition
+    def get_partition(meta):
+        slurm = meta.get("slurm", {}) or {}
+        return slurm.get("partition", "—")
+
+    rows.append(("Slurm Partition", [get_partition(r["meta"]) for r in runs.values()]))
+
+    # Slurm Job ID
+    def get_job_id(meta):
+        slurm = meta.get("slurm", {}) or {}
+        return slurm.get("job_id", "—")
+
+    rows.append(("Slurm Job ID", [get_job_id(r["meta"]) for r in runs.values()]))
+
+    return rows
+
+
+def build_settings_comparison_html(runs: dict[str, dict[str, Any]], is_panel: bool = False) -> str:
+    """Generate a side-by-side HTML comparison table for settings across runs."""
+    import html
+
+    headers = list(runs.keys())
+
+    sections = [
+        ("Algorithmic & Workload Settings", _extract_algorithmic_settings(runs, is_panel)),
+        ("Software & Environment", _extract_software_settings(runs, is_panel)),
+        ("Hardware & Compute", _extract_hardware_settings(runs)),
+    ]
+
+    html_parts = [
+        '<div class="table-responsive">',
+        '<table class="table table-striped table-hover align-middle" style="margin-bottom: 25px;">',
+        '  <thead class="table-light">',
+        '    <tr>',
+        '      <th style="width: 28%; font-weight: bold;">Setting / Parameter</th>',
+    ]
+    for h in headers:
+        html_parts.append(f'      <th style="font-weight: bold;">{html.escape(h)}</th>')
+    html_parts.extend([
+        '    </tr>',
+        '  </thead>',
+        '  <tbody>',
+    ])
+
+    for section_title, rows in sections:
+        html_parts.append('    <tr style="background-color: #eaeded; font-weight: bold; border-top: 2px solid #bdc3c7;">')
+        html_parts.append(f'      <td colspan="{len(headers) + 1}" style="padding: 8px 12px; color: #2c3e50; font-size: 0.95rem;">{section_title}</td>')
+        html_parts.append('    </tr>')
+
+        for label, values in rows:
+            html_parts.append('    <tr>')
+            html_parts.append(f'      <td style="font-weight: 500; color: #34495e; padding-left: 18px;">{label}</td>')
+            for val in values:
+                html_parts.append(f'      <td>{val}</td>')
+            html_parts.append('    </tr>')
+
+    html_parts.extend([
+        '  </tbody>',
+        '</table>',
+        '</div>'
+    ])
+    return "\n".join(html_parts)
+
+
+def build_timing_comparison_df(
+    runs: dict[str, dict[str, Any]],
+    is_panel: bool = False,
+    baseline_key: str | None = None,
+) -> pd.DataFrame:
+    """Build the timing comparison DataFrame.
+
+    Privileges cold start pfilter (`pfilter_cold`) for overall speedup and throughput.
+    """
+    if baseline_key is None:
+        for k in runs:
+            if k.startswith("R") or ("r " in k.lower() and "pomp" in k.lower() and "pypomp" not in k.lower()):
+                baseline_key = k
+                break
+
+    base = runs.get(baseline_key) if baseline_key is not None else None
+    base_mif = base["phases"].get("mif", np.nan) if base else np.nan
+
+    def get_pf_cold(r):
+        if not r or not r.get("phases"):
+            return np.nan
+        ph = r["phases"]
+        if "pfilter_cold" in ph:
+            return ph["pfilter_cold"]
+        if "pfilter" in ph:
+            return ph["pfilter"]
+        if "pfilter_warm" in ph:
+            return ph["pfilter_warm"]
+        return np.nan
+
+    base_pf = get_pf_cold(base)
+    base_total = base_mif + base_pf if not np.isnan(base_mif) and not np.isnan(base_pf) else np.nan
+
+    r_cores = 36
+    if base and base.get("meta"):
+        r_cores = base["meta"].get("hardware", {}).get("cores", 36)
+
+    def work(cfg, base_cfg=None):
+        def _val(keys, default=1.0):
+            for k in keys:
+                if k in cfg and cfg[k] is not None:
+                    return float(cfg[k])
+            if base_cfg:
+                for k in keys:
+                    if k in base_cfg and base_cfg[k] is not None:
+                        return float(base_cfg[k])
+            return default
+
+        return {
+            "starts": _val(["NSTARTS", "Nstarts"]),
+            "iters": _val(["NFITR", "Nmif"]),
+            "particles": _val(["NP_FITR", "NP", "Np"]),
+            "eval_particles": _val(["NP_EVAL", "NP", "Np"]),
+            "reps": _val(["NREPS_EVAL", "NREPS", "Nreps_eval", "Nreps"]),
+        }
+
+    b_work = work(base["cfg"]) if base else None
+
+    rows = []
+    opt_col = "MPIF (s)" if is_panel else "IF2 (s)"
+    opt_sp_col = "MPIF Speedup" if is_panel else "IF2 Speedup"
+
+    for label, r in runs.items():
+        if not r["available"]:
+            rows.append({
+                "Configuration": label,
+                opt_col: "not run",
+                opt_sp_col: "—",
+                "Pfilter (s)": "not run",
+                "Pfilter Speedup": "—",
+                "Total (s)": "not run",
+                "Total Speedup": "—",
+                "Throughput (vs 1 R CPU core)": "—",
+            })
+            continue
+
+        mif = r["phases"].get("mif", np.nan)
+        pf = get_pf_cold(r)
+        total = mif + pf if not np.isnan(mif) and not np.isnan(pf) else np.nan
+
+        if label == baseline_key or base is None:
+            mif_sp_str = pf_sp_str = tot_sp_str = "1.00x" if label == baseline_key else "—"
+            tp_str = f"{r_cores:.2f}x" if label == baseline_key else "—"
+        else:
+            w = work(r["cfg"], base_cfg=base["cfg"])
+            mif_scale = (
+                (w["starts"] / b_work["starts"])
+                * (w["iters"] / b_work["iters"])
+                * (w["particles"] / b_work["particles"])
+            ) if b_work else 1.0
+            pf_scale = (
+                (w["starts"] / b_work["starts"])
+                * (w["reps"] / b_work["reps"])
+                * (w["eval_particles"] / b_work["eval_particles"])
+            ) if b_work else 1.0
+
+            scaled_base_mif = base_mif * mif_scale
+            scaled_base_pf = base_pf * pf_scale
+            scaled_base_tot = scaled_base_mif + scaled_base_pf
+
+            mif_sp = scaled_base_mif / mif if (mif == mif and mif > 0) else np.nan
+            pf_sp = scaled_base_pf / pf if (pf == pf and pf > 0) else np.nan
+            tot_sp = scaled_base_tot / total if (total == total and total > 0) else np.nan
+
+            mif_sp_str = f"{mif_sp:.2f}x" if not np.isnan(mif_sp) else "—"
+            pf_sp_str = f"{pf_sp:.2f}x" if not np.isnan(pf_sp) else "—"
+            tot_sp_str = f"{tot_sp:.2f}x" if not np.isnan(tot_sp) else "—"
+            tp_str = f"{tot_sp * r_cores:.2f}x" if not np.isnan(tot_sp) else "—"
+
+        fmt = lambda s: "—" if (s != s or np.isnan(s)) else f"{s:.1f}s ({s / 60:.2f}m)"
+        rows.append({
+            "Configuration": label,
+            opt_col: fmt(mif),
+            opt_sp_col: mif_sp_str,
+            "Pfilter (s)": fmt(pf),
+            "Pfilter Speedup": pf_sp_str,
+            "Total (s)": fmt(total),
+            "Total Speedup": tot_sp_str,
+            "Throughput (vs 1 R CPU core)": tp_str,
+        })
+
+    return pd.DataFrame(rows)
+
+
+def build_cold_vs_warm_df(runs: dict[str, dict[str, Any]]) -> pd.DataFrame:
+    """Build the cold vs warm pfilter breakdown DataFrame."""
+    rows = []
+    for label, r in runs.items():
+        if not r["available"]:
+            continue
+        ph = r["phases"]
+        cold = ph.get("pfilter_cold", np.nan)
+        warm = ph.get("pfilter_warm", np.nan)
+
+        if np.isnan(cold) and not np.isnan(warm):
+            cold = warm
+        if np.isnan(warm) and not np.isnan(cold):
+            warm = cold
+
+        overhead = cold - warm if not np.isnan(cold) and not np.isnan(warm) else np.nan
+
+        fmt = lambda s: "—" if (s != s or np.isnan(s)) else f"{s:.2f}s"
+        rows.append({
+            "Configuration": label,
+            "Pfilter Cold (s)": fmt(cold),
+            "Pfilter Warm (s)": fmt(warm),
+            "Compilation Overhead (s)": fmt(overhead) if (not np.isnan(overhead) and overhead >= 0.005) else ("0.00s" if (not np.isnan(overhead) and overhead >= 0) else "—"),
+        })
+    return pd.DataFrame(rows)
+
