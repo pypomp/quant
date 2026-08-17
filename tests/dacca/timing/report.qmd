@@ -1,6 +1,6 @@
 ---
 title: "Dhaka Cholera: Runtime & Performance Benchmark"
-subtitle: "Execution Speed and Acceleration: R pomp vs. pypomp"
+subtitle: "Execution Speed, Acceleration, and Scalability: R pomp vs. pypomp"
 date: now
 format:
   html:
@@ -30,219 +30,61 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
 
 ## Introduction
 
-This benchmark times IF2 and the particle filter on the Dhaka cholera model in
-`pypomp` (CPU and GPU) against R `pomp` on CPU.
+This benchmark measures the wall-clock execution time and throughput of IF2 parameter estimation and particle filtering (`pfilter`) for the Dhaka cholera model in `pypomp` (GPU and multi-threaded CPU) relative to parallel R `pomp` on CPU.
+Both implementations start from identical parameter vectors (`../starting_parameters.csv`) and execute identical workload iterations and particle numbers. 
 
-Both halves start from the same committed parameter vectors
-(`../starting_parameters.csv`) and use one filter evaluation per start, so the
-two frameworks are timed on identical work. The Dhaka model's transition process
-is cheap but is called 20 times per observation, which makes this the test that
-exposes per-step framework overhead.
+The Dhaka model's state transition is lightweight but executed across 20 Euler interpolation steps per observation.
+As such, if this benchmark ever does particularly poorly relative to the others, it likely points to a problem with the Euler step overhead. 
 
 ---
 
-## Setup & Environment
+## Benchmark Settings & Environment
 
-```{python Environment setup}
-import json
-import numpy as np
-import pandas as pd
+The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
 
-os.environ["JAX_PLATFORMS"] = "cpu"
-
+```{python Settings Table, results='asis'}
 PLATFORMS = {
-    "R": "R pomp (36 cores)",
-    "cpu": "pypomp (CPU, 36 cores)",
-    "gpu": "pypomp (GPU)",
+    "R pomp (36 cores)": os.path.join("results", "R"),
+    "pypomp (GPU)": os.path.join("results", "gpu"),
+    "pypomp (CPU, 36 cores)": os.path.join("results", "cpu"),
 }
 
-
-def load(platform):
-    path = os.path.join("results", platform, "timings.csv")
-    if not os.path.exists(path):
-        return None
-    tm = pd.read_csv(path)
-    meta = ru.load_json(os.path.join("results", platform, "latest.json"))
-    return {
-        "phases": dict(zip(tm["phase"], tm["time_seconds"])),
-        "cfg": meta.get("run_config", {}) or {},
-        "meta": meta,
-    }
-
-
-runs = {p: load(p) for p in PLATFORMS}
-available = {p: r for p, r in runs.items() if r is not None}
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
 ```
 
-::: {.callout-note collapse="true"}
-### Run provenance
-```{python Provenance}
-for platform, label in PLATFORMS.items():
-    run = runs[platform]
-    print(f"{label}:")
-    if run is None:
-        print("  not yet run\n")
-        continue
-    fmt = ru.format_r_metadata if platform == "R" else ru.format_metadata
-    print(fmt(run["meta"]), end="")
-    print(f"Configuration:  {run['cfg']}")
-    if run["meta"].get("provenance"):
-        print(f"Provenance:     {run['meta']['provenance']}")
-    print()
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
-
-:::
 
 ---
 
-## Runtime comparison
+## Runtime & Throughput Comparison
 
-The R baseline is rescaled to each `pypomp` run's configuration before the
-speedup is taken, so a run at a different `RUN_LEVEL` still compares fairly:
-`mif` scales with starts x iterations x particles, `pfilter` with starts x
-particles. Throughput (vs. 1 R CPU core) scales the relative speedup by the
-number of cores used by the parallel R baseline.
+The table below compares execution speed across platforms. 
+Speedup and throughput calculations privilege the cold-start particle filter (`pfilter_cold`) to account for initial execution and JIT compilation overhead incurred in practice. 
+Throughput evaluates parallel acceleration relative to a single R CPU core ($Speedup \times N_{cores}$).
 
-```{python Comparison table}
-def work(cfg):
-    return {
-        "starts": cfg.get("NSTARTS", cfg.get("Nstarts", np.nan)),
-        "iters": cfg.get("NFITR", cfg.get("Nmif", np.nan)),
-        "particles": cfg.get("NP", cfg.get("Np", np.nan)),
-        "reps": cfg.get("NREPS", cfg.get("Nreps", 1.0)),
-    }
-
-
-base = available.get("R")
-r_cores = (
-    base["meta"].get("hardware", {}).get("cores", 36)
-    if base and base.get("meta")
-    else 36
-)
-rows = []
-
-for platform, label in PLATFORMS.items():
-    run = runs[platform]
-    if run is None:
-        rows.append(
-            {
-                "Configuration": label,
-                "IF2": "not run",
-                "IF2 speedup": "—",
-                "IF2 throughput (vs 1 core)": "—",
-                "pfilter": "not run",
-                "pfilter speedup": "—",
-                "pfilter throughput (vs 1 core)": "—",
-            }
-        )
-        continue
-
-    mif = run["phases"].get("mif", np.nan)
-    pf = run["phases"].get("pfilter_warm", np.nan)
-
-    if platform == "R" or base is None:
-        mif_speedup_str = pf_speedup_str = "1.00x" if platform == "R" else "—"
-        mif_tp_str = pf_tp_str = f"{r_cores:.2f}x" if platform == "R" else "—"
-    else:
-        w, b = work(run["cfg"]), work(base["cfg"])
-        mif_scale = (
-            (w["starts"] / b["starts"])
-            * (w["iters"] / b["iters"])
-            * (w["particles"] / b["particles"])
-        )
-        pf_scale = (
-            (w["starts"] / b["starts"])
-            * (w["reps"] / b["reps"])
-            * (w["particles"] / b["particles"])
-        )
-        r_mif = base["phases"].get("mif", np.nan) * mif_scale
-        r_pf = base["phases"].get("pfilter_warm", np.nan) * pf_scale
-
-        mif_speedup = r_mif / mif if (mif == mif and mif > 0) else np.nan
-        pf_speedup = r_pf / pf if (pf == pf and pf > 0) else np.nan
-
-        mif_speedup_str = f"{mif_speedup:.2f}x" if mif_speedup == mif_speedup else "—"
-        pf_speedup_str = f"{pf_speedup:.2f}x" if pf_speedup == pf_speedup else "—"
-
-        mif_tp_str = (
-            f"{mif_speedup * r_cores:.2f}x" if mif_speedup == mif_speedup else "—"
-        )
-        pf_tp_str = f"{pf_speedup * r_cores:.2f}x" if pf_speedup == pf_speedup else "—"
-
-    fmt = lambda s: "not measured" if s != s else f"{s:.1f}s ({s / 60:.2f}m)"
-    rows.append(
-        {
-            "Configuration": label,
-            "IF2": fmt(mif),
-            "IF2 speedup": mif_speedup_str,
-            "IF2 throughput (vs 1 core)": mif_tp_str,
-            "pfilter": fmt(pf),
-            "pfilter speedup": pf_speedup_str,
-            "pfilter throughput (vs 1 core)": pf_tp_str,
-        }
-    )
-
-display(
-    HTML(
-        pd.DataFrame(rows).to_html(
-            classes="table table-striped table-hover", index=False
-        )
-    )
-)
+```{python Performance Table}
+timing_df = ru.build_timing_comparison_df(runs, is_panel=False)
+display(HTML(timing_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-```{python Configuration table}
-cfg_rows = []
-for platform, label in PLATFORMS.items():
-    run = runs[platform]
-    if run is None:
-        continue
-    w = work(run["cfg"])
-    cfg_rows.append(
-        {
-            "Configuration": label,
-            "RUN_LEVEL": run["cfg"].get("RUN_LEVEL", "—"),
-            "Starts": w["starts"],
-            "IF2 iterations": w["iters"],
-            "Particles": w["particles"],
-            "pfilter reps": w["reps"],
-        }
-    )
+### JIT Compilation & Overhead Breakdown
 
-display(
-    HTML(
-        pd.DataFrame(cfg_rows).to_html(
-            classes="table table-striped table-hover", index=False
-        )
-    )
-)
-```
+The first `pfilter` call in JAX incurs one-time JIT compilation overhead. 
+Subsequent warm evaluations run without recompilation.
 
-```{python Missing-phase note, output='asis'}
-missing = [
-    PLATFORMS[p] for p, r in available.items() if "pfilter_warm" not in r["phases"]
-]
-if missing:
-    display(
-        Markdown(
-            "::: {.callout-warning}\n"
-            "### Incomplete timings\n"
-            f"No `pfilter_warm` measurement for: {', '.join(missing)}.\n\n"
-            "The timings carried over from the pre-migration `speed_comparison/` test "
-            "recorded only `mif`. Its filter timings were dropped because the two "
-            "frameworks were not filtering the same amount: `pypomp` ran 36 replicates "
-            "per start against R's 1. Both `run.py` and `run.R` now use one evaluation "
-            "per start; re-run the test to fill this in.\n"
-            ":::"
-        )
-    )
+```{python Cold vs Warm Breakdown}
+cold_warm_df = ru.build_cold_vs_warm_df(runs)
+display(HTML(cold_warm_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
 ::: {.callout-note}
-### Performance expectations
-- **GPU**: `pypomp` on the GPU should be well ahead of the 36-core R reference on IF2.
-- **CPU**: `pypomp` on CPU is the harder case for this model. Its 20 interpolation
-  steps per observation put JAX's per-step dispatch overhead directly in the hot
-  loop, where R `pomp`'s compiled C snippet has none. A CPU result at or below
-  parity with R is the signal that this overhead is what dominates.
+### Performance Expectations & Takeaways
+- **GPU**: `pypomp`'s throughput on GPU should be thousands of times larger than R `pomp` with 1 core.
+- **CPU**: The total speedup for CPU `pypomp` relative to R `pomp` should be about 4x.
 :::
+

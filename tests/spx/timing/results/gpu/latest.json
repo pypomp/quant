@@ -1,27 +1,31 @@
 {
-  "timestamp": "2026-08-06T20:00:08+00:00",
-  "pypomp_version": "0.4.10.0",
+  "timestamp": "2026-08-17T16:40:51+00:00",
+  "pypomp_version": "0.4.10.2",
   "jax_version": "0.11.0",
-  "quant_git_sha": "3646a0c7c5fe980a7e89f2c949e6597e15b44b39",
+  "quant_git_sha": "20ee7ed5f83a03985534a489148e5e3148a8b624",
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "56616029",
-    "partition": "gpu",
-    "gpus": "v100:1",
-    "gpu_type": "Tesla V100-PCIE-16GB"
+    "job_id": "57980902",
+    "partition": "gpu-rtx6000",
+    "gpus": "rtx_pro_6000_blackwell:1",
+    "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
   },
   "run_config": {
     "kind": "timing",
     "model": "spx",
     "RUN_LEVEL": 4,
+    "USE_CPU": false,
     "MAIN_SEED": 631409,
-    "NSTARTS": 36
+    "NP": 1000,
+    "NFITR": 200,
+    "NSTARTS": 36,
+    "NREPS": 24
   },
   "timings": {
-    "mif": 93.8377206325531,
-    "pfilter_cold": 12.621091604232788,
-    "pfilter_warm": 9.642470121383667
+    "mif": 59.27181696891785,
+    "pfilter_cold": 8.14761233329773,
+    "pfilter_warm": 6.507774114608765
   }
 }

@@ -1,7 +1,7 @@
 #' SPX: wall-clock timing of mif and pfilter using R pomp.
 
 # --- SLURM CONFIG ---
-# importance: high
+# importance: low
 # description: "SPX: wall-clock timing of mif and pfilter (R pomp)"
 # tags: [timing, spx, r-pomp, cpu]
 # sbatch_args:

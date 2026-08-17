@@ -1,6 +1,6 @@
 ---
-title: "Measles Runtime & Throughput Benchmark"
-subtitle: "Execution speed of IF2 and pfilter: R pomp vs. pypomp"
+title: "Measles Runtime & Performance Benchmark"
+subtitle: "Execution Speed, Acceleration, and Scalability: R pomp vs. pypomp"
 date: now
 format:
   html:
@@ -20,6 +20,7 @@ engine: jupyter
 ```{python Navigation header, results='asis'}
 import os
 import sys
+
 sys.path.append("..")
 import report_utils as ru
 from IPython.display import display, HTML
@@ -29,144 +30,68 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
 
 ## Introduction
 
-The measles is on the expensive end of the benchmark suite: 365 Euler steps per year
-over 14 years of weekly London data, and its `rproc` pulls 8 random variates from 3 different distributions using complex sampling algorithms.
+The London measles benchmark is on the computationally intensive end of the benchmark suite: 365 Euler time steps per year across 14 years of weekly data, with an `rproc` transition drawing 8 random variates per step from multiple distributions (1 Poisson, 1 gamma, 6 binomial).
+This benchmark gives us a sense of how `pypomp` performs when `rproc` is computationally intensive.
+Furthermore, it lets us examine how fast `pypomp.random` custom samplers are relative to stock `jax.random` in a realistic modeling scenario, instead of in a vacuum.
 
-We run 4 difference configurations to compare their relative speeds:
+We benchmark 4 configurations to measure relative execution speeds and isolate the contribution of custom random variate algorithms:
 
 | Configuration | What it isolates |
 |---|---|
-| R `pomp`, 36 CPU cores | the baseline |
-| `pypomp` GPU, fast samplers | end-to-end acceleration |
-| `pypomp` GPU, stock JAX samplers | what `pypomp.random` contributes |
-| `pypomp` 36 CPU cores | acceleration without a GPU |
+| R `pomp` (36 CPU cores) | The multi-threaded CPU reference baseline |
+| `pypomp` GPU (fast samplers) | End-to-end GPU acceleration using `pypomp.random` |
+| `pypomp` GPU (stock JAX samplers) | Acceleration under stock `jax.random` samplers |
+| `pypomp` CPU (36 cores) | Multi-core host parallelization without a GPU |
 
 ---
 
-## Setup & Environment
+## Benchmark Settings & Environment
 
-::: {.callout-note collapse="true"}
-### System & Environment Information
-```{python Environment Setup}
-import numpy as np
-import pandas as pd
+The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
 
-os.environ["JAX_PLATFORMS"] = "cpu"
-
-CONFIGS = {
-    "R": os.path.join("results", "R"),
+```{python Settings Table, results='asis'}
+PLATFORMS = {
+    "R pomp (36 cores)": os.path.join("results", "R"),
     "pypomp (GPU)": os.path.join("results", "gpu"),
     "pypomp (GPU, JAX samplers)": os.path.join("results", "gpu_jax"),
-    "pypomp (CPU)": os.path.join("results", "cpu"),
+    "pypomp (CPU, 36 cores)": os.path.join("results", "cpu"),
 }
 
-timings = {}
-configs = {}
-missing = []
-for label, d in CONFIGS.items():
-    tm = ru.read_if_exists(os.path.join(d, "timings.csv"))
-    if tm is None:
-        missing.append((label, os.path.join(d, "timings.csv")))
-        continue
-    timings[label] = dict(zip(tm["phase"], tm["time_seconds"]))
-    configs[label] = ru.load_json(os.path.join(d, "latest.json")).get("run_config", {}) or {}
-
-for label, d in CONFIGS.items():
-    meta = ru.load_json(os.path.join(d, "latest.json"))
-    print(f"{label}:")
-    print(ru.format_r_metadata(meta) if label == "R" else ru.format_metadata(meta), end="")
-    print()
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
 ```
 
-:::
-
 ```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
 for label, path in missing:
-    display(HTML(ru.missing_note(label, path)))
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
 ---
 
-## Timing Comparison
+## Runtime & Throughput Comparison
 
-`pfilter_cold` is the timed figure: the first `pfilter` call includes JIT
-compilation overhead. Warm timings are reported separately below. 
+The table below compares execution speed across platforms. Speedup and throughput calculations privilege the cold-start particle filter (`pfilter_cold`) to account for initial execution and JIT compilation overhead incurred in practice. 
+Throughput evaluates parallel acceleration relative to a single R CPU core ($Speedup \times N_{cores}$).
 
-```{python Timing table}
-def phase(label, name):
-    """Look up a phase time, tolerating pre-refactor R labels."""
-    row = timings.get(label, {})
-    if name in row:
-        return row[name]
-    if name in ("pfilter_warm", "pfilter_cold") and "pfilter" in row:
-        return row["pfilter"]
-    if name == "pfilter_cold" and "pfilter_warm" in row:
-        return row["pfilter_warm"]
-    return np.nan
-
-r_mif = phase("R", "mif")
-r_pf = phase("R", "pfilter_cold")
-r_total = r_mif + r_pf
-
-r_meta = ru.load_json(os.path.join(CONFIGS["R"], "latest.json")) if "R" in CONFIGS else {}
-r_cores = (
-    r_meta.get("hardware", {}).get("cores", 36)
-    if r_meta and isinstance(r_meta.get("hardware"), dict)
-    else 36
-)
-
-rows = []
-for label in CONFIGS:
-    if label not in timings:
-        continue
-    mif = phase(label, "mif")
-    pf = phase(label, "pfilter_cold")
-    total = mif + pf
-    cfg = configs.get(label, {})
-    total_speedup = r_total / total if total else np.nan
-    throughput = total_speedup * r_cores if not np.isnan(total_speedup) else np.nan
-    rows.append({
-        "Configuration": label,
-        "Starts x reps": f"{cfg.get('NSTARTS', '?')} x {cfg.get('NREPS', '?')}",
-        "IF2 (s)": mif,
-        "IF2 speedup": r_mif / mif if mif else np.nan,
-        "Pfilter (s)": pf,
-        "Pfilter speedup": r_pf / pf if pf else np.nan,
-        "Total (s)": total,
-        "Total speedup": total_speedup,
-        "Throughput (vs 1 R CPU core)": throughput,
-    })
-
-timing_df = pd.DataFrame(rows)
-display(HTML(timing_df.round(2).to_html(classes="table table-striped table-hover", index=False)))
+```{python Performance Table}
+timing_df = ru.build_timing_comparison_df(runs, is_panel=False)
+display(HTML(timing_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-```{python Cold vs warm}
-cold_rows = [
-    {
-        "Configuration": label,
-        "Pfilter cold (s)": phase(label, "pfilter_cold"),
-        "Pfilter warm (s)": phase(label, "pfilter_warm"),
-        "Compilation overhead (s)": phase(label, "pfilter_cold") - phase(label, "pfilter_warm"),
-    }
-    for label in CONFIGS
-    if label in timings and not np.isnan(phase(label, "pfilter_cold"))
-]
+### JIT Compilation & Overhead Breakdown
 
-if cold_rows:
-    display(HTML(
-        pd.DataFrame(cold_rows).round(2).to_html(
-            classes="table table-striped table-hover", index=False
-        )
-    ))
-else:
-    display(HTML("<p><em>No cold-start timings recorded (R does not compile per call).</em></p>"))
+The first `pfilter` call in JAX incurs one-time JIT compilation overhead. 
+Subsequent warm evaluations run without recompilation.
+
+```{python Cold vs Warm Breakdown}
+cold_warm_df = ru.build_cold_vs_warm_df(runs)
+display(HTML(cold_warm_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
 ::: {.callout-note}
-### Performance Expectations
-- **GPU acceleration**: `pypomp` on the GPU should be substantially faster than
-  36 R cores on a model this step-heavy.
-- **Fast samplers**: the fast-sampler GPU run should beat the stock-JAX GPU run;
-  the gap between them is what `pypomp.random` is worth here.
+### Performance Expectations & Takeaways
+- **GPU (Fast Samplers)**: `pypomp`'s throughput on GPU should be thousands of times larger than R `pomp` with 1 core. The fast-sampler GPU run should also substantially outperform the stock JAX sampler GPU run.
+- **CPU**: As it turns out, it's difficult to quickly generate Poisson, gamma, and binomial random variates in JAX on a CPU. As such, the `pypomp` run using 36 CPU cores is substantially slower than the R `pomp` run using 36 CPU cores. This should be fine given that GPUs are far more preferable regardless. We leave this comparison here for completeness and to motivate a solution if anyone feels inclined.
 :::
+

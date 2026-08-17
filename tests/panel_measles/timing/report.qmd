@@ -1,6 +1,6 @@
 ---
-title: "Panel Measles Runtime & Throughput Benchmark"
-subtitle: "Execution speed of block-IF2 and pfilter: R panelPomp vs. pypomp"
+title: "Panel Measles Runtime & Performance Benchmark"
+subtitle: "Execution Speed, Acceleration, and Scalability: R panelPomp vs. pypomp"
 date: now
 format:
   html:
@@ -20,6 +20,7 @@ engine: jupyter
 ```{python Navigation header, results='asis'}
 import os
 import sys
+
 sys.path.append("..")
 import report_utils as ru
 from IPython.display import display, HTML
@@ -29,152 +30,56 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
 
 ## Introduction
 
-The panel measles model runs the measles dynamics over 4 units at once, under a parameter structure containing both shared and unit-specific parameter values, and is fit using marginalized panel iterated filtering.  
-The model runs 365 Euler steps per year of weekly data, with an `rproc` drawing 8 random variates from 3 distributions per step.
-
-Two configurations are timed on identical work, all starting from the same
-committed parameter vectors (`../starting_parameters.csv`).
+The panel measles benchmark evaluates `pypomp`'s performance on a panel model with 4 UK cities (London, Halesworth, Hastings, and Cardiff) under a parameter structure including both shared and unit-specific parameters. 
+Parameter estimation is performed via marginalized panel iterated filtering (MPIF).
 
 ---
 
-## Setup & Environment
+## Benchmark Settings & Environment
 
-::: {.callout-note collapse="true"}
-### System & Environment Information
-```{python Environment Setup}
-import numpy as np
-import pandas as pd
+The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
 
-os.environ["JAX_PLATFORMS"] = "cpu"
-
-CONFIGS = {
-    "R panelPomp": os.path.join("results", "R"),
+```{python Settings Table, results='asis'}
+PLATFORMS = {
+    "R panelPomp (36 cores)": os.path.join("results", "R"),
     "pypomp (GPU)": os.path.join("results", "gpu"),
 }
 
-timings = {}
-configs = {}
-missing = []
-for label, d in CONFIGS.items():
-    tm = ru.normalize_timings(ru.read_if_exists(os.path.join(d, "timings.csv")))
-    if tm is None:
-        missing.append((label, os.path.join(d, "timings.csv")))
-        continue
-    timings[label] = dict(zip(tm["phase"], tm["time_seconds"]))
-    configs[label] = ru.load_json(os.path.join(d, "latest.json")).get("run_config", {}) or {}
-
-for label, d in CONFIGS.items():
-    meta = ru.load_json(os.path.join(d, "latest.json"))
-    print(f"{label}:")
-    print(ru.format_r_metadata(meta) if label.startswith("R") else ru.format_metadata(meta), end="")
-    print()
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
 ```
-
-:::
 
 ```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
 for label, path in missing:
-    display(HTML(ru.missing_note(label, path)))
-```
-
-```{python Benchmark Workload, results='asis'}
-ref_cfg = next((cfg for cfg in configs.values() if cfg), {})
-
-if ref_cfg:
-    params_df = pd.DataFrame([
-        {"Parameter": "Run Level", "Value": str(ref_cfg.get("RUN_LEVEL", "N/A"))},
-        {"Parameter": "Starting Parameter Searches (Nstarts)", "Value": f"{ref_cfg.get('NSTARTS', 'N/A'):,}" if isinstance(ref_cfg.get('NSTARTS'), int) else ref_cfg.get('NSTARTS', 'N/A')},
-        {"Parameter": "Block-IF2 Iterations (Nmif)", "Value": f"{ref_cfg.get('NFITR', 'N/A'):,}" if isinstance(ref_cfg.get('NFITR'), int) else ref_cfg.get('NFITR', 'N/A')},
-        {"Parameter": "Block-IF2 Particles / Unit (Np_fit)", "Value": f"{ref_cfg.get('NP_FITR', 'N/A'):,}" if isinstance(ref_cfg.get('NP_FITR'), int) else ref_cfg.get('NP_FITR', 'N/A')},
-        {"Parameter": "Pfilter Evaluation Particles / Unit (Np_eval)", "Value": f"{ref_cfg.get('NP_EVAL', 'N/A'):,}" if isinstance(ref_cfg.get('NP_EVAL'), int) else ref_cfg.get('NP_EVAL', 'N/A')},
-        {"Parameter": "Pfilter Evaluation Replicates (Nreps)", "Value": f"{ref_cfg.get('NREPS_EVAL', 'N/A'):,}" if isinstance(ref_cfg.get('NREPS_EVAL'), int) else ref_cfg.get('NREPS_EVAL', 'N/A')},
-    ])
-    display(HTML("<h4 style='margin-top: 20px;'>Workload & Algorithmic Parameters</h4>" + params_df.to_html(classes="table table-striped table-hover", index=False)))
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
 ---
 
-## Timing Comparison
+## Runtime & Throughput Comparison
 
-`pfilter_cold` is the timed figure: the first `pfilter` call includes JIT compilation overhead. 
-Warm timings are reported separately below. R has no compilation step, so its single `pfilter` timing serves as both.
+The table below compares execution speed across platforms. 
+Speedup and throughput calculations privilege the cold-start particle filter (`pfilter_cold`) to account for initial execution and JIT compilation overhead incurred in practice. 
+Throughput evaluates parallel acceleration relative to a single R CPU core ($Speedup \times N_{cores}$).
 
-```{python Timing table}
-def phase(label, name):
-    """Look up a phase time, tolerating pre-refactor R labels."""
-    row = timings.get(label, {})
-    if name in row:
-        return row[name]
-    if name in ("pfilter_warm", "pfilter_cold") and "pfilter" in row:
-        return row["pfilter"]
-    if name == "pfilter_cold" and "pfilter_warm" in row:
-        return row["pfilter_warm"]
-    return np.nan
-
-R_LABEL = "R panelPomp"
-r_mif = phase(R_LABEL, "mif")
-r_pf = phase(R_LABEL, "pfilter_cold")
-r_total = r_mif + r_pf
-
-r_meta = ru.load_json(os.path.join(CONFIGS[R_LABEL], "latest.json"))
-hw = r_meta.get("hardware") if isinstance(r_meta.get("hardware"), dict) else {}
-r_cores = hw.get("cores", 36)
-
-rows = []
-for label in CONFIGS:
-    if label not in timings:
-        continue
-    mif = phase(label, "mif")
-    pf = phase(label, "pfilter_cold")
-    total = mif + pf
-    cfg = configs.get(label, {})
-    total_speedup = r_total / total if total else np.nan
-    throughput = total_speedup * r_cores if not np.isnan(total_speedup) else np.nan
-    rows.append({
-        "Configuration": label,
-        "Starts x reps": f"{cfg.get('NSTARTS', '?')} x {cfg.get('NREPS_EVAL', '?')}",
-        "Block-IF2 (s)": mif,
-        "Block-IF2 speedup": r_mif / mif if mif else np.nan,
-        "Pfilter (s)": pf,
-        "Pfilter speedup": r_pf / pf if pf else np.nan,
-        "Total (s)": total,
-        "Total speedup": total_speedup,
-        "Throughput (vs 1 R CPU core)": throughput,
-    })
-
-timing_df = pd.DataFrame(rows)
-if timing_df.empty:
-    display(HTML("<p><em>No timings recorded.</em></p>"))
-else:
-    display(HTML(timing_df.round(2).to_html(classes="table table-striped table-hover", index=False)))
+```{python Performance Table}
+timing_df = ru.build_timing_comparison_df(runs, is_panel=True)
+display(HTML(timing_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-```{python Cold vs warm}
-cold_rows = [
-    {
-        "Configuration": label,
-        "Pfilter cold (s)": phase(label, "pfilter_cold"),
-        "Pfilter warm (s)": phase(label, "pfilter_warm"),
-        "Compilation overhead (s)": phase(label, "pfilter_cold") - phase(label, "pfilter_warm"),
-    }
-    for label in CONFIGS
-    if label in timings and not np.isnan(phase(label, "pfilter_cold"))
-]
+### JIT Compilation & Overhead Breakdown
 
-if cold_rows:
-    display(HTML(
-        pd.DataFrame(cold_rows).round(2).to_html(
-            classes="table table-striped table-hover", index=False
-        )
-    ))
-else:
-    display(HTML("<p><em>No cold-start timings recorded (R does not compile per call).</em></p>"))
+The first `pfilter` call in JAX incurs one-time JIT compilation overhead. 
+Subsequent warm evaluations run without recompilation.
+
+```{python Cold vs Warm Breakdown}
+cold_warm_df = ru.build_cold_vs_warm_df(runs)
+display(HTML(cold_warm_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
 ::: {.callout-note}
-### Performance Expectations
-- **GPU acceleration**: the panel runs all four units through the same
-  vectorised step, so `pypomp` on the GPU should be well ahead of 36 R cores.
-- **Compilation overhead**: the cold/warm gap is paid once per process, so it
-  matters for a short run and washes out over a long one.
+### Performance Expectations & Takeaways
+- **GPU**: `pypomp`'s throughput on GPU should be thousands of times larger than R `pomp` with 1 core.
 :::
+

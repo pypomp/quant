@@ -11,8 +11,8 @@ Compared against the frozen R baseline in ../estimation/results/R/timings.csv.
 #   gpu:
 #     sbatch_args:
 #       job-name: "spx timing (gpu)"
-#       partition: gpu
-#       gpus: "v100:1"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
 #       cpus-per-gpu: 1
 #       mem: 6GB
 #       time: "00:20:00"
@@ -131,8 +131,12 @@ record = run_metadata(
         "kind": "timing",
         "model": "spx",
         "RUN_LEVEL": RUN_LEVEL,
+        "USE_CPU": USE_CPU,
         "MAIN_SEED": model.MAIN_SEED,
+        "NP": NP,
+        "NFITR": NFITR,
         "NSTARTS": NSTARTS,
+        "NREPS": NREPS,
     }
 )
 record["timings"] = {t["phase"]: t["time_seconds"] for t in timings}

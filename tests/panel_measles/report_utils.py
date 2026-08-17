@@ -1,6 +1,18 @@
 import json
 import logging
 import os
+import sys
+
+tests_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if tests_dir not in sys.path:
+    sys.path.append(tests_dir)
+
+from utils import (
+    load_timing_data,
+    build_settings_comparison_html,
+    build_timing_comparison_df,
+    build_cold_vs_warm_df,
+)
 
 import numpy as np
 import pandas as pd

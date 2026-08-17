@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-08-11T15:29:17+00:00",
-  "pypomp_version": "0.4.10.0",
+  "timestamp": "2026-08-14T16:19:32+00:00",
+  "pypomp_version": "0.4.10.1",
   "jax_version": "0.11.0",
-  "quant_git_sha": "7f9ea97691d09505594e06a1f90272ab427e89b0",
+  "quant_git_sha": "e6ac59269486240a42423641dcd9ea9450ff06c3",
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "56948091",
+    "job_id": "57554115",
     "partition": "gpu-rtx6000",
     "gpus": "rtx_pro_6000_blackwell:1",
     "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
@@ -24,8 +24,8 @@
     "NREPS": 36
   },
   "timings": {
-    "mif": 29.463457584381104,
-    "pfilter_cold": 9.117841720581055,
-    "pfilter_warm": 7.3422276973724365
+    "mif": 29.76878595352173,
+    "pfilter_cold": 9.097393989562988,
+    "pfilter_warm": 7.3505308628082275
   }
 }
