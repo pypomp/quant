@@ -60,10 +60,26 @@ outcome is reported separately as a `pypomp`-only result.
 
 ---
 
-## Setup & Data Loading
+## Benchmark Settings & Environment
 
-::: {.callout-note collapse="true"}
-### System & Environment Information
+The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
+
+```{python Settings Table, results='asis'}
+PLATFORMS = {
+    "R panelPomp": os.path.join("results", "R"),
+    "pypomp (GPU)": ru.platform_dir(),
+}
+
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
+```
+
 ```{python Environment Setup}
 import numpy as np
 import pandas as pd
@@ -76,24 +92,6 @@ R_DIR = os.path.join("results", "R")
 
 py_results = ru.read_if_exists(os.path.join(PY_DIR, "results_final.csv"))
 r_coefs = ru.read_if_exists(os.path.join(R_DIR, "mif_coefs.csv"))
-
-missing = []
-if py_results is None:
-    missing.append(("pypomp results", os.path.join(PY_DIR, "results_final.csv")))
-if r_coefs is None:
-    missing.append(("R baseline", os.path.join(R_DIR, "mif_coefs.csv")))
-
-print("pypomp:")
-print(ru.format_metadata(ru.load_json(os.path.join(PY_DIR, "latest.json"))), end="")
-print("\nR panelPomp:")
-print(ru.format_r_metadata(ru.load_json(os.path.join(R_DIR, "latest.json"))), end="")
-```
-
-:::
-
-```{python Missing sources, results='asis'}
-for label, path in missing:
-    display(HTML(ru.missing_note(label, path)))
 ```
 
 ```{python Build the long frame}

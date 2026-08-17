@@ -55,10 +55,26 @@ interpolated covariate grid is exported from `pomp` into
 
 ---
 
-## Setup & Data Loading
+## Benchmark Settings & Environment
 
-::: {.callout-note collapse="true"}
-### System & Environment Information
+The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
+
+```{python Settings Table, results='asis'}
+PLATFORMS = {
+    "R panelPomp": os.path.join("results", "R"),
+    "pypomp (GPU)": ru.platform_dir(),
+}
+
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
+```
+
 ```{python Environment Setup}
 import numpy as np
 import pandas as pd
@@ -67,38 +83,18 @@ from plotnine import ggplot, aes, geom_density, facet_wrap, labs
 
 os.environ["JAX_PLATFORMS"] = "cpu"
 
-PY_DIR = ru.platform_dir()
-R_DIR = os.path.join("results", "R")
-
-SOURCES = {"pypomp": PY_DIR, "R panelPomp": R_DIR}
-
 frames = []
-missing = []
-for label, d in SOURCES.items():
+for label, d in PLATFORMS.items():
     path = os.path.join(d, "pfilter_logliks.csv")
     df = ru.read_if_exists(path)
-    if df is None:
-        missing.append((label, path))
-        continue
-    df = df[["unit", "replicate", "logLik"]].copy()
-    df["source"] = label
-    frames.append(df)
+    if df is not None:
+        df = df[["unit", "replicate", "logLik"]].copy()
+        df["source"] = label
+        frames.append(df)
 
 combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(
     columns=["unit", "replicate", "logLik", "source"]
 )
-
-print("pypomp:")
-print(ru.format_metadata(ru.load_json(os.path.join(PY_DIR, "latest.json"))), end="")
-print("\nR panelPomp:")
-print(ru.format_r_metadata(ru.load_json(os.path.join(R_DIR, "latest.json"))), end="")
-```
-
-:::
-
-```{python Missing sources, results='asis'}
-for label, path in missing:
-    display(HTML(ru.missing_note(label, path)))
 ```
 
 ---
@@ -151,7 +147,7 @@ rows = []
 if not combined.empty and "R panelPomp" in set(combined["source"]):
     for unit in sorted(combined["unit"].unique()):
         r_ll = combined[(combined["unit"] == unit) & (combined["source"] == "R panelPomp")]["logLik"]
-        py_ll = combined[(combined["unit"] == unit) & (combined["source"] == "pypomp")]["logLik"]
+        py_ll = combined[(combined["unit"] == unit) & (combined["source"].str.startswith("pypomp"))]["logLik"]
         if len(py_ll) == 0 or len(r_ll) == 0:
             continue
         d, p = ks_2samp(py_ll, r_ll)
@@ -214,7 +210,7 @@ controlled comparison.
 
 ```{python Timing}
 rows = []
-for label, d in SOURCES.items():
+for label, d in PLATFORMS.items():
     tm = ru.normalize_timings(ru.read_if_exists(os.path.join(d, "timings.csv")))
     if tm is None:
         continue

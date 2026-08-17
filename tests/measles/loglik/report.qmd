@@ -43,10 +43,27 @@ smallest.
 
 ---
 
-## Setup & Data Loading
+## Benchmark Settings & Environment
 
-::: {.callout-note collapse="true"}
-### System & Environment Information
+The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
+
+```{python Settings Table, results='asis'}
+PLATFORMS = {
+    "R pomp": os.path.join("results", "R"),
+    "pypomp (32-bit)": os.path.join("results", "f32"),
+    "pypomp (64-bit)": os.path.join("results", "f64"),
+}
+
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
+```
+
 ```{python Environment Setup}
 import numpy as np
 import pandas as pd
@@ -55,36 +72,15 @@ from plotnine import ggplot, aes, geom_density, facet_wrap, labs
 
 os.environ["JAX_PLATFORMS"] = "cpu"
 
-SOURCES = {
-    "pypomp (32-bit)": os.path.join("results", "f32"),
-    "pypomp (64-bit)": os.path.join("results", "f64"),
-    "R": os.path.join("results", "R"),
-}
-
 frames = []
-missing = []
-for label, d in SOURCES.items():
+for label, d in PLATFORMS.items():
     df = ru.read_if_exists(os.path.join(d, "pfilter_logliks.csv"))
-    if df is None:
-        missing.append((label, os.path.join(d, "pfilter_logliks.csv")))
-        continue
-    df = df[["unit", "replicate", "logLik"]].copy()
-    df["source"] = label
-    frames.append(df)
+    if df is not None:
+        df = df[["unit", "replicate", "logLik"]].copy()
+        df["source"] = label
+        frames.append(df)
 
 combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-
-print("pypomp (64-bit):")
-print(ru.format_metadata(ru.load_json(os.path.join("results", "f64", "latest.json"))), end="")
-print("\nR pomp:")
-print(ru.format_r_metadata(ru.load_json(os.path.join("results", "R", "latest.json"))), end="")
-```
-
-:::
-
-```{python Missing sources, results='asis'}
-for label, path in missing:
-    display(HTML(ru.missing_note(label, path)))
 ```
 
 ---

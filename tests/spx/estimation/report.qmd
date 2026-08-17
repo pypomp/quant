@@ -45,10 +45,27 @@ This benchmark compares runtimes, convergence trajectories, and likelihood distr
 
 ---
 
-## Setup
+## Benchmark Settings & Environment
 
-::: {.callout-note collapse="true"}
-### System & Environment Information
+The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
+
+```{python Settings Table, results='asis'}
+PLATFORMS = {
+    "R pomp (36 cores)": os.path.join("results", "R"),
+    "pypomp (GPU)": os.path.join("results", "gpu"),
+    "pypomp (CPU, 36 cores)": os.path.join("results", "cpu"),
+}
+
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
+```
+
 ```{python Environment Setup}
 import json
 import gc
@@ -63,12 +80,7 @@ os.environ["JAX_PLATFORMS"] = "cpu"
 
 import pypomp as pp
 import jax
-
-print(f"Python: {sys.version.split()[0]}")
-print(f"Platform: {sys.platform}")
 ```
-
-:::
 
 ```{python Load estimation data}
 GPU_JSON_PATH = os.path.join("results", "gpu", "latest.json")

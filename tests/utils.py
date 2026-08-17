@@ -439,48 +439,112 @@ def _extract_algorithmic_settings(runs: dict[str, dict[str, Any]], is_panel: boo
     """Extract rows for algorithmic & workload settings."""
     rows = []
 
+    def _find_val(r, cfg_keys, rh_method=None, rh_keys=None):
+        cfg = r.get("cfg", {}) or {}
+        for k in cfg_keys:
+            if k in cfg and cfg[k] is not None:
+                return cfg[k]
+        meta = r.get("meta", {}) or {}
+        rh = meta.get("results_history", [])
+        if isinstance(rh, list):
+            for entry in rh:
+                if not isinstance(entry, dict):
+                    continue
+                if rh_method and entry.get("method") != rh_method:
+                    continue
+                conf = entry.get("config", {}) or {}
+                if isinstance(conf, dict) and rh_keys:
+                    for rk in rh_keys:
+                        if rk in conf and conf[rk] is not None:
+                            return conf[rk]
+        elif isinstance(rh, dict):
+            for group_entries in rh.values():
+                if isinstance(group_entries, list):
+                    for entry in group_entries:
+                        if not isinstance(entry, dict):
+                            continue
+                        if rh_method and entry.get("method") != rh_method:
+                            continue
+                        conf = entry.get("config", {}) or {}
+                        if isinstance(conf, dict) and rh_keys:
+                            for rk in rh_keys:
+                                if rk in conf and conf[rk] is not None:
+                                    return conf[rk]
+        return None
+
     # Run level
     run_levels = [r["cfg"].get("RUN_LEVEL", "—") for r in runs.values()]
     rows.append(("Run Level", run_levels))
 
     # Starting points
-    def get_starts(cfg):
-        val = cfg.get("NSTARTS", cfg.get("Nstarts"))
+    def get_starts(r):
+        val = _find_val(r, ["NSTARTS", "Nstarts", "Nreps_global"])
         return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
 
-    rows.append(("Starting Searches ($N_{starts}$)", [get_starts(r["cfg"]) for r in runs.values()]))
+    if any(_find_val(r, ["NSTARTS", "Nstarts", "Nreps_global"]) is not None for r in runs.values()):
+        rows.append(("Starting Searches ($N_{starts}$)", [get_starts(r) for r in runs.values()]))
 
     # Optimization iterations
-    def get_iters(cfg):
-        val = cfg.get("NFITR", cfg.get("Nmif"))
+    def get_iters(r):
+        val = _find_val(r, ["NFITR", "Nmif", "M"], rh_method="mif", rh_keys=["M"])
         return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
 
-    iter_label = "MPIF Iterations ($N_{iter}$)" if is_panel else "IF2 Iterations ($N_{iter}$)"
-    rows.append((iter_label, [get_iters(r["cfg"]) for r in runs.values()]))
+    if any(_find_val(r, ["NFITR", "Nmif", "M"], rh_method="mif", rh_keys=["M"]) is not None for r in runs.values()):
+        iter_label = "MPIF Iterations ($N_{iter}$)" if is_panel else "IF2 Iterations ($N_{iter}$)"
+        rows.append((iter_label, [get_iters(r) for r in runs.values()]))
+
+    # Training iterations (IFAD)
+    def get_train_iters(r):
+        val = _find_val(r, ["NTRAIN"], rh_method="train", rh_keys=["M"])
+        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+
+    if any(_find_val(r, ["NTRAIN"], rh_method="train", rh_keys=["M"]) is not None for r in runs.values()):
+        rows.append(("Training Iterations ($N_{train}$)", [get_train_iters(r) for r in runs.values()]))
 
     # Particles for estimation
-    def get_fit_particles(cfg):
-        val = cfg.get("NP_FITR", cfg.get("NP", cfg.get("Np")))
+    def get_fit_particles(r):
+        val = _find_val(r, ["NP_FITR", "NP", "Np"], rh_method="mif", rh_keys=["J", "Np", "NP"])
         return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
 
-    part_label = "MPIF Particles / Unit ($N_{p,fit}$)" if is_panel else "IF2 Particles ($N_p$)"
-    rows.append((part_label, [get_fit_particles(r["cfg"]) for r in runs.values()]))
+    has_fit_particles = any(
+        _find_val(r, ["NP_FITR"]) is not None or
+        (_find_val(r, ["NFITR", "Nmif", "M"], rh_method="mif", rh_keys=["M"]) is not None and _find_val(r, ["NP", "Np"], rh_method="mif", rh_keys=["J", "Np", "NP"]) is not None)
+        for r in runs.values()
+    )
+    if has_fit_particles:
+        part_label = "MPIF Particles / Unit ($N_{p,fit}$)" if is_panel else "IF2 Particles ($N_p$)"
+        rows.append((part_label, [get_fit_particles(r) for r in runs.values()]))
 
-    # Eval particles (if panel or explicitly distinct)
-    if is_panel or any(r["cfg"].get("NP_EVAL") for r in runs.values()):
-        def get_eval_particles(cfg):
-            val = cfg.get("NP_EVAL", cfg.get("NP", cfg.get("Np")))
-            return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+    # Eval particles
+    def get_eval_particles(r):
+        val = _find_val(r, ["NP_EVAL", "NP", "Np"], rh_method="pfilter", rh_keys=["J", "Np", "NP"])
+        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
 
+    has_eval = is_panel or any(
+        _find_val(r, ["NP_EVAL", "NP", "Np"], rh_method="pfilter", rh_keys=["J", "Np", "NP"]) is not None
+        for r in runs.values()
+    )
+    if has_eval:
         eval_label = "Pfilter Particles / Unit ($N_{p,eval}$)" if is_panel else "Pfilter Particles ($N_{p,eval}$)"
-        rows.append((eval_label, [get_eval_particles(r["cfg"]) for r in runs.values()]))
+        rows.append((eval_label, [get_eval_particles(r) for r in runs.values()]))
 
     # Evaluation replicates
-    def get_reps(cfg):
-        val = cfg.get("NREPS_EVAL", cfg.get("NREPS", cfg.get("Nreps_eval", cfg.get("Nreps"))))
+    def get_reps(r):
+        val = _find_val(r, ["NREPS_EVAL", "NREPS", "Nreps_eval", "Nreps"], rh_method="pfilter", rh_keys=["reps", "replicates"])
         return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
 
-    rows.append(("Evaluation Replicates ($N_{reps}$)", [get_reps(r["cfg"]) for r in runs.values()]))
+    if any(_find_val(r, ["NREPS_EVAL", "NREPS", "Nreps_eval", "Nreps"], rh_method="pfilter", rh_keys=["reps", "replicates"]) is not None for r in runs.values()):
+        rows.append(("Evaluation Replicates ($N_{reps}$)", [get_reps(r) for r in runs.values()]))
+
+    # Floating-Point Precision
+    if any("USE_64BIT" in r["cfg"] for r in runs.values()):
+        def get_precision(label, r):
+            if "USE_64BIT" in r["cfg"]:
+                return "64-bit (float64)" if r["cfg"]["USE_64BIT"] else "32-bit (float32)"
+            if label.startswith("R") or ("r " in label.lower() and "pomp" in label.lower() and "pypomp" not in label.lower()):
+                return "64-bit (double)"
+            return "—"
+        rows.append(("Floating-Point Precision", [get_precision(label, r) for label, r in runs.items()]))
 
     # Units
     has_units = any(r["cfg"].get("UNIT") or r["cfg"].get("UNITS") or r["cfg"].get("units") for r in runs.values())

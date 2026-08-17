@@ -63,7 +63,25 @@ provide. There is consequently no R baseline on this page.
 
 ---
 
-## Setup & Environment
+## Benchmark Settings & Environment
+
+The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
+
+```{python Settings Table, results='asis'}
+PLATFORMS = {
+    "IF2": os.path.join("results", "if2"),
+    "IFAD": os.path.join("results", "ifad"),
+}
+
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
+```
 
 ```{python Environment setup}
 import numpy as np
@@ -91,22 +109,6 @@ missing = [
 ]
 have_final = not missing
 ```
-
-```{python Missing sources, results='asis'}
-for label, path in missing:
-    display(HTML(ru.missing_note(label, path)))
-```
-
-::: {.callout-note collapse="true"}
-### Run provenance
-```{python Provenance}
-for arm, label in ARMS.items():
-    print(f"{label}:")
-    print(ru.format_metadata(meta[arm]), end="")
-    print(f"Configuration:  {meta[arm].get('run_config', {})}\n")
-```
-
-:::
 
 ---
 

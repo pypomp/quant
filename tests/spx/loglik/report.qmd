@@ -34,10 +34,26 @@ This section evaluates the particle filter's likelihood calculation itself by ru
 
 ---
 
-## Setup & Data Loading
+## Benchmark Settings & Environment
 
-::: {.callout-note collapse="true"}
-### System & Environment Information
+The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
+
+```{python Settings Table, results='asis'}
+PLATFORMS = {
+    "R pomp": os.path.join("results", "R"),
+    "pypomp (GPU)": os.path.join("results", "gpu"),
+}
+
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
+```
+
 ```{python Environment Setup}
 import os
 import numpy as np
@@ -48,13 +64,11 @@ from plotnine import ggplot, aes, geom_density, labs
 os.environ["JAX_PLATFORMS"] = "cpu"
 
 EVAL_CSV_PATH = os.path.join("results", "gpu", "pfilter_logliks.csv")
-LL_rep3600 = pd.read_csv(EVAL_CSV_PATH)["logLik"].values.tolist()
+LL_rep3600 = pd.read_csv(EVAL_CSV_PATH)["logLik"].values.tolist() if os.path.exists(EVAL_CSV_PATH) else []
 
 R_REF_PATH = os.path.join("results", "R", "pfilter_logliks.csv")
-LL_rep3600_R = pd.read_csv(R_REF_PATH)["logLik"].values
+LL_rep3600_R = pd.read_csv(R_REF_PATH)["logLik"].values if os.path.exists(R_REF_PATH) else np.array([])
 ```
-
-:::
 
 ---
 

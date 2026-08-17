@@ -1,4 +1,4 @@
-.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports
+.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports render-reports-slurm
 
 install_pypi: install_requirements
 	pip install pypomp
@@ -31,6 +31,9 @@ DIR ?= tests
 
 render-reports:
 	find $(DIR) -name "*.qmd" -exec quarto render {} \;
+
+render-reports-slurm:
+	find $(DIR) -name "*.qmd" -exec sbatch scripts/render_report.sh {} \;
 
 
 
