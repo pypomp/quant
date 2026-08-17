@@ -4,6 +4,7 @@ import logging
 import os
 import pickle
 import subprocess
+from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
@@ -93,6 +94,38 @@ def run_metadata(run_config: dict[str, Any] | None = None) -> dict[str, Any]:
     }
 
 
+#: Columns that identify a trace row rather than carry a value. Kept whenever
+#: `trace_cols` subsets the traces, so the result stays joinable and groupable.
+TRACE_INDEX_COLS = ("theta_idx", "replicate", "unit", "iteration", "method")
+
+
+def _slim_traces(
+    traces: pd.DataFrame,
+    trace_cols: Sequence[str] | None = None,
+    thin: int = 1,
+) -> pd.DataFrame:
+    """Subset trace columns and keep every `thin`-th iteration.
+
+    Thinning is by `iteration` value, not row position, since the long format
+    repeats each index once per chain. Iteration 0 always survives.
+    """
+    if not isinstance(traces, pd.DataFrame) or traces.empty:
+        return traces
+
+    if trace_cols is not None:
+        keep = [c for c in TRACE_INDEX_COLS if c in traces.columns]
+        missing = [c for c in trace_cols if c not in traces.columns]
+        if missing:
+            print(f"  note: trace columns not found, skipped: {missing}")
+        keep += [c for c in trace_cols if c in traces.columns and c not in keep]
+        traces = traces[keep]
+
+    if thin > 1 and "iteration" in traces.columns:
+        traces = traces[traces["iteration"] % thin == 0]
+
+    return traces
+
+
 def save_run(
     pomp_obj: Any,
     out_dir: str,
@@ -100,6 +133,8 @@ def save_run(
     execution_time: float | None = None,
     pickle_name: str = "fitted.pkl",
     write_traces: bool = True,
+    trace_cols: Sequence[str] | None = None,
+    thin: int = 1,
 ) -> dict[str, Any]:
     """Persist one run: pickle as fallback, text as the record.
 
@@ -117,6 +152,10 @@ def save_run(
     on what hardware, from which commit, with which knobs. Per-run drift is
     tracked by git -- these files are committed, so `git log -p <latest.json>`
     is the history.
+
+    `trace_cols` and `thin` exist for many-chain runs, where the traces dominate
+    the record: a fit estimating 2 of 13 parameters carries 11 constant columns.
+    Both default to off, so callers that do not ask keep the full traces.
     """
     os.makedirs(out_dir, exist_ok=True)
 
@@ -137,7 +176,10 @@ def save_run(
     _try_write("results.csv", pomp_obj.results)
     _try_write("timings.csv", pomp_obj.time)
     if write_traces:
-        _try_write("traces.csv.gz", pomp_obj.traces)
+        _try_write(
+            "traces.csv.gz",
+            lambda: _slim_traces(pomp_obj.traces(), trace_cols, thin),
+        )
 
     metrics = get_pomp_metrics(pomp_obj, run_config=run_config)
     metrics.update(run_metadata(run_config))

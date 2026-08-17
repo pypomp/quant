@@ -47,11 +47,12 @@ run_level <- as.numeric(Sys.getenv("RUN_LEVEL", unset = "1"))
 NCHAINS <- c(2, 4, 8, 12)[run_level]
 NABC <- c(20, 5000, 50000, 200000)[run_level]
 
+# Must match EPS_GRID in run.py: report.qmd compares the two arm by arm.
 EPS_GRID <- list(
   c(1e6),
-  c(1e6, 5.0),
   c(1e6, 20.0, 5.0, 2.0),
-  c(1e6, 20.0, 5.0, 2.0, 1.0)
+  c(1e6, 20.0, 5.0, 2.0),
+  c(1e6, 20.0, 5.0, 2.0)
 )[[run_level]]
 
 cat("run level", run_level, ": chains", NCHAINS, "Nabc", NABC, "\n")

@@ -12,10 +12,16 @@ iteration rather than carrying the accepted estimate forward) is not present in
 pypomp: _pmcmc_step threads ll_cur through the scan carry. Treat this as a
 regression guard, not a bug hunt.
 
-Cost model: pmcmc is a lax.scan over M with a full particle filter inside each
-step, vmapped only over chains. Parallelism is NCHAINS * J and nothing else, so
-wall-clock is linear in M and nearly flat in J until J is large. Prefer generous
-J; it is close to free and improves mixing.
+The grid is chosen by log-likelihood noise, not by size: that bug inflates the
+posterior in proportion to the variance of the loglik estimate, so the sweep
+sees it only if the arms differ in that variance. sd(logLik) is 0.132 at J=2000
+and scales like 1/sqrt(J), so {10, 2000} spans a ~14x range where the old
+{100, 500, 2000} spanned ~4x, all of it effectively exact.
+
+Cost model: wall-clock is latency-bound, not FLOP-bound. Each iteration is 208
+observations x NSTEP=20 = 4160 sequential scan steps at ~35us of dispatch
+overhead, costing ~0.17s regardless of J or chain count (J=500 cost 6.5% more
+than J=100). So M is the only expensive axis; buy ESS with NCHAINS instead.
 """
 
 # --- SLURM CONFIG ---
@@ -34,18 +40,16 @@ J; it is close to free and improves mixing.
 #   1:
 #     sbatch_args: { time: "00:20:00" }
 #   2:
-#     sbatch_args: { time: "00:40:00" }
+#     sbatch_args: { time: "00:20:00" }
 #   3:
-#     sbatch_args: { time: "02:30:00" }
+#     sbatch_args: { time: "00:30:00" }
 #   4:
-#     sbatch_args: { time: "06:00:00" }
+#     sbatch_args: { time: "00:30:00" }
 # --- END SLURM CONFIG ---
 #
-# Level 1 is not sampling-bound, it is compile-bound: XLA takes several minutes
-# to build jit__pmcmc_internal for this model (measured at 4m33s on CPU) because
-# the scan over M nests a full particle-filter scan. The budget above leaves room
-# for that. Levels 3 and 4 should be recalibrated from a level-2 run -- the
-# sampling estimates behind them are extrapolated, not measured.
+# Level 4 samples for only ~12 minutes across both J arms; the rest of the
+# budget is headroom for XLA, which takes several minutes to build
+# jit__pmcmc_internal (4m33s on CPU) since the scan over M nests a pfilter scan.
 
 import os
 import sys
@@ -83,9 +87,11 @@ print("Using CPU:", USE_CPU)
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 print(f"Running pmcmc at level {RUN_LEVEL}")
 
-NCHAINS = (2, 4, 8, 12)[RUN_LEVEL - 1]
-M = (20, 2000, 20000, 50000)[RUN_LEVEL - 1]
-J_GRID = ((5,), (100,), (100, 500, 2000), (100, 500, 2000))[RUN_LEVEL - 1]
+#: M's floor is burn-in and split-R-hat validity, ~10-20x the autocorrelation
+#: time of ~25; M=2000 sits at 80x. ESS comes from NCHAINS, which is free.
+NCHAINS = (2, 8, 32, 128)[RUN_LEVEL - 1]
+M = (20, 1000, 2000, 2000)[RUN_LEVEL - 1]
+J_GRID = ((5,), (100,), (10, 2000), (10, 2000))[RUN_LEVEL - 1]
 
 #: The precondition check: pfilter logLik at the true theta, to be compared
 #: against the same quantity from R. This gates everything else -- if the two
@@ -94,6 +100,15 @@ J_GRID = ((5,), (100,), (100, 500, 2000), (100, 500, 2000))[RUN_LEVEL - 1]
 #: this implementation.
 NP_PRECOND = (10, 500, 2000, 2000)[RUN_LEVEL - 1]
 NREPS_PRECOND = (2, 12, 24, 24)[RUN_LEVEL - 1]
+
+#: Written to its own file, not pfilter_logliks.csv: report.qmd pools every row
+#: of that one against R, so mixing noise levels in would corrupt the check.
+J_NOISE_GRID = ((5,), (100,), (10, 25, 100, 2000), (10, 25, 100, 2000))[RUN_LEVEL - 1]
+
+#: At this chain count the traces dominate the record. Only beta1 and rho are
+#: estimated, and thinning by 10 against IACT ~25 discards nothing.
+TRACE_COLS = list(model.FREE) + ["logLik", "log_prior"]
+TRACE_THIN = 10
 
 key = jax.random.key(model.MAIN_SEED)
 np.random.seed(model.MAIN_SEED)
@@ -112,6 +127,26 @@ print(
     f"precondition pfilter at truth: J={NP_PRECOND} reps={NREPS_PRECOND} "
     f"mean logLik {precond['logLik'].mean():.2f} "
     f"({time.time() - pf_start:.1f}s)"
+)
+
+# Loglik noise vs J, which sets whether the J sweep can see anything at all.
+# Also the degeneracy check on the low arm: a -inf or wildly inflated sd there
+# means the chain is stuck rather than informative, and the arm should be raised.
+noise_rows = []
+for J in J_NOISE_GRID:
+    key, nk = jax.random.split(key)
+    truth_obj.pfilter(J=J, reps=NREPS_PRECOND, key=nk)
+    frame = pfilter_logliks_frame(truth_obj)
+    frame["J"] = J
+    noise_rows.append(frame)
+    finite = np.isfinite(frame["logLik"])
+    print(
+        f"  J={J:>5}: mean logLik {frame['logLik'][finite].mean():9.2f} "
+        f"sd {frame['logLik'][finite].std():6.3f} "
+        f"({int((~finite).sum())} non-finite of {len(frame)})"
+    )
+pd.concat(noise_rows, ignore_index=True).to_csv(
+    os.path.join(out_root, "pfilter_vs_J.csv"), index=False
 )
 
 key, start_key = jax.random.split(key)
@@ -151,8 +186,11 @@ for J in J_GRID:
             "prior_box": {k: list(v) for k, v in model.PRIOR_BOX.items()},
             "execution_time": execution_time,
             "platform": jax.devices()[0].platform,
+            "trace_thin": TRACE_THIN,
         },
         execution_time=execution_time,
+        trace_cols=TRACE_COLS,
+        thin=TRACE_THIN,
     )
 
     # save_run does not capture acceptance, which is the diagnostic the J sweep

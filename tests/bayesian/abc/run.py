@@ -16,6 +16,15 @@ posterior while still covering the truth.
 The first entry of EPS_GRID is deliberately enormous. At that tolerance every
 proposal is accepted and the ABC posterior must collapse onto the prior -- a
 cheap, sharp check that catches sign and normalization errors in the distance.
+That arm alone starts in stationarity, its target being the prior box the starts
+are drawn from, so it pays no burn-in despite mixing slowly: with the proposal
+stepping +/-8 across a 200-wide box its autocorrelation time is ~430, against
+~25 for the tight arms.
+
+Cost model: wall-clock is latency-bound, not FLOP-bound. An iteration is 208
+observations x NSTEP=20 = 4160 sequential scan steps costing ~0.124s almost
+independently of chain count. So M is the only expensive axis; buy ESS with
+NCHAINS and keep M at the burn-in floor.
 """
 
 # --- SLURM CONFIG ---
@@ -34,16 +43,21 @@ cheap, sharp check that catches sign and normalization errors in the distance.
 #   1:
 #     sbatch_args: { time: "00:20:00" }
 #   2:
-#     sbatch_args: { time: "00:45:00" }
+#     sbatch_args: { time: "00:30:00" }
 #   3:
-#     sbatch_args: { time: "02:30:00" }
+#     sbatch_args: { time: "00:45:00" }
 #   4:
-#     sbatch_args: { time: "08:00:00" }
+#     sbatch_args: { time: "00:45:00" }
 # --- END SLURM CONFIG ---
 #
-# Level 1 is compile-bound rather than sampling-bound; XLA took about 2m30s to
-# build the ABC program on CPU. Levels 3 and 4 should be recalibrated from a
-# level-2 run, since the per-iteration cost behind them is extrapolated.
+# Level 4 samples for ~25 min across the four arms, which run serially here;
+# the rest is headroom for XLA, about 2m30s to build the ABC program on CPU.
+#
+# Level 2 is the calibration run: it carries the full epsilon grid at reduced M
+# so acceptance and autocorrelation can be measured at the tight tolerances,
+# which have never been observed -- the old level-4 job died after its first
+# arm. If a tight arm mixes far worse than eps=1e6, M_ABC should become a
+# per-epsilon tuple sized at ~20x that arm's autocorrelation time.
 
 import os
 import sys
@@ -82,18 +96,30 @@ print("Using CPU:", USE_CPU)
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 print(f"Running abc at level {RUN_LEVEL}")
 
-NCHAINS = (2, 4, 8, 12)[RUN_LEVEL - 1]
-M_ABC = (20, 5000, 50000, 200000)[RUN_LEVEL - 1]
+#: At 1024 chains and M=3000 the eps=1e6 arm reaches ESS ~5900, above what the
+#: old M=200000 at 12 chains delivered. ESS comes from NCHAINS, which is free.
+NCHAINS = (2, 8, 256, 1024)[RUN_LEVEL - 1]
+M_ABC = (20, 1500, 3000, 3000)[RUN_LEVEL - 1]
 
 #: The scaled distance sums three squared standardized probe differences, so
 #: under the true model it sits around chi-square(3) doubled -- typical values
 #: of a few. The leading 1e6 is the accept-everything case.
+#:
+#: Levels 2-4 share one grid: the ladder needs three informative rungs for
+#: "successive epsilons converge" to be distinguishable from coincidence, and
+#: level 2 must exercise every rung to calibrate it. eps=1.0 is dropped for
+#: expected very low acceptance.
 EPS_GRID = (
     (1e6,),
-    (1e6, 5.0),
     (1e6, 20.0, 5.0, 2.0),
-    (1e6, 20.0, 5.0, 2.0, 1.0),
+    (1e6, 20.0, 5.0, 2.0),
+    (1e6, 20.0, 5.0, 2.0),
 )[RUN_LEVEL - 1]
+
+#: See the note in pmcmc/run.py: only beta1 and rho are estimated, and the
+#: traces otherwise dominate the record at this chain count.
+TRACE_COLS = list(model.FREE) + ["logLik", "log_prior"]
+TRACE_THIN = 10
 
 key = jax.random.key(model.MAIN_SEED)
 np.random.seed(model.MAIN_SEED)
@@ -164,8 +190,11 @@ for eps in EPS_GRID:
             "prior_box": {k: list(v) for k, v in model.PRIOR_BOX.items()},
             "execution_time": execution_time,
             "platform": jax.devices()[0].platform,
+            "trace_thin": TRACE_THIN,
         },
         execution_time=execution_time,
+        trace_cols=TRACE_COLS,
+        thin=TRACE_THIN,
     )
 
     pd.DataFrame(
