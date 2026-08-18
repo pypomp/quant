@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-06T21:22:04+00:00",
+  "timestamp": "2026-08-18T14:05:44+00:00",
   "run_config": {
     "kind": "algorithms",
     "model": "dacca",
@@ -8,12 +8,12 @@
     "USE_CPU": false,
     "MAIN_SEED": 631409,
     "NSTARTS": 100,
-    "NFITR": 650,
+    "NFITR": 1000,
     "NTRAIN": 0,
     "NP_FITR": 5000,
     "NP_EVAL": 5000,
     "NREPS_EVAL": 36,
-    "execution_time": 940.6720268726349,
+    "execution_time": 554.5080444812775,
     "platform": "gpu"
   },
   "results_history": [
@@ -21,10 +21,10 @@
       "method": "mif",
       "kind": "trace",
       "panel": false,
-      "execution_time": 900.1050736904144,
+      "execution_time": 535.1704823970795,
       "config": {
         "J": 5000,
-        "M": 650,
+        "M": 1000,
         "rw_sd": "RWSigma(sigmas={'gamma': 0.02, 'm': 0.02, 'rho': 0, 'epsilon': 0.02, 'c': 0, 'alpha': 0, 'delta': 0, 'beta_trend': 0.02, 'sigma': 0.02, 'tau': 0.02, 'bs1': 0.02, 'bs2': 0.02, 'bs3': 0.02, 'bs4': 0.02, 'bs5': 0.02, 'bs6': 0.02, 'omegas1': 0.02, 'omegas2': 0.02, 'omegas3': 0.02, 'omegas4': 0.02, 'omegas5': 0.02, 'omegas6': 0.02, 'S_0': 0.16, 'I_0': 0.16, 'Y_0': 0, 'R1_0': 0.16, 'R2_0': 0.16, 'R3_0': 0.16}, init_names=('S_0', 'I_0', 'Y_0', 'R1_0', 'R2_0', 'R3_0'), cooling='geometric')",
         "thresh": 0.0,
         "n_monitors": 0
@@ -34,7 +34,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 31.85999035835266,
+      "execution_time": 11.784631729125977,
       "config": {
         "J": 5000,
         "reps": 36,
@@ -45,7 +45,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 8.662449359893799,
+      "execution_time": 7.510430812835693,
       "config": {
         "J": 5000,
         "reps": 36,
@@ -53,14 +53,14 @@
       }
     }
   ],
-  "pypomp_version": "0.4.10.0",
+  "pypomp_version": "0.4.10.2",
   "jax_version": "0.11.0",
-  "quant_git_sha": "3646a0c7c5fe980a7e89f2c949e6597e15b44b39",
+  "quant_git_sha": "231caf513658327384a44602c90a1afc4246b57a",
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "56621037",
+    "job_id": "58135288",
     "partition": "gpu-rtx6000",
     "gpus": "rtx_pro_6000_blackwell:1",
     "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"

@@ -94,7 +94,7 @@ NREPS_EVAL = (2, 5, 24, 36)[RUN_LEVEL - 1]
 # IF2 alone gets the iterations that IFAD spends on mif and train combined,
 # plus the extra it takes for the two arms to cost about the same.
 if ALGORITHM == "if2":
-    NFITR = (2, 5, 100, 650)[RUN_LEVEL - 1]
+    NFITR = (2, 5, 100, 1000)[RUN_LEVEL - 1]
     NTRAIN = 0
 else:
     NFITR = (2, 5, 100, 175)[RUN_LEVEL - 1]
