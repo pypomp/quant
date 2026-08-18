@@ -176,9 +176,7 @@ def fixed_starts(n, path=STARTS_PATH, units=UNITS):
         shared_df: pd.DataFrame = rep.loc[rep["unit"] == "shared"]
         shared = shared_df.set_index("param")["value"]
         specific_df: pd.DataFrame = rep.loc[rep["unit"] != "shared"]
-        specific = specific_df.pivot(
-            index="param", columns="unit", values="value"
-        )
+        specific = specific_df.pivot(index="param", columns="unit", values="value")
         reps.append(
             {
                 "shared": pd.DataFrame({"shared": shared.loc[SHARED_PARAMS]}),

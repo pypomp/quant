@@ -193,15 +193,11 @@ def split_traces_shared_specific(df):
         shared = shared[[c for c in shared_cols if c in shared.columns]]
     else:
         shared_cols = [
-            c
-            for c in ["rep", "iter", "logLik", "method", "source"]
-            if c in df.columns
+            c for c in ["rep", "iter", "logLik", "method", "source"] if c in df.columns
         ] + [p for p in SHARED_PARAMS if p in df.columns]
         id_subset = [c for c in ["rep", "iter", "source"] if c in shared_cols]
         shared = (
-            df[shared_cols]
-            .drop_duplicates(subset=id_subset)
-            .copy()
+            df[shared_cols].drop_duplicates(subset=id_subset).copy()
             if id_subset
             else df[shared_cols].drop_duplicates().copy()
         )

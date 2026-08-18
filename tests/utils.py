@@ -385,6 +385,7 @@ def get_pomp_metrics(
 
 # --- Timing Benchmark Reporting Helpers ---
 
+
 def load_timing_data(platform_dirs: dict[str, str]) -> dict[str, dict[str, Any]]:
     """Load timings.csv and latest.json for each platform/configuration.
 
@@ -435,7 +436,9 @@ def load_timing_data(platform_dirs: dict[str, str]) -> dict[str, dict[str, Any]]
     return runs
 
 
-def _extract_algorithmic_settings(runs: dict[str, dict[str, Any]], is_panel: bool = False):
+def _extract_algorithmic_settings(
+    runs: dict[str, dict[str, Any]], is_panel: bool = False
+):
     """Extract rows for algorithmic & workload settings."""
     rows = []
 
@@ -479,76 +482,173 @@ def _extract_algorithmic_settings(runs: dict[str, dict[str, Any]], is_panel: boo
     # Starting points
     def get_starts(r):
         val = _find_val(r, ["NSTARTS", "Nstarts", "Nreps_global"])
-        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+        return (
+            f"{val:,}"
+            if isinstance(val, int)
+            else (str(val) if val is not None else "—")
+        )
 
-    if any(_find_val(r, ["NSTARTS", "Nstarts", "Nreps_global"]) is not None for r in runs.values()):
-        rows.append(("Starting Searches ($N_{starts}$)", [get_starts(r) for r in runs.values()]))
+    if any(
+        _find_val(r, ["NSTARTS", "Nstarts", "Nreps_global"]) is not None
+        for r in runs.values()
+    ):
+        rows.append(
+            ("Starting Searches ($N_{starts}$)", [get_starts(r) for r in runs.values()])
+        )
 
     # Optimization iterations
     def get_iters(r):
         val = _find_val(r, ["NFITR", "Nmif", "M"], rh_method="mif", rh_keys=["M"])
-        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+        return (
+            f"{val:,}"
+            if isinstance(val, int)
+            else (str(val) if val is not None else "—")
+        )
 
-    if any(_find_val(r, ["NFITR", "Nmif", "M"], rh_method="mif", rh_keys=["M"]) is not None for r in runs.values()):
-        iter_label = "MPIF Iterations ($N_{iter}$)" if is_panel else "IF2 Iterations ($N_{iter}$)"
+    if any(
+        _find_val(r, ["NFITR", "Nmif", "M"], rh_method="mif", rh_keys=["M"]) is not None
+        for r in runs.values()
+    ):
+        iter_label = (
+            "MPIF Iterations ($N_{iter}$)"
+            if is_panel
+            else "IF2 Iterations ($N_{iter}$)"
+        )
         rows.append((iter_label, [get_iters(r) for r in runs.values()]))
 
     # Training iterations (IFAD)
     def get_train_iters(r):
         val = _find_val(r, ["NTRAIN"], rh_method="train", rh_keys=["M"])
-        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+        return (
+            f"{val:,}"
+            if isinstance(val, int)
+            else (str(val) if val is not None else "—")
+        )
 
-    if any(_find_val(r, ["NTRAIN"], rh_method="train", rh_keys=["M"]) is not None for r in runs.values()):
-        rows.append(("Training Iterations ($N_{train}$)", [get_train_iters(r) for r in runs.values()]))
+    if any(
+        _find_val(r, ["NTRAIN"], rh_method="train", rh_keys=["M"]) is not None
+        for r in runs.values()
+    ):
+        rows.append(
+            (
+                "Training Iterations ($N_{train}$)",
+                [get_train_iters(r) for r in runs.values()],
+            )
+        )
 
     # Particles for estimation
     def get_fit_particles(r):
-        val = _find_val(r, ["NP_FITR", "NP", "Np"], rh_method="mif", rh_keys=["J", "Np", "NP"])
-        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+        val = _find_val(
+            r, ["NP_FITR", "NP", "Np"], rh_method="mif", rh_keys=["J", "Np", "NP"]
+        )
+        return (
+            f"{val:,}"
+            if isinstance(val, int)
+            else (str(val) if val is not None else "—")
+        )
 
     has_fit_particles = any(
-        _find_val(r, ["NP_FITR"]) is not None or
-        (_find_val(r, ["NFITR", "Nmif", "M"], rh_method="mif", rh_keys=["M"]) is not None and _find_val(r, ["NP", "Np"], rh_method="mif", rh_keys=["J", "Np", "NP"]) is not None)
+        _find_val(r, ["NP_FITR"]) is not None
+        or (
+            _find_val(r, ["NFITR", "Nmif", "M"], rh_method="mif", rh_keys=["M"])
+            is not None
+            and _find_val(r, ["NP", "Np"], rh_method="mif", rh_keys=["J", "Np", "NP"])
+            is not None
+        )
         for r in runs.values()
     )
     if has_fit_particles:
-        part_label = "MPIF Particles / Unit ($N_{p,fit}$)" if is_panel else "IF2 Particles ($N_p$)"
+        part_label = (
+            "MPIF Particles / Unit ($N_{p,fit}$)"
+            if is_panel
+            else "IF2 Particles ($N_p$)"
+        )
         rows.append((part_label, [get_fit_particles(r) for r in runs.values()]))
 
     # Eval particles
     def get_eval_particles(r):
-        val = _find_val(r, ["NP_EVAL", "NP", "Np"], rh_method="pfilter", rh_keys=["J", "Np", "NP"])
-        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+        val = _find_val(
+            r, ["NP_EVAL", "NP", "Np"], rh_method="pfilter", rh_keys=["J", "Np", "NP"]
+        )
+        return (
+            f"{val:,}"
+            if isinstance(val, int)
+            else (str(val) if val is not None else "—")
+        )
 
     has_eval = is_panel or any(
-        _find_val(r, ["NP_EVAL", "NP", "Np"], rh_method="pfilter", rh_keys=["J", "Np", "NP"]) is not None
+        _find_val(
+            r, ["NP_EVAL", "NP", "Np"], rh_method="pfilter", rh_keys=["J", "Np", "NP"]
+        )
+        is not None
         for r in runs.values()
     )
     if has_eval:
-        eval_label = "Pfilter Particles / Unit ($N_{p,eval}$)" if is_panel else "Pfilter Particles ($N_{p,eval}$)"
+        eval_label = (
+            "Pfilter Particles / Unit ($N_{p,eval}$)"
+            if is_panel
+            else "Pfilter Particles ($N_{p,eval}$)"
+        )
         rows.append((eval_label, [get_eval_particles(r) for r in runs.values()]))
 
     # Evaluation replicates
     def get_reps(r):
-        val = _find_val(r, ["NREPS_EVAL", "NREPS", "Nreps_eval", "Nreps"], rh_method="pfilter", rh_keys=["reps", "replicates"])
-        return f"{val:,}" if isinstance(val, int) else (str(val) if val is not None else "—")
+        val = _find_val(
+            r,
+            ["NREPS_EVAL", "NREPS", "Nreps_eval", "Nreps"],
+            rh_method="pfilter",
+            rh_keys=["reps", "replicates"],
+        )
+        return (
+            f"{val:,}"
+            if isinstance(val, int)
+            else (str(val) if val is not None else "—")
+        )
 
-    if any(_find_val(r, ["NREPS_EVAL", "NREPS", "Nreps_eval", "Nreps"], rh_method="pfilter", rh_keys=["reps", "replicates"]) is not None for r in runs.values()):
-        rows.append(("Evaluation Replicates ($N_{reps}$)", [get_reps(r) for r in runs.values()]))
+    if any(
+        _find_val(
+            r,
+            ["NREPS_EVAL", "NREPS", "Nreps_eval", "Nreps"],
+            rh_method="pfilter",
+            rh_keys=["reps", "replicates"],
+        )
+        is not None
+        for r in runs.values()
+    ):
+        rows.append(
+            ("Evaluation Replicates ($N_{reps}$)", [get_reps(r) for r in runs.values()])
+        )
 
     # Floating-Point Precision
     if any("USE_64BIT" in r["cfg"] for r in runs.values()):
+
         def get_precision(label, r):
             if "USE_64BIT" in r["cfg"]:
-                return "64-bit (float64)" if r["cfg"]["USE_64BIT"] else "32-bit (float32)"
-            if label.startswith("R") or ("r " in label.lower() and "pomp" in label.lower() and "pypomp" not in label.lower()):
+                return (
+                    "64-bit (float64)" if r["cfg"]["USE_64BIT"] else "32-bit (float32)"
+                )
+            if label.startswith("R") or (
+                "r " in label.lower()
+                and "pomp" in label.lower()
+                and "pypomp" not in label.lower()
+            ):
                 return "64-bit (double)"
             return "—"
-        rows.append(("Floating-Point Precision", [get_precision(label, r) for label, r in runs.items()]))
+
+        rows.append(
+            (
+                "Floating-Point Precision",
+                [get_precision(label, r) for label, r in runs.items()],
+            )
+        )
 
     # Units
-    has_units = any(r["cfg"].get("UNIT") or r["cfg"].get("UNITS") or r["cfg"].get("units") for r in runs.values())
+    has_units = any(
+        r["cfg"].get("UNIT") or r["cfg"].get("UNITS") or r["cfg"].get("units")
+        for r in runs.values()
+    )
     if has_units:
+
         def get_units(cfg):
             u = cfg.get("UNIT") or cfg.get("UNITS") or cfg.get("units")
             if isinstance(u, list):
@@ -560,8 +660,13 @@ def _extract_algorithmic_settings(runs: dict[str, dict[str, Any]], is_panel: boo
     # Samplers (if measles / present)
     has_samplers = any(r["cfg"].get("SAMPLERS") for r in runs.values())
     if has_samplers:
+
         def get_samplers(label, r):
-            if label.startswith("R") or ("r " in label.lower() and "pomp" in label.lower() and "pypomp" not in label.lower()):
+            if label.startswith("R") or (
+                "r " in label.lower()
+                and "pomp" in label.lower()
+                and "pypomp" not in label.lower()
+            ):
                 return "Compiled C snippets"
             s = r["cfg"].get("SAMPLERS")
             if s == "fast":
@@ -570,18 +675,26 @@ def _extract_algorithmic_settings(runs: dict[str, dict[str, Any]], is_panel: boo
                 return "stock JAX (jax.random)"
             return str(s) if s else "—"
 
-        rows.append(("Sampler Implementation", [get_samplers(label, r) for label, r in runs.items()]))
+        rows.append(
+            (
+                "Sampler Implementation",
+                [get_samplers(label, r) for label, r in runs.items()],
+            )
+        )
 
     # Shared parameters (panel)
     has_shared = any(r["cfg"].get("SHARED_PARAMS") for r in runs.values())
     if has_shared:
+
         def get_shared(cfg):
             sp = cfg.get("SHARED_PARAMS")
             if isinstance(sp, list):
                 return f"{', '.join(sp)} ({len(sp)} params)"
             return str(sp) if sp is not None else "—"
 
-        rows.append(("Shared Parameters", [get_shared(r["cfg"]) for r in runs.values()]))
+        rows.append(
+            ("Shared Parameters", [get_shared(r["cfg"]) for r in runs.values()])
+        )
 
     # Random seed
     def get_seed(cfg):
@@ -601,14 +714,21 @@ def _extract_software_settings(runs: dict[str, dict[str, Any]], is_panel: bool =
     def get_framework(label, meta):
         if is_panel and meta.get("panelPomp_version"):
             pomp_v = meta.get("pomp_version")
-            return f"panelPomp {meta['panelPomp_version']}" + (f" (pomp {pomp_v})" if pomp_v else "")
+            return f"panelPomp {meta['panelPomp_version']}" + (
+                f" (pomp {pomp_v})" if pomp_v else ""
+            )
         elif "pomp_version" in meta and meta.get("pomp_version"):
             return f"pomp {meta['pomp_version']}"
         elif "pypomp_version" in meta and meta.get("pypomp_version"):
             return f"pypomp {meta['pypomp_version']}"
         return "—"
 
-    rows.append(("Pomp Framework", [get_framework(label, r["meta"]) for label, r in runs.items()]))
+    rows.append(
+        (
+            "Pomp Framework",
+            [get_framework(label, r["meta"]) for label, r in runs.items()],
+        )
+    )
 
     # Backend runtime
     def get_backend(label, meta):
@@ -618,7 +738,12 @@ def _extract_software_settings(runs: dict[str, dict[str, Any]], is_panel: bool =
             return f"R {meta['r_version']}"
         return "—"
 
-    rows.append(("Backend / Engine", [get_backend(label, r["meta"]) for label, r in runs.items()]))
+    rows.append(
+        (
+            "Backend / Engine",
+            [get_backend(label, r["meta"]) for label, r in runs.items()],
+        )
+    )
 
     # Git SHA
     def get_git(meta):
@@ -670,7 +795,12 @@ def _extract_hardware_settings(runs: dict[str, dict[str, Any]]):
             return f"CPU ({slurm['cpus']} cores)"
         return "CPU"
 
-    rows.append(("Compute Device", [get_device(label, r["meta"], r["cfg"]) for label, r in runs.items()]))
+    rows.append(
+        (
+            "Compute Device",
+            [get_device(label, r["meta"], r["cfg"]) for label, r in runs.items()],
+        )
+    )
 
     # Slurm Partition
     def get_partition(meta):
@@ -689,14 +819,19 @@ def _extract_hardware_settings(runs: dict[str, dict[str, Any]]):
     return rows
 
 
-def build_settings_comparison_html(runs: dict[str, dict[str, Any]], is_panel: bool = False) -> str:
+def build_settings_comparison_html(
+    runs: dict[str, dict[str, Any]], is_panel: bool = False
+) -> str:
     """Generate a side-by-side HTML comparison table for settings across runs."""
     import html
 
     headers = list(runs.keys())
 
     sections = [
-        ("Algorithmic & Workload Settings", _extract_algorithmic_settings(runs, is_panel)),
+        (
+            "Algorithmic & Workload Settings",
+            _extract_algorithmic_settings(runs, is_panel),
+        ),
         ("Software & Environment", _extract_software_settings(runs, is_panel)),
         ("Hardware & Compute", _extract_hardware_settings(runs)),
     ]
@@ -705,34 +840,38 @@ def build_settings_comparison_html(runs: dict[str, dict[str, Any]], is_panel: bo
         '<div class="table-responsive">',
         '<table class="table table-striped table-hover align-middle" style="margin-bottom: 25px;">',
         '  <thead class="table-light">',
-        '    <tr>',
+        "    <tr>",
         '      <th style="width: 28%; font-weight: bold;">Setting / Parameter</th>',
     ]
     for h in headers:
         html_parts.append(f'      <th style="font-weight: bold;">{html.escape(h)}</th>')
-    html_parts.extend([
-        '    </tr>',
-        '  </thead>',
-        '  <tbody>',
-    ])
+    html_parts.extend(
+        [
+            "    </tr>",
+            "  </thead>",
+            "  <tbody>",
+        ]
+    )
 
     for section_title, rows in sections:
-        html_parts.append('    <tr style="background-color: #eaeded; font-weight: bold; border-top: 2px solid #bdc3c7;">')
-        html_parts.append(f'      <td colspan="{len(headers) + 1}" style="padding: 8px 12px; color: #2c3e50; font-size: 0.95rem;">{section_title}</td>')
-        html_parts.append('    </tr>')
+        html_parts.append(
+            '    <tr style="background-color: #eaeded; font-weight: bold; border-top: 2px solid #bdc3c7;">'
+        )
+        html_parts.append(
+            f'      <td colspan="{len(headers) + 1}" style="padding: 8px 12px; color: #2c3e50; font-size: 0.95rem;">{section_title}</td>'
+        )
+        html_parts.append("    </tr>")
 
         for label, values in rows:
-            html_parts.append('    <tr>')
-            html_parts.append(f'      <td style="font-weight: 500; color: #34495e; padding-left: 18px;">{label}</td>')
+            html_parts.append("    <tr>")
+            html_parts.append(
+                f'      <td style="font-weight: 500; color: #34495e; padding-left: 18px;">{label}</td>'
+            )
             for val in values:
-                html_parts.append(f'      <td>{val}</td>')
-            html_parts.append('    </tr>')
+                html_parts.append(f"      <td>{val}</td>")
+            html_parts.append("    </tr>")
 
-    html_parts.extend([
-        '  </tbody>',
-        '</table>',
-        '</div>'
-    ])
+    html_parts.extend(["  </tbody>", "</table>", "</div>"])
     return "\n".join(html_parts)
 
 
@@ -747,7 +886,9 @@ def build_timing_comparison_df(
     """
     if baseline_key is None:
         for k in runs:
-            if k.startswith("R") or ("r " in k.lower() and "pomp" in k.lower() and "pypomp" not in k.lower()):
+            if k.startswith("R") or (
+                "r " in k.lower() and "pomp" in k.lower() and "pypomp" not in k.lower()
+            ):
                 baseline_key = k
                 break
 
@@ -767,7 +908,11 @@ def build_timing_comparison_df(
         return np.nan
 
     base_pf = get_pf_cold(base)
-    base_total = base_mif + base_pf if not np.isnan(base_mif) and not np.isnan(base_pf) else np.nan
+    base_total = (
+        base_mif + base_pf
+        if not np.isnan(base_mif) and not np.isnan(base_pf)
+        else np.nan
+    )
 
     r_cores = 36
     if base and base.get("meta"):
@@ -800,16 +945,18 @@ def build_timing_comparison_df(
 
     for label, r in runs.items():
         if not r["available"]:
-            rows.append({
-                "Configuration": label,
-                opt_col: "not run",
-                opt_sp_col: "—",
-                "Pfilter (s)": "not run",
-                "Pfilter Speedup": "—",
-                "Total (s)": "not run",
-                "Total Speedup": "—",
-                "Throughput (vs 1 R CPU core)": "—",
-            })
+            rows.append(
+                {
+                    "Configuration": label,
+                    opt_col: "not run",
+                    opt_sp_col: "—",
+                    "Pfilter (s)": "not run",
+                    "Pfilter Speedup": "—",
+                    "Total (s)": "not run",
+                    "Total Speedup": "—",
+                    "Throughput (vs 1 R CPU core)": "—",
+                }
+            )
             continue
 
         mif = r["phases"].get("mif", np.nan)
@@ -817,20 +964,30 @@ def build_timing_comparison_df(
         total = mif + pf if not np.isnan(mif) and not np.isnan(pf) else np.nan
 
         if label == baseline_key or base is None:
-            mif_sp_str = pf_sp_str = tot_sp_str = "1.00x" if label == baseline_key else "—"
+            mif_sp_str = pf_sp_str = tot_sp_str = (
+                "1.00x" if label == baseline_key else "—"
+            )
             tp_str = f"{r_cores:.2f}x" if label == baseline_key else "—"
         else:
             w = work(r["cfg"], base_cfg=base["cfg"])
             mif_scale = (
-                (w["starts"] / b_work["starts"])
-                * (w["iters"] / b_work["iters"])
-                * (w["particles"] / b_work["particles"])
-            ) if b_work else 1.0
+                (
+                    (w["starts"] / b_work["starts"])
+                    * (w["iters"] / b_work["iters"])
+                    * (w["particles"] / b_work["particles"])
+                )
+                if b_work
+                else 1.0
+            )
             pf_scale = (
-                (w["starts"] / b_work["starts"])
-                * (w["reps"] / b_work["reps"])
-                * (w["eval_particles"] / b_work["eval_particles"])
-            ) if b_work else 1.0
+                (
+                    (w["starts"] / b_work["starts"])
+                    * (w["reps"] / b_work["reps"])
+                    * (w["eval_particles"] / b_work["eval_particles"])
+                )
+                if b_work
+                else 1.0
+            )
 
             scaled_base_mif = base_mif * mif_scale
             scaled_base_pf = base_pf * pf_scale
@@ -838,7 +995,9 @@ def build_timing_comparison_df(
 
             mif_sp = scaled_base_mif / mif if (mif == mif and mif > 0) else np.nan
             pf_sp = scaled_base_pf / pf if (pf == pf and pf > 0) else np.nan
-            tot_sp = scaled_base_tot / total if (total == total and total > 0) else np.nan
+            tot_sp = (
+                scaled_base_tot / total if (total == total and total > 0) else np.nan
+            )
 
             mif_sp_str = f"{mif_sp:.2f}x" if not np.isnan(mif_sp) else "—"
             pf_sp_str = f"{pf_sp:.2f}x" if not np.isnan(pf_sp) else "—"
@@ -846,16 +1005,18 @@ def build_timing_comparison_df(
             tp_str = f"{tot_sp * r_cores:.2f}x" if not np.isnan(tot_sp) else "—"
 
         fmt = lambda s: "—" if (s != s or np.isnan(s)) else f"{s:.1f}s ({s / 60:.2f}m)"
-        rows.append({
-            "Configuration": label,
-            opt_col: fmt(mif),
-            opt_sp_col: mif_sp_str,
-            "Pfilter (s)": fmt(pf),
-            "Pfilter Speedup": pf_sp_str,
-            "Total (s)": fmt(total),
-            "Total Speedup": tot_sp_str,
-            "Throughput (vs 1 R CPU core)": tp_str,
-        })
+        rows.append(
+            {
+                "Configuration": label,
+                opt_col: fmt(mif),
+                opt_sp_col: mif_sp_str,
+                "Pfilter (s)": fmt(pf),
+                "Pfilter Speedup": pf_sp_str,
+                "Total (s)": fmt(total),
+                "Total Speedup": tot_sp_str,
+                "Throughput (vs 1 R CPU core)": tp_str,
+            }
+        )
 
     return pd.DataFrame(rows)
 
@@ -878,11 +1039,14 @@ def build_cold_vs_warm_df(runs: dict[str, dict[str, Any]]) -> pd.DataFrame:
         overhead = cold - warm if not np.isnan(cold) and not np.isnan(warm) else np.nan
 
         fmt = lambda s: "—" if (s != s or np.isnan(s)) else f"{s:.2f}s"
-        rows.append({
-            "Configuration": label,
-            "Pfilter Cold (s)": fmt(cold),
-            "Pfilter Warm (s)": fmt(warm),
-            "Compilation Overhead (s)": fmt(overhead) if (not np.isnan(overhead) and overhead >= 0.005) else ("0.00s" if (not np.isnan(overhead) and overhead >= 0) else "—"),
-        })
+        rows.append(
+            {
+                "Configuration": label,
+                "Pfilter Cold (s)": fmt(cold),
+                "Pfilter Warm (s)": fmt(warm),
+                "Compilation Overhead (s)": fmt(overhead)
+                if (not np.isnan(overhead) and overhead >= 0.005)
+                else ("0.00s" if (not np.isnan(overhead) and overhead >= 0) else "—"),
+            }
+        )
     return pd.DataFrame(rows)
-
