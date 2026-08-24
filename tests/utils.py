@@ -6,7 +6,7 @@ import pickle
 import subprocess
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
-from typing import Any
+from typing import Any, cast
 
 import jax
 import jax.numpy as jnp
@@ -118,10 +118,10 @@ def _slim_traces(
         if missing:
             print(f"  note: trace columns not found, skipped: {missing}")
         keep += [c for c in trace_cols if c in traces.columns and c not in keep]
-        traces = traces[keep]
+        traces = cast(pd.DataFrame, traces[keep])
 
     if thin > 1 and "iteration" in traces.columns:
-        traces = traces[traces["iteration"] % thin == 0]
+        traces = cast(pd.DataFrame, traces[traces["iteration"] % thin == 0])
 
     return traces
 
