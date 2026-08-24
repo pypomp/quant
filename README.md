@@ -21,6 +21,8 @@ Below is a list of quantitative test reports available in this repository:
 * **[Parameter Estimation & Convergence](tests/spx/estimation/report.html)** (`tests/spx/estimation`): Compares parameter estimation traces and log-likelihood estimates on the SPX index dataset using `pypomp` (CPU/GPU) and R's `pomp`.
 * **[Runtime & Performance Benchmark](tests/spx/timing/report.html)** (`tests/spx/timing`): Benchmarks execution speed, speedup factors, and CPU/GPU throughput relative to R `pomp`.
 * **[Fixed-Parameter Likelihood Validation](tests/spx/loglik/report.html)** (`tests/spx/loglik`): Evaluates particle filter log-likelihood estimates at fixed parameter values (`rep3600`) via two-sample KS test.
+* **[Computational Scaling Benchmark](tests/spx/scaling/report.html)** (`tests/spx/scaling`): Evaluates execution speed and VRAM memory scaling across particle counts ($J$) and parallel search chains on GPU.
+
 
 ### 2. Dhaka Cholera Model
 * **[IF2 vs IFAD](tests/dacca/algorithms/report.html)** (`tests/dacca/algorithms`): Compares how far iterated filtering alone and iterated filtering with gradient training get on the same likelihood for a comparable wall-clock budget.

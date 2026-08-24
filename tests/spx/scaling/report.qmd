@@ -1,0 +1,305 @@
+---
+title: "SPX Computational Scaling Benchmark"
+subtitle: "Throughput, Particle Scaling, and Chain Scaling on GPU"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+bibliography: ../references.bib
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+
+sys.path.append("..")
+import report_utils as ru
+from IPython.display import display, HTML, Markdown
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('scaling')}</div>"))
+```
+
+## Introduction
+
+This benchmark explores the computational scaling of `pypomp`'s `mif` and `pfilter` methods on the S&P 500 (SPX) stochastic volatility model [@sun2024]. 
+
+We examine scaling along two axes:
+
+1. **Particle Scaling ($J$)**: Scaling the number of particles per chain while fixing the number of parallel chains.
+2. **Chain Scaling ($\text{chains}$)**: Scaling the number of parallel global search starts / chains while fixing the number of particles.
+
+---
+
+## Benchmark Settings & Environment
+
+```{python Settings Table, results='asis'}
+import json
+import pandas as pd
+from plotnine import (
+    ggplot, aes, geom_line, geom_point, labs, scale_y_continuous,
+    scale_x_continuous, facet_wrap
+)
+
+results_dir = os.path.join("results", "gpu")
+scaling_csv_path = os.path.join(results_dir, "scaling.csv")
+particle_csv_path = os.path.join(results_dir, "particle_scaling.csv")
+chain_csv_path = os.path.join(results_dir, "chain_scaling.csv")
+
+PLATFORMS = {
+    "pypomp (GPU)": os.path.join("results", "gpu"),
+}
+
+runs = ru.load_timing_data(PLATFORMS)
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
+```
+
+---
+
+## 1. Particle Scaling ($J$)
+
+Holding the number of search chains fixed, we evaluate how IF2 execution time and `pfilter` runtime scale with particle count $J$.
+
+```{python Particle Table}
+has_data = os.path.exists(particle_csv_path)
+if has_data:
+    df_part = pd.read_csv(particle_csv_path).sort_values("J").reset_index(drop=True)
+    
+    # Compute per-particle unit cost and incremental marginal rate
+    df_part["cost_per_part_us"] = (df_part["mif_per_iter_seconds"] / df_part["total_particles_mif"]) * 1e6
+    inc = (df_part["mif_per_iter_seconds"].diff() / df_part["total_particles_mif"].diff()) * 1e6
+    df_part["incremental_rate_us"] = inc.map(lambda v: f"{v:.4f}" if pd.notna(v) else "—")
+    df_part["cost_per_part_us_str"] = df_part["cost_per_part_us"].map(lambda v: f"{v:.4f}")
+    
+    tbl = df_part[[
+        "J", "chains", "total_particles_mif", "mif_time_seconds", 
+        "mif_per_iter_seconds", "cost_per_part_us_str", "incremental_rate_us",
+        "pfilter_cold_seconds", "pfilter_warm_seconds"
+    ]].rename(columns={
+        "J": "Particles (J)",
+        "chains": "Chains",
+        "total_particles_mif": "Total IF2 Particles",
+        "mif_time_seconds": "IF2 Total (s)",
+        "mif_per_iter_seconds": "IF2 Per Iter (s)",
+        "cost_per_part_us_str": "Cost/Part (μs/iter)",
+        "incremental_rate_us": "Incremental Rate (μs)",
+        "pfilter_cold_seconds": "Pfilter Cold (s)",
+        "pfilter_warm_seconds": "Pfilter Warm (s)",
+    })
+    display(HTML(tbl.to_html(classes="table table-striped table-hover", index=False)))
+else:
+    display(Markdown("_No particle scaling data available._"))
+```
+
+```{python Particle Plots, fig.width=10, fig.height=4.5}
+if has_data:
+    p1 = (
+        ggplot(df_part, aes(x="J", y="mif_time_seconds"))
+        + geom_line(color="#1abc9c", size=1.2)
+        + geom_point(color="#16a085", size=3)
+        + labs(
+            title="IF2 Runtime vs. Particle Count (J)",
+            subtitle="Fixed chains; runtime across particle counts",
+            x="Particles per Chain (J)",
+            y="IF2 Wall-clock Time (s)"
+        )
+        + ru.theme_premium
+    )
+    display(p1)
+    
+    p2 = (
+        ggplot(df_part, aes(x="J", y="pfilter_warm_seconds"))
+        + geom_line(color="#3498db", size=1.2)
+        + geom_point(color="#2980b9", size=3)
+        + labs(
+            title="Warm Pfilter Runtime vs. Particle Count (J)",
+            subtitle="Evaluation runtime across fixed replicates",
+            x="Particles per Chain (J)",
+            y="Pfilter Warm Time (s)"
+        )
+        + ru.theme_premium
+    )
+    display(p2)
+```
+
+---
+
+## 2. Chain Scaling ($\text{chains}$)
+
+Holding particle count fixed at $J=1\,000$, we evaluate how scaling the number of parallel global search chains impacts IF2 and filter throughput.
+
+```{python Chain Table}
+has_chain_data = os.path.exists(chain_csv_path)
+if has_chain_data:
+    df_chain = pd.read_csv(chain_csv_path).sort_values("chains").reset_index(drop=True)
+    
+    # Compute per-particle unit cost and incremental marginal rate
+    df_chain["cost_per_part_us"] = (df_chain["mif_per_iter_seconds"] / df_chain["total_particles_mif"]) * 1e6
+    inc_c = (df_chain["mif_per_iter_seconds"].diff() / df_chain["total_particles_mif"].diff()) * 1e6
+    df_chain["incremental_rate_us"] = inc_c.map(lambda v: f"{v:.4f}" if pd.notna(v) else "—")
+    df_chain["cost_per_part_us_str"] = df_chain["cost_per_part_us"].map(lambda v: f"{v:.4f}")
+
+    tbl_c = df_chain[[
+        "chains", "J", "total_particles_mif", "mif_time_seconds", 
+        "mif_per_iter_seconds", "cost_per_part_us_str", "incremental_rate_us",
+        "pfilter_cold_seconds", "pfilter_warm_seconds"
+    ]].rename(columns={
+        "chains": "Chains",
+        "J": "Particles (J)",
+        "total_particles_mif": "Total IF2 Particles",
+        "mif_time_seconds": "IF2 Total (s)",
+        "mif_per_iter_seconds": "IF2 Per Iter (s)",
+        "cost_per_part_us_str": "Cost/Part (μs/iter)",
+        "incremental_rate_us": "Incremental Rate (μs)",
+        "pfilter_cold_seconds": "Pfilter Cold (s)",
+        "pfilter_warm_seconds": "Pfilter Warm (s)",
+    })
+    display(HTML(tbl_c.to_html(classes="table table-striped table-hover", index=False)))
+else:
+    display(Markdown("_No chain scaling data available._"))
+```
+
+```{python Chain Plots, fig.width=10, fig.height=4.5}
+if has_chain_data:
+    p3 = (
+        ggplot(df_chain, aes(x="chains", y="mif_time_seconds"))
+        + geom_line(color="#e67e22", size=1.2)
+        + geom_point(color="#d35400", size=3)
+        + labs(
+            title="IF2 Runtime vs. Number of Parallel Chains",
+            subtitle="Fixed J=1000 particles; vectorized chain execution",
+            x="Number of Parallel Chains",
+            y="IF2 Wall-clock Time (s)"
+        )
+        + ru.theme_premium
+    )
+    display(p3)
+```
+
+---
+
+## 3. Comparison: Particle vs. Chain Parallelism
+
+Comparing the efficiency of scaling particle count ($J$) versus scaling parallel chains ($\text{chains}$) as a function of the total simultaneous particles in flight ($N_{\text{total}} = J \times \text{chains}$):
+
+```{python Combined Plots, fig.width=10, fig.height=4.5}
+if os.path.exists(scaling_csv_path):
+    df_all = pd.read_csv(scaling_csv_path)
+    df_all["scaling_dimension"] = df_all["scaling_type"].map({
+        "particles": "Varying J (fixed chains)",
+        "chains": "Varying Chains (fixed J)"
+    })
+    
+    p_comp = (
+        ggplot(df_all, aes(x="total_particles_mif", y="mif_per_iter_seconds", color="scaling_dimension"))
+        + geom_line(size=1.2)
+        + geom_point(size=3)
+        + labs(
+            title="IF2 Scaling Efficiency Comparison",
+            subtitle="Per-iteration execution time vs. Total particles in flight (J × Chains)",
+            x="Total IF2 Particles (J × Chains)",
+            y="IF2 Time per Iteration (s)",
+            color="Scaling Experiment"
+        )
+        + ru.theme_premium
+    )
+    display(p_comp)
+```
+
+---
+
+## 4. VRAM & Memory Scaling Analysis
+
+Evaluates GPU memory allocation and buffer scaling under dynamic memory allocation. 
+Each grid point is measured in an isolated subprocess with a fresh XLA allocator to capture exact per-configuration peak VRAM usage without cumulative process carryover.
+
+```{python Memory Section}
+mem_results_dir = os.path.join("results", "gpu")
+mem_scaling_csv = os.path.join(mem_results_dir, "scaling.csv")
+has_mem_data = os.path.exists(mem_scaling_csv)
+
+if has_mem_data:
+    df_mem = pd.read_csv(mem_scaling_csv)
+    df_mem["scaling_dimension"] = df_mem["scaling_type"].map({
+        "particles": "Varying J (fixed chains)",
+        "chains": "Varying Chains (fixed J)"
+    })
+    
+    # Surface error/OOM rows if present
+    if "error" in df_mem.columns:
+        error_rows = df_mem[df_mem["error"].notna() & (df_mem["error"] != "")]
+        if not error_rows.empty:
+            err_items = "".join(
+                f"<li><strong>{r.get('scaling_type', 'config')} (J={r.get('J')}, chains={r.get('chains')}):</strong> {r.get('error')}</li>"
+                for _, r in error_rows.iterrows()
+            )
+            display(HTML(f"<div class='alert alert-warning'><strong>Configuration Errors / OOMs:</strong><ul>{err_items}</ul></div>"))
+
+    # Display table of VRAM measurements
+    if "peak_vram_mb" in df_mem.columns:
+        cols_to_show = [
+            "scaling_type", "J", "chains", "total_particles_mif", 
+            "baseline_vram_mb", "peak_vram_mif_mb", "peak_vram_pfilter_mb", "peak_vram_mb"
+        ]
+        existing_cols = [c for c in cols_to_show if c in df_mem.columns]
+        rename_map = {
+            "scaling_type": "Experiment",
+            "J": "Particles (J)",
+            "chains": "Chains",
+            "total_particles_mif": "Total Particles",
+            "baseline_vram_mb": "Baseline VRAM (MB)",
+            "peak_vram_mif_mb": "IF2 Peak (MB)",
+            "peak_vram_pfilter_mb": "Pfilter Peak (MB)",
+            "peak_vram_mb": "Peak VRAM (MB)",
+        }
+        df_valid = df_mem.dropna(subset=["peak_vram_mb"]).copy()
+        for col in ["baseline_vram_mb", "peak_vram_mif_mb", "peak_vram_pfilter_mb", "peak_vram_mb"]:
+            if col in df_valid.columns:
+                df_valid[col] = df_valid[col].map(lambda v: f"{v:.1f}" if pd.notna(v) else "—")
+
+        tbl_mem = df_valid[existing_cols].rename(columns=rename_map)
+        display(HTML(tbl_mem.to_html(classes="table table-striped table-hover", index=False)))
+        
+        p_mem = (
+            ggplot(df_mem.dropna(subset=["peak_vram_mb"]), aes(x="total_particles_mif", y="peak_vram_mb", color="scaling_dimension"))
+            + geom_line(size=1.2)
+            + geom_point(size=3)
+            + labs(
+                title="Peak GPU VRAM Usage vs. Total Simultaneous Particles",
+                subtitle="Live JAX buffer allocations in MB without VRAM preallocation (isolated subprocess per point)",
+                x="Total Particles (J × Chains)",
+                y="Peak VRAM Allocated (MB)",
+                color="Scaling Experiment"
+            )
+            + ru.theme_premium
+        )
+        display(p_mem)
+    else:
+        display(Markdown("_Memory measurements not present in scaling results._"))
+else:
+    display(HTML("""
+    <div class='alert alert-info'>
+        <strong>GPU benchmark not run yet:</strong> Run <code>python scripts/run_tests.py run tests/spx/scaling/run.py --job gpu --run-level 4</code> to generate runtime and dynamic VRAM scaling measurements.
+    </div>
+    """))
+```
+
+---
+
+# References
+
