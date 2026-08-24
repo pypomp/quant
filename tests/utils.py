@@ -54,6 +54,52 @@ def _gpu_type() -> str | None:
     return None
 
 
+def _cpu_model() -> str | None:
+    """Read CPU model name from /proc/cpuinfo or platform."""
+    try:
+        if os.path.exists("/proc/cpuinfo"):
+            with open("/proc/cpuinfo") as f:
+                for line in f:
+                    if line.startswith("model name"):
+                        return line.split(":", 1)[1].strip()
+    except (OSError, UnicodeDecodeError):
+        pass
+    import platform
+
+    proc = platform.processor()
+    return proc if proc else None
+
+
+def _hardware_info() -> dict[str, Any]:
+    """Capture host compute hardware metadata (CPU model, cores, nodelist)."""
+    hw: dict[str, Any] = {}
+
+    cpu = _cpu_model()
+    if cpu:
+        hw["cpu_model"] = cpu
+
+    node = os.environ.get("SLURMD_NODENAME") or (
+        os.uname().nodename if hasattr(os, "uname") else None
+    )
+    if node:
+        hw["nodelist"] = node
+
+    cores_str = os.environ.get("SLURM_NTASKS_PER_NODE") or os.environ.get(
+        "SLURM_CPUS_PER_TASK"
+    )
+    if cores_str:
+        try:
+            hw["cores"] = int(cores_str)
+        except ValueError:
+            pass
+    elif hasattr(os, "cpu_count"):
+        count = os.cpu_count()
+        if count is not None:
+            hw["cores"] = count
+
+    return hw
+
+
 def run_metadata(run_config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Provenance for a single run.
 
@@ -81,6 +127,8 @@ def run_metadata(run_config: dict[str, Any] | None = None) -> dict[str, Any]:
     if gpu_type is not None:
         slurm_info["gpu_type"] = gpu_type
 
+    hw_info = _hardware_info()
+
     return {
         "timestamp": datetime.datetime.now(datetime.timezone.utc)
         .replace(microsecond=0)
@@ -88,6 +136,7 @@ def run_metadata(run_config: dict[str, Any] | None = None) -> dict[str, Any]:
         "pypomp_version": _package_version("pypomp"),
         "jax_version": _package_version("jax"),
         "quant_git_sha": _git_sha(),
+        "hardware": hw_info,
         "devices": devices,
         "slurm": slurm_info,
         "run_config": run_config or {},
@@ -827,7 +876,11 @@ def _extract_hardware_settings(runs: dict[str, dict[str, Any]]):
             return f"GPU ({slurm['gpus']})"
 
         if hw.get("cpu_model"):
-            cores = hw.get("cores", "—")
+            cores = (
+                hw.get("cores")
+                or slurm.get("cpus")
+                or (len(devices) if devices else "—")
+            )
             model = hw.get("cpu_model", "CPU")
             return f"{model} ({cores} cores)"
         if devices and any("cpu" in d.lower() for d in devices):
