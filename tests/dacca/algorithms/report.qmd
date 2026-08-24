@@ -34,13 +34,8 @@ This report compares two `pypomp` fitting pipelines on the Dhaka cholera model:
 1. **IF2** — iterated filtering alone.
 2. **IFAD** — iterated filtering followed by gradient-based training.
 
-Both arms start from the same points drawn from the same box, and IF2 is given
-enough extra iterations that the two arms cost roughly the same wall clock. The
-question is therefore not which is faster but which gets further for the money.
-
-The Dhaka model has a very fast transition process but many simulator calls per
-observation, so it is unusually sensitive to per-step framework overhead. A wall
-clock that drifts upward here is the first sign of that overhead growing.
+Both arms start from the same points drawn from the same box, and IF2 is given enough extra iterations that the two arms cost roughly the same wall clock. 
+We would like to see which maximizes the likelihood more in the (roughly) same amount of time.
 
 A more thorough version of this analysis is available [here](https://github.com/pypomp/dmop).
 
