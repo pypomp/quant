@@ -1,8 +1,13 @@
 {
-  "timestamp": "2026-08-17T16:38:06+00:00",
+  "timestamp": "2026-08-24T22:18:38+00:00",
   "pypomp_version": "0.4.10.2",
   "jax_version": "0.11.0",
-  "quant_git_sha": "20ee7ed5f83a03985534a489148e5e3148a8b624",
+  "quant_git_sha": "cf00563d7c6f67771ae5e21161bbf0b14b39ab2b",
+  "hardware": {
+    "cpu_model": "Intel(R) Xeon(R) Gold 6254 CPU @ 3.10GHz",
+    "nodelist": "gl3437",
+    "cores": 36
+  },
   "devices": [
     "cpu:0",
     "cpu:1",
@@ -42,7 +47,7 @@
     "cpu:35"
   ],
   "slurm": {
-    "job_id": "57980904",
+    "job_id": "58621861",
     "partition": "standard",
     "cpus": "36"
   },
@@ -58,8 +63,8 @@
     "NREPS": 24
   },
   "timings": {
-    "mif": 277.7208755016327,
-    "pfilter_cold": 7.338468790054321,
-    "pfilter_warm": 6.272002220153809
+    "mif": 257.15922927856445,
+    "pfilter_cold": 6.915973901748657,
+    "pfilter_warm": 7.346234321594238
   }
 }
