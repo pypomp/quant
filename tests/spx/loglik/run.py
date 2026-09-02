@@ -23,7 +23,7 @@ Compared against results/R/pfilter_logliks.csv (3600 R replicates).
 #   3:
 #     sbatch_args: { time: "00:30:00" }
 #   4:
-#     sbatch_args: { time: "02:00:00" }
+#     sbatch_args: { time: "00:55:00" }
 # --- END SLURM CONFIG ---
 
 import os

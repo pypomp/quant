@@ -21,22 +21,30 @@ Compared against results/R/pfilter_logliks.csv, which pomp computes in double.
 #       output: "results/f32/logs/slurm-%j.out"
 #     env:
 #       USE_64BIT: "false"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:04:00" }
+#       2:
+#         sbatch_args: { time: "00:15:00" }
+#       3:
+#         sbatch_args: { time: "00:15:00" }
+#       4:
+#         sbatch_args: { time: "00:35:00" }
 #   f64:
 #     sbatch_args:
 #       job-name: "measles loglik (64-bit)"
 #       output: "results/f64/logs/slurm-%j.out"
 #     env:
 #       USE_64BIT: "true"
-#
-# run_levels:
-#   1:
-#     sbatch_args: { time: "00:04:00" }
-#   2:
-#     sbatch_args: { time: "00:15:00" }
-#   3:
-#     sbatch_args: { time: "00:15:00" }
-#   4:
-#     sbatch_args: { time: "02:00:00" }
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:04:00" }
+#       2:
+#         sbatch_args: { time: "00:15:00" }
+#       3:
+#         sbatch_args: { time: "00:15:00" }
+#       4:
+#         sbatch_args: { time: "02:00:00" }
 # --- END SLURM CONFIG ---
 
 import os

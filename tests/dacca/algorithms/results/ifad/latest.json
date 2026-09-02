@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-17T23:49:45+00:00",
+  "timestamp": "2026-09-02T18:41:53+00:00",
   "run_config": {
     "kind": "algorithms",
     "model": "dacca",
@@ -13,7 +13,7 @@
     "NP_FITR": 5000,
     "NP_EVAL": 5000,
     "NREPS_EVAL": 36,
-    "execution_time": 545.2107307910919,
+    "execution_time": 532.2865335941315,
     "platform": "gpu"
   },
   "results_history": [
@@ -21,7 +21,7 @@
       "method": "mif",
       "kind": "trace",
       "panel": false,
-      "execution_time": 99.33587646484375,
+      "execution_time": 99.04857420921326,
       "config": {
         "J": 5000,
         "M": 175,
@@ -34,7 +34,7 @@
       "method": "train",
       "kind": "trace",
       "panel": false,
-      "execution_time": 425.4999966621399,
+      "execution_time": 413.4931130409241,
       "config": {
         "optimizer": "Adam(clip_norm=None, scale=False, ls=False, c=0.1, max_ls_itn=10, beta1=0.9, beta2=0.999, epsilon=1e-08)",
         "J": 5000,
@@ -49,7 +49,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 12.822828769683838,
+      "execution_time": 11.918884992599487,
       "config": {
         "J": 5000,
         "reps": 36,
@@ -60,7 +60,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.500616788864136,
+      "execution_time": 7.769556045532227,
       "config": {
         "J": 5000,
         "reps": 36,
@@ -68,14 +68,19 @@
       }
     }
   ],
-  "pypomp_version": "0.4.10.2",
-  "jax_version": "0.11.0",
-  "quant_git_sha": "231caf513658327384a44602c90a1afc4246b57a",
+  "pypomp_version": "1.0.0rc1",
+  "jax_version": "0.11.1",
+  "quant_git_sha": "630cc2325273e7af2386effd11b3ae827dfde18f",
+  "hardware": {
+    "cpu_model": "AMD EPYC 9575F 64-Core Processor",
+    "nodelist": "gl1800",
+    "cores": 128
+  },
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "58045859",
+    "job_id": "59673747",
     "partition": "gpu-rtx6000",
     "gpus": "rtx_pro_6000_blackwell:1",
     "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"

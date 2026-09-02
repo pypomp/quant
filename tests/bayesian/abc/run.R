@@ -29,7 +29,7 @@
 #   3:
 #     sbatch_args: { time: "01:30:00" }
 #   4:
-#     sbatch_args: { time: "04:00:00" }
+#     sbatch_args: { time: "01:15:00" }
 # setup: |
 #   module load R/4.4.0
 # command: |

@@ -78,8 +78,8 @@ initial_params = pp.PanelPomp.sample_params(
 
 dummy_theta = pp.Pomp.sample_params(measles_box, NREPS_FITR, key=subkey)
 pomp_dict = {
-    "London": pp.models.UKMeasles.Pomp(
-        unit=["London"],
+    "London": pp.models.UKMeasles.pomp(
+        unit="London",
         theta=dummy_theta,
         model="001d",
         clean=True,
@@ -89,6 +89,6 @@ pomp_dict = {
 }
 
 panel = pp.PanelPomp(
-    Pomp_dict=pomp_dict,
+    pomp_dict=pomp_dict,
     theta=pp.PanelParameters(theta=initial_params),
 )

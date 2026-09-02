@@ -25,7 +25,7 @@ difference between the implementations rather than between the models.
 #   3:
 #     sbatch_args: { time: "00:15:00" }
 #   4:
-#     sbatch_args: { time: "08:00:00" }
+#     sbatch_args: { time: "00:10:00" }
 # --- END SLURM CONFIG ---
 
 import os

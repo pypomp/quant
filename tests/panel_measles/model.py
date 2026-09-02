@@ -126,7 +126,7 @@ def align_covariates(pomp_dict, covar_file=COVARS_PATH):
 
 def panel_measles(theta, units=UNITS, align=True):
     pomp_dict = {
-        unit: pp.models.UKMeasles.Pomp(
+        unit: pp.models.UKMeasles.pomp(
             unit=unit,
             theta=_dummy_theta(),
             model="001b",
@@ -136,7 +136,7 @@ def panel_measles(theta, units=UNITS, align=True):
     }
     if align:
         align_covariates(pomp_dict)
-    return pp.PanelPomp(Pomp_dict=pomp_dict, theta=theta)
+    return pp.PanelPomp(pomp_dict=pomp_dict, theta=theta)
 
 
 def mle_theta(units=UNITS):

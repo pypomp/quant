@@ -15,7 +15,7 @@
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
 #   output: "results/R/logs/slurm-%j.out"
-#   time: "02:00:00"
+#   time: "00:30:00"
 # setup: |
 #   module load R/4.4.0
 # --- END SLURM CONFIG ---

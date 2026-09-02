@@ -15,28 +15,34 @@ Compared against the frozen R baseline in results/R/.
 #       gpus: "v100:1"
 #       cpus-per-gpu: 1
 #       mem: 6GB
-#       time: "00:04:00"
 #       output: "results/gpu/logs/slurm-%j.out"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:00:30" }
+#       2:
+#         sbatch_args: { time: "00:04:00" }
+#       3:
+#         sbatch_args: { time: "00:15:00" }
+#       4:
+#         sbatch_args: { time: "00:15:00" }
 #   cpu:
 #     sbatch_args:
 #       job-name: "spx estimation (cpu)"
 #       partition: standard
 #       cpus-per-task: 36
 #       mem: 80GB
-#       time: "00:04:00"
 #       output: "results/cpu/logs/slurm-%j.out"
 #     env:
 #       USE_CPU: "true"
-#
-# run_levels:
-#   1:
-#     sbatch_args: { time: "00:00:30" }
-#   2:
-#     sbatch_args: { time: "00:04:00" }
-#   3:
-#     sbatch_args: { time: "02:00:00" }
-#   4:
-#     sbatch_args: { time: "03:00:00" }
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:00:30" }
+#       2:
+#         sbatch_args: { time: "00:04:00" }
+#       3:
+#         sbatch_args: { time: "01:00:00" }
+#       4:
+#         sbatch_args: { time: "01:15:00" }
 # --- END SLURM CONFIG ---
 
 import os

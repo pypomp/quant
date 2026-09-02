@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-05T22:52:28",
+  "timestamp": "2026-09-02T19:12:02+00:00",
   "run_config": {
     "kind": "estimation",
     "model": "spx",
@@ -13,7 +13,7 @@
       "method": "mif",
       "kind": "trace",
       "panel": false,
-      "execution_time": 2848.328355073929,
+      "execution_time": 2549.8929166793823,
       "config": {
         "J": 1000,
         "M": 200,
@@ -26,7 +26,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 78.65950632095337,
+      "execution_time": 60.59031796455383,
       "config": {
         "J": 1000,
         "reps": 24,
@@ -34,9 +34,14 @@
       }
     }
   ],
-  "pypomp_version": "0.4.9.0",
-  "jax_version": "0.11.0",
-  "quant_git_sha": "8853fc51d656b756744f43ce6318594df981d279",
+  "pypomp_version": "1.0.0rc1",
+  "jax_version": "0.11.1",
+  "quant_git_sha": "630cc2325273e7af2386effd11b3ae827dfde18f",
+  "hardware": {
+    "cpu_model": "Intel(R) Xeon(R) Gold 6254 CPU @ 3.10GHz",
+    "nodelist": "gl3423",
+    "cores": 36
+  },
   "devices": [
     "cpu:0",
     "cpu:1",
@@ -76,7 +81,7 @@
     "cpu:35"
   ],
   "slurm": {
-    "job_id": "56537487",
+    "job_id": "59673766",
     "partition": "standard",
     "cpus": "36"
   }

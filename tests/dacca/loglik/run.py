@@ -25,7 +25,7 @@ Compared against results/R/pfilter_logliks.csv.
 #   3:
 #     sbatch_args: { time: "00:20:00" }
 #   4:
-#     sbatch_args: { time: "02:00:00" }
+#     sbatch_args: { time: "00:35:00" }
 # --- END SLURM CONFIG ---
 
 # JAX must be configured before it is imported, so imports below sit after

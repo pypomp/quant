@@ -31,7 +31,7 @@ per start. results.csv is the pruned best afterwards, a pypomp-only result.
 #   3:
 #     sbatch_args: { time: "01:00:00" }
 #   4:
-#     sbatch_args: { time: "03:00:00" }
+#     sbatch_args: { time: "01:15:00" }
 # --- END SLURM CONFIG ---
 
 import os

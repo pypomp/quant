@@ -46,7 +46,7 @@ results/<algorithm>/.
 #   3:
 #     sbatch_args: { time: "00:30:00" }
 #   4:
-#     sbatch_args: { time: "00:30:00" }
+#     sbatch_args: { time: "00:10:00" }
 # --- END SLURM CONFIG ---
 
 import os

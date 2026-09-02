@@ -26,7 +26,7 @@ timing exactly the same work.
 #       3:
 #         sbatch_args: { time: "00:30:00" }
 #       4:
-#         sbatch_args: { time: "00:30:00" }
+#         sbatch_args: { time: "00:05:00" }
 #   cpu:
 #     sbatch_args:
 #       job-name: "dacca timing (cpu)"
@@ -44,7 +44,7 @@ timing exactly the same work.
 #       3:
 #         sbatch_args: { time: "01:00:00" }
 #       4:
-#         sbatch_args: { time: "02:00:00" }
+#         sbatch_args: { time: "00:25:00" }
 # --- END SLURM CONFIG ---
 
 # JAX must be configured before it is imported, so imports below sit after

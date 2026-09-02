@@ -42,7 +42,7 @@ results/<algorithm>/.
 #   3:
 #     sbatch_args: { time: "00:30:00" }
 #   4:
-#     sbatch_args: { time: "00:30:00" }
+#     sbatch_args: { time: "00:18:00" }
 # --- END SLURM CONFIG ---
 
 # JAX must be configured before it is imported, so imports below sit after

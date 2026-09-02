@@ -116,7 +116,7 @@ MeaslesModelVariant = Literal["001", "001b", "001d", "002", "002d", "003"]
 
 def measles(unit, theta, model: MeaslesModelVariant = "001b"):
     """The measles model for one unit, at `theta`."""
-    return pp.models.UKMeasles.Pomp(
+    return pp.models.UKMeasles.pomp(
         unit=unit,
         theta=theta,
         model=model,
@@ -158,7 +158,7 @@ def measles_continuous(theta, unit="London"):
     `clean=True` here because model 003 is fitted rather than evaluated at
     published estimates, so the cleaned series is the right target.
     """
-    return pp.models.UKMeasles.Pomp(
+    return pp.models.UKMeasles.pomp(
         unit=unit,
         theta=theta,
         model="003",
