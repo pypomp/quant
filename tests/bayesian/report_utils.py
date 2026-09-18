@@ -2,7 +2,7 @@
 
 Mirrors tests/measles/report_utils.py -- same theme, same load-or-note-missing
 idiom -- and adds the MCMC diagnostics these reports need. arviz is deliberately
-not a dependency: requirements.txt pins an exact pypomp version and is the
+not a dependency: pyproject.toml / uv.lock pins an exact pypomp version and is the
 mechanism by which these runs reproduce, so a new transitive dependency tree is
 a disproportionate cost for the numpy below.
 """

@@ -8,7 +8,7 @@ try:
     import yaml
 except ImportError:
     print(
-        "Error: PyYAML is not installed. Please run `pip install PyYAML` or activate your .venv."
+        "Error: PyYAML is not installed. Please run `uv sync` or activate your .venv."
     )
     sys.exit(1)
 

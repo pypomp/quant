@@ -1,0 +1,27 @@
+[project]
+name = "quant"
+version = "0.1.0"
+description = "Quantitative tests of pypomp"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "jupyter>=1.1.1",
+    "jupyterlab>=4.4.3",
+    "matplotlib>=3.10.3",
+    "plotnine>=0.14.0",
+    "pypomp>=1.0.0",
+    "pyreadr>=0.5.0",
+    "pyyaml>=6.0.2",
+    "scipy>=1.16.1",
+    "seaborn>=0.13.2",
+    "session-info>=1.0.0",
+    "xarray>=2024.0.0",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "jax[cuda12]",
+]
+
+[tool.uv]
+package = false

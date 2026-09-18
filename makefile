@@ -1,31 +1,39 @@
-.PHONY: install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports render-reports-slurm
+.PHONY: sync sync-gpu lock install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports render-reports-slurm
 
-install_pypi: install_requirements
-	pip install pypomp
+sync:
+	uv sync
 
-install_git: install_requirements
-	pip install git+https://github.com/pypomp/pypomp.git
+sync-gpu:
+	uv sync --extra gpu
 
-install_git_latest: install_requirements
-	pip install git+https://github.com/pypomp/pypomp.git --force-reinstall --no-deps
+lock:
+	uv lock
 
-install_requirements: .venv
-	pip install -r requirements.txt
+install_requirements: sync
+
+install_pypi: sync
+	uv pip install pypomp
+
+install_git: sync
+	uv pip install git+https://github.com/pypomp/pypomp.git
+
+install_git_latest: sync
+	uv pip install git+https://github.com/pypomp/pypomp.git --force-reinstall --no-deps
 
 .venv:
-	python3.12 -m venv .venv
+	uv sync
 
 list:
-	.venv/bin/python scripts/run_tests.py list tests
+	uv run scripts/run_tests.py list tests
 
 test-interactive:
-	.venv/bin/python scripts/run_tests.py run tests --interactive
+	uv run scripts/run_tests.py run tests --interactive
 
 test-high:
-	.venv/bin/python scripts/run_tests.py run tests --importance high
+	uv run scripts/run_tests.py run tests --importance high
 
 test-all:
-	.venv/bin/python scripts/run_tests.py run tests
+	uv run scripts/run_tests.py run tests
 
 DIR ?= tests
 
