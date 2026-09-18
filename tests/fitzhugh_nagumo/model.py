@@ -52,20 +52,26 @@ def validate_parameters(params: FHNParameters) -> None:
 def drift(state, params: FHNParameters = REFERENCE_PARAMETERS):
     """SDE drift from published equation (22), in state order (V, U)."""
     v, u = jnp.asarray(state)
-    return jnp.stack(((v - v**3 - u + params.s) / params.epsilon,
-                      params.gamma * v - u + params.alpha))
+    return jnp.stack(
+        (
+            (v - v**3 - u + params.s) / params.epsilon,
+            params.gamma * v - u + params.alpha,
+        )
+    )
 
 
 def diffusion(params: FHNParameters = REFERENCE_PARAMETERS):
     """One Brownian driver; noise acts directly on U only."""
-    return jnp.stack((jnp.zeros_like(jnp.asarray(params.sigma)),
-                      jnp.asarray(params.sigma)))
+    return jnp.stack(
+        (jnp.zeros_like(jnp.asarray(params.sigma)), jnp.asarray(params.sigma))
+    )
 
 
 def drift_jacobian(state, params: FHNParameters = REFERENCE_PARAMETERS):
     v, _ = jnp.asarray(state)
-    return jnp.array([[(1 - 3 * v**2) / params.epsilon, -1 / params.epsilon],
-                      [params.gamma, -1.0]])
+    return jnp.array(
+        [[(1 - 3 * v**2) / params.epsilon, -1 / params.epsilon], [params.gamma, -1.0]]
+    )
 
 
 def taylor15_mean(state, dt, params: FHNParameters = REFERENCE_PARAMETERS):
@@ -83,9 +89,10 @@ def taylor15_mean(state, dt, params: FHNParameters = REFERENCE_PARAMETERS):
 def taylor15_covariance(dt, params: FHNParameters = REFERENCE_PARAMETERS):
     """Full covariance of the specified step, published equation (35)."""
     eps, sig = params.epsilon, params.sigma
-    cross = (-dt**2 / 2 + dt**3 / 3) / eps
-    return sig**2 * jnp.array([[dt**3 / (3 * eps**2), cross],
-                               [cross, dt - dt**2 + dt**3 / 3]])
+    cross = (-(dt**2) / 2 + dt**3 / 3) / eps
+    return sig**2 * jnp.array(
+        [[dt**3 / (3 * eps**2), cross], [cross, dt - dt**2 + dt**3 / 3]]
+    )
 
 
 def brownian_integrals(normals, dt):
@@ -96,12 +103,10 @@ def brownian_integrals(normals, dt):
     return eta, xi
 
 
-def step_from_normals(state, normals, dt,
-                      params: FHNParameters = REFERENCE_PARAMETERS):
+def step_from_normals(state, normals, dt, params: FHNParameters = REFERENCE_PARAMETERS):
     """Fixed-innovation strong-1.5 step; no clipping, taming, or extra noise."""
     eta, xi = brownian_integrals(normals, dt)
-    noise = jnp.stack((-params.sigma * xi / params.epsilon,
-                       params.sigma * (eta - xi)))
+    noise = jnp.stack((-params.sigma * xi / params.epsilon, params.sigma * (eta - xi)))
     return taylor15_mean(state, dt, params) + noise
 
 
@@ -110,12 +115,16 @@ def observe(state):
     return jnp.asarray(state)[..., 0]
 
 
-def simulate_taylor15(key, *, initial_state,
-                      params: FHNParameters = REFERENCE_PARAMETERS,
-                      n_observations: int = N_OBSERVATIONS,
-                      simulation_dt: float = SIMULATION_DT,
-                      observation_dt: float = OBSERVATION_DT,
-                      t0: float = 0.0) -> Trajectory:
+def simulate_taylor15(
+    key,
+    *,
+    initial_state,
+    params: FHNParameters = REFERENCE_PARAMETERS,
+    n_observations: int = N_OBSERVATIONS,
+    simulation_dt: float = SIMULATION_DT,
+    observation_dt: float = OBSERVATION_DT,
+    t0: float = 0.0,
+) -> Trajectory:
     """Generate NEW data from a specified numerical approximation of the SDE.
 
     The caller must provide key and initial_state. No claim is made to reproduce
@@ -130,8 +139,11 @@ def simulate_taylor15(key, *, initial_state,
         raise ValueError("initial_state must contain finite (V0, U0).")
     if not isinstance(n_observations, (int, np.integer)) or n_observations < 1:
         raise ValueError("n_observations must be a positive integer.")
-    if (not np.isfinite([simulation_dt, observation_dt, t0]).all()
-            or simulation_dt <= 0 or observation_dt <= 0):
+    if (
+        not np.isfinite([simulation_dt, observation_dt, t0]).all()
+        or simulation_dt <= 0
+        or observation_dt <= 0
+    ):
         raise ValueError("Time values must be finite and both intervals positive.")
     ratio = observation_dt / simulation_dt
     nstep = int(round(ratio))
@@ -143,12 +155,15 @@ def simulate_taylor15(key, *, initial_state,
     def advance_interval(state, interval_normals):
         def advance_substep(x, z):
             return step_from_normals(x, z, simulation_dt, params), None
+
         next_state, _ = jax.lax.scan(advance_substep, state, interval_normals)
         return next_state, next_state
 
     _, states = jax.lax.scan(advance_interval, initial, normals)
     if not np.isfinite(np.asarray(states)).all():
-        raise FloatingPointError("Taylor-1.5 simulation diverged; no state clipping applied.")
+        raise FloatingPointError(
+            "Taylor-1.5 simulation diverged; no state clipping applied."
+        )
     times = t0 + observation_dt * jnp.arange(1, n_observations + 1)
     return Trajectory(times, states, observe(states))
 
@@ -224,9 +239,13 @@ def make_pomp(
 
     params = FHNParameters() if params is None else params
     try:
-        values = _numeric_array([getattr(params, name) for name in PARAMETER_NAMES], "params")
+        values = _numeric_array(
+            [getattr(params, name) for name in PARAMETER_NAMES], "params"
+        )
     except AttributeError as exc:
-        raise TypeError("params must provide epsilon, gamma, alpha, sigma, and s") from exc
+        raise TypeError(
+            "params must provide epsilon, gamma, alpha, sigma, and s"
+        ) from exc
     if values.shape != (5,) or not np.isfinite(values).all():
         raise ValueError("All five process parameters must be finite scalars")
     if values[0] <= 0 or values[3] < 0:
@@ -237,9 +256,13 @@ def make_pomp(
             raise TypeError("observations must be a pandas DataFrame")
         if list(observations.columns) != ["V"]:
             raise ValueError("observations must contain exactly one column named V")
-        observation_values = _numeric_array(observations["V"].to_numpy(), "observations")
+        observation_values = _numeric_array(
+            observations["V"].to_numpy(), "observations"
+        )
         if not np.isfinite(observation_values).all():
-            raise ValueError("Supplied observations must be finite; NaNs are simulation placeholders only")
+            raise ValueError(
+                "Supplied observations must be finite; NaNs are simulation placeholders only"
+            )
         time_values = _numeric_array(observations.index.to_numpy(), "observation times")
         ys = observations.copy(deep=True)
         data_source = "caller_supplied_observations"
@@ -255,7 +278,9 @@ def make_pomp(
         or np.any(np.diff(time_values) <= 0)
         or time_values[0] <= float(t0_array)
     ):
-        raise ValueError("Times must be a nonempty, finite, strictly increasing grid after t0")
+        raise ValueError(
+            "Times must be a nonempty, finite, strictly increasing grid after t0"
+        )
     if ys is None:
         ys = pd.DataFrame({"V": np.full(len(time_values), np.nan)}, index=time_values)
     ys.index = pd.Index(time_values, name="time")

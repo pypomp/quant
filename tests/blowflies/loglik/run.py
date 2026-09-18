@@ -53,10 +53,20 @@ import model
 import numpy as np
 from utils import pfilter_logliks_frame, save_run
 
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out-dir", type=Path, help="Override results/<platform>; use a temporary directory for smoke tests")
-    parser.add_argument("--observations", type=int, default=192, help="Full series by default; a prefix requires --out-dir")
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        help="Override results/<platform>; use a temporary directory for smoke tests",
+    )
+    parser.add_argument(
+        "--observations",
+        type=int,
+        default=192,
+        help="Full series by default; a prefix requires --out-dir",
+    )
     args = parser.parse_args()
     level = int(os.environ.get("RUN_LEVEL", "1"))
     if level not in (1, 2, 3, 4):
@@ -70,28 +80,43 @@ def main():
     out_dir = args.out_dir or root / platform
     obj = model.blowflies(n_observations=args.observations)
     started = time.perf_counter()
-    obj.pfilter(J=particles, reps=reps, key=jax.random.key(model.MAIN_SEED), CLL=True, ESS=True)
+    obj.pfilter(
+        J=particles, reps=reps, key=jax.random.key(model.MAIN_SEED), CLL=True, ESS=True
+    )
     np.asarray(obj.results_history[-1].logLiks)
     elapsed = time.perf_counter() - started
     save_run(
-        obj, out_dir=str(out_dir), write_traces=False,
+        obj,
+        out_dir=str(out_dir),
+        write_traces=False,
         run_config={
-            "kind": "loglik", "model": "blowflies", "RUN_LEVEL": level,
-            "MAIN_SEED": model.MAIN_SEED, "NP_EVAL": particles, "NREPS_EVAL": reps,
-            "NOBS": args.observations, "theta": model.Parameters().as_r_dict(),
-            "USE_64BIT": jax.config.x64_enabled, "SAMPLERS": "jax",
+            "kind": "loglik",
+            "model": "blowflies",
+            "RUN_LEVEL": level,
+            "MAIN_SEED": model.MAIN_SEED,
+            "NP_EVAL": particles,
+            "NREPS_EVAL": reps,
+            "NOBS": args.observations,
+            "theta": model.Parameters().as_r_dict(),
+            "USE_64BIT": jax.config.x64_enabled,
+            "SAMPLERS": "jax",
             "data_sha256": hashlib.sha256(model.DATA_PATH.read_bytes()).hexdigest(),
             "model_source_commit": model.UPSTREAM_COMMIT,
-            "source_sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                              for p in (Path(__file__), HERE.parent / "model.py")},
+            "source_sha256": {
+                p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                for p in (Path(__file__), HERE.parent / "model.py")
+            },
             "execution_time_including_compilation": elapsed,
-            "optimization_performed": False, "pathwise_ad_supported": False,
+            "optimization_performed": False,
+            "pathwise_ad_supported": False,
         },
     )
     frame = pfilter_logliks_frame(obj)
     frame.to_csv(out_dir / "pfilter_logliks.csv", index=False)
     print(obj.results())
-    print(f"wrote {out_dir}/: {len(frame)} replicates, {elapsed:.2f}s including compilation")
+    print(
+        f"wrote {out_dir}/: {len(frame)} replicates, {elapsed:.2f}s including compilation"
+    )
 
 
 if __name__ == "__main__":

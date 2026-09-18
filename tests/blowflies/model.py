@@ -47,11 +47,17 @@ class Parameters:
     def __post_init__(self):
         values = np.array(list(self.as_r_dict().values()))
         if not np.all(np.isfinite(values)) or np.any(values <= 0):
-            raise ValueError("The log-transformed parameter domain is finite and positive.")
+            raise ValueError(
+                "The log-transformed parameter domain is finite and positive."
+            )
 
     def as_r_dict(self):
-        return dict(zip(PARAM_NAMES, (self.P, self.delta, self.N0,
-                                     self.sigma_P, self.sigma_d, self.sigma_y)))
+        return dict(
+            zip(
+                PARAM_NAMES,
+                (self.P, self.delta, self.N0, self.sigma_P, self.sigma_d, self.sigma_y),
+            )
+        )
 
 
 def load_data():
@@ -83,7 +89,9 @@ def rinit(theta_, key, covars, t0):
     """Use the frozen, actual R linear-interpolation initialization."""
     history = jnp.asarray(INITIAL_HISTORY)
     result = dict(zip(LAG_NAMES, history, strict=True))
-    result.update({name: jnp.asarray(0.0, dtype=history.dtype) for name in ("R", "S", "e", "eps")})
+    result.update(
+        {name: jnp.asarray(0.0, dtype=history.dtype) for name in ("R", "S", "e", "eps")}
+    )
     return result
 
 
@@ -131,10 +139,15 @@ def rproc(X_, theta_, key, covars, t, dt):
 def dmeas(Y_, X_, theta_, covars=None, t=None):
     """Negative-binomial mass with mean N1 and size sigma.y**(-2)."""
     y, mu = jnp.asarray(Y_["y"]), jnp.asarray(X_["N1"])
-    size = 1.0 / theta_["sigma.y"]**2
-    loglik = (jspecial.gammaln(y + size) - jspecial.gammaln(size)
-              - jspecial.gammaln(y + 1.0) - size * jnp.log1p(mu / size)
-              + jspecial.xlogy(y, mu) - y * (jnp.log(size) + jnp.log1p(mu / size)))
+    size = 1.0 / theta_["sigma.y"] ** 2
+    loglik = (
+        jspecial.gammaln(y + size)
+        - jspecial.gammaln(size)
+        - jspecial.gammaln(y + 1.0)
+        - size * jnp.log1p(mu / size)
+        + jspecial.xlogy(y, mu)
+        - y * (jnp.log(size) + jnp.log1p(mu / size))
+    )
     valid_y = jnp.isfinite(y) & (y >= 0) & (y == jnp.floor(y))
     return jnp.where(valid_y, loglik, -jnp.inf)
 
@@ -143,7 +156,7 @@ def rmeas(X_, theta_, key, covars, t):
     """Exact negative-binomial law through its Gamma-Poisson mixture."""
     gamma_key, poisson_key = jax.random.split(key)
     mu = jnp.asarray(X_["N1"])
-    size = 1.0 / theta_["sigma.y"]**2
+    size = 1.0 / theta_["sigma.y"] ** 2
     rate = jax.random.gamma(gamma_key, size, dtype=mu.dtype) * mu / size
     return {"y": jax.random.poisson(poisson_key, rate).astype(mu.dtype)}
 
@@ -157,11 +170,17 @@ def blowflies(*, params=None, n_observations=None):
     JAX x64 must be enabled by the caller for the validated reference precision.
     """
     if not jax.config.x64_enabled:
-        raise ValueError("Enable JAX x64 before constructing the validated blowflies1 reference.")
+        raise ValueError(
+            "Enable JAX x64 before constructing the validated blowflies1 reference."
+        )
     times, observed = observations()
     if n_observations is not None:
-        if (isinstance(n_observations, bool) or not isinstance(n_observations, Integral)
-                or n_observations < 1 or n_observations > len(times)):
+        if (
+            isinstance(n_observations, bool)
+            or not isinstance(n_observations, Integral)
+            or n_observations < 1
+            or n_observations > len(times)
+        ):
             raise ValueError("n_observations must be an integer from 1 through 192.")
         times, observed = times[:n_observations], observed[:n_observations]
     params = Parameters() if params is None else params
@@ -177,16 +196,26 @@ def blowflies(*, params=None, n_observations=None):
     # PyPOMP's optional CLL/ESS xarray output names this dimension "time".
     ys = pd.DataFrame({"y": observed}, index=pd.Index(times.astype(float), name="time"))
     obj = pp.Pomp(
-        ys=ys, theta=pp.PompParameters(dict(zip(PARAM_NAMES, values, strict=True))),
-        statenames=STATENAMES, t0=14.0, nstep=2,
-        rinit=rinit, rproc=rproc, dmeas=dmeas, rmeas=rmeas,
+        ys=ys,
+        theta=pp.PompParameters(dict(zip(PARAM_NAMES, values, strict=True))),
+        statenames=STATENAMES,
+        t0=14.0,
+        nstep=2,
+        rinit=rinit,
+        rproc=rproc,
+        dmeas=dmeas,
+        rmeas=rmeas,
         par_trans=ParTrans(to_est=to_est, from_est=from_est),
     )
     obj.blowflies_adapter_metadata = {
-        "reference": "R pomp::blowflies1()", "source_commit": UPSTREAM_COMMIT,
+        "reference": "R pomp::blowflies1()",
+        "source_commit": UPSTREAM_COMMIT,
         "data_source": "frozen_Nicholson_population_I",
-        "observation_prefix_length": len(times), "t0": 14.0,
-        "nstep": 2, "daily_dt": 1.0, "delay_days": 14,
+        "observation_prefix_length": len(times),
+        "t0": 14.0,
+        "nstep": 2,
+        "daily_dt": 1.0,
+        "delay_days": 14,
         "samplers": "standard jax.random gamma/poisson/binomial",
         "pathwise_ad_supported": False,
         "transition_ad_guard": "custom_jvp raises NotImplementedError",

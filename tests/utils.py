@@ -33,7 +33,7 @@ def _git_sha() -> str | None:
             text=True,
             check=True,
         ).stdout.strip()
-    except (subprocess.SubprocessError, OSError):
+    except subprocess.SubprocessError, OSError:
         return None
 
 
@@ -62,7 +62,7 @@ def _cpu_model() -> str | None:
                 for line in f:
                     if line.startswith("model name"):
                         return line.split(":", 1)[1].strip()
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         pass
     import platform
 
@@ -108,7 +108,7 @@ def run_metadata(run_config: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     try:
         devices = [str(d) for d in jax.devices()]
-    except (RuntimeError, OSError):
+    except RuntimeError, OSError:
         devices = []
 
     slurm_info = {
@@ -395,7 +395,7 @@ def _entry_fields(entry: Any) -> dict[str, Any]:
             continue
         try:
             value = getattr(entry, name)
-        except (AttributeError, TypeError, ValueError, RuntimeError):
+        except AttributeError, TypeError, ValueError, RuntimeError:
             continue
         if callable(value):
             continue

@@ -179,9 +179,7 @@ def run_one(spec: dict) -> dict:
     peak_vram_mif_mb = poller_mif.stop()
 
     if scaling_type == "particles":
-        print(
-            f"  mif ({M} iters, J={J}): {mif_time:.3f} s ({mif_time / M:.4f} s/iter)"
-        )
+        print(f"  mif ({M} iters, J={J}): {mif_time:.3f} s ({mif_time / M:.4f} s/iter)")
     else:
         print(
             f"  mif ({M} iters, chains={chains}): {mif_time:.3f} s ({mif_time / M:.4f} s/iter)"
@@ -291,25 +289,29 @@ NREPS_EVAL = (2, 5, 10, 36)[RUN_LEVEL - 1]
 specs = []
 idx = 0
 for J in PARTICLE_J_GRID:
-    specs.append({
-        "index": idx,
-        "scaling_type": "particles",
-        "J": J,
-        "chains": PARTICLE_FIXED_CHAINS,
-        "M": NFITR,
-        "reps": NREPS_EVAL,
-    })
+    specs.append(
+        {
+            "index": idx,
+            "scaling_type": "particles",
+            "J": J,
+            "chains": PARTICLE_FIXED_CHAINS,
+            "M": NFITR,
+            "reps": NREPS_EVAL,
+        }
+    )
     idx += 1
 
 for n_chains in CHAIN_GRID:
-    specs.append({
-        "index": idx,
-        "scaling_type": "chains",
-        "J": CHAIN_FIXED_J,
-        "chains": n_chains,
-        "M": NFITR,
-        "reps": NREPS_EVAL,
-    })
+    specs.append(
+        {
+            "index": idx,
+            "scaling_type": "chains",
+            "J": CHAIN_FIXED_J,
+            "chains": n_chains,
+            "M": NFITR,
+            "reps": NREPS_EVAL,
+        }
+    )
     idx += 1
 
 results = []
@@ -340,7 +342,7 @@ for spec in specs:
     result_json = None
     for line in proc.stdout.splitlines():
         if line.startswith("RESULT_JSON "):
-            result_json = line[len("RESULT_JSON "):].strip()
+            result_json = line[len("RESULT_JSON ") :].strip()
         else:
             stdout_lines.append(line)
 
@@ -349,9 +351,7 @@ for spec in specs:
 
     if proc.returncode != 0 or result_json is None:
         stderr_tail = (
-            "\n".join(proc.stderr.splitlines()[-20:])
-            if proc.stderr
-            else "(no stderr)"
+            "\n".join(proc.stderr.splitlines()[-20:]) if proc.stderr else "(no stderr)"
         )
         print(
             f"  [ERROR] Worker failed for spec index {spec.get('index')} (exit code {proc.returncode}):\n{stderr_tail}"
@@ -451,5 +451,3 @@ print(f"\n--- Chain Scaling Summary ---\n{df_chains.to_string(index=False)}")
 print(
     f"\nwrote {out_dir}/ (particle_scaling.csv, chain_scaling.csv, scaling.csv, latest.json)"
 )
-
-

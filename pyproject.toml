@@ -25,3 +25,8 @@ gpu = [
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.8",
+]

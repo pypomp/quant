@@ -1,4 +1,4 @@
-.PHONY: sync sync-gpu lock install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports render-reports-slurm
+.PHONY: sync sync-gpu lock install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports render-reports-slurm lint format
 
 sync:
 	uv sync
@@ -42,6 +42,12 @@ render-reports:
 
 render-reports-slurm:
 	find $(DIR) -name "*.qmd" -exec sbatch scripts/render_report.sh {} \;
+
+lint:
+	uv run ruff check .
+
+format:
+	uv run ruff format .
 
 
 
