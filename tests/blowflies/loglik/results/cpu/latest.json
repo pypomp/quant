@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-09-18T01:49:17.523691+00:00",
+  "quant_git_sha": null,
+  "provenance": "Migrated default scenario from the historical J5000 R40 audit; no experiment rerun.",
+  "source_file": "../validation_pypomp_J5000_R40.json",
+  "source_file_sha256": "2fcc31ee23536778639297377a905c3b6b41fdd165e23dd4ecfa79ec722b7abc",
+  "missing_historical_metadata": [
+    "quant_git_sha",
+    "hardware",
+    "slurm"
+  ],
+  "run_config": {
+    "kind": "loglik",
+    "model": "blowflies",
+    "RUN_LEVEL": null,
+    "NP_EVAL": 5000,
+    "NREPS_EVAL": 40,
+    "NOBS": 192,
+    "theta": {
+      "P": 3.2838,
+      "delta": 0.16073,
+      "N0": 679.94,
+      "sigma.P": 1.3512,
+      "sigma.d": 0.74677,
+      "sigma.y": 0.026649
+    },
+    "USE_64BIT": true,
+    "data_sha256": "aed36213ce260b7b92787d4d802c2dfb15fbee66e358431f769a2ddd456c05fb",
+    "model_source_commit": "7cfb3f9aa84c85de687b82d71b081016b9cc5762",
+    "optimization_performed": false,
+    "pathwise_ad_supported": false,
+    "MAIN_SEED": 828411,
+    "SAMPLERS": "jax"
+  },
+  "pypomp_version": "1.0.0rc1",
+  "jax_version": "0.7.1",
+  "devices": [
+    "[CpuDevice(id=0)]"
+  ],
+  "python": "3.12.8 (v3.12.8:2dc476bcb91, Dec  3 2024, 14:43:19) [Clang 13.0.0 (clang-1300.0.29.30)]",
+  "historical_source_sha256": {
+    "run.py": "f99ccef9376ab39a2dcadd7eb8d2d594501814db85d71b94255ef444eb2e09fb",
+    "model.py": "c23ef8fb6c3ea88ff46f8a12a14a047a92123acb1f1f997b36b6153fec88f5f6",
+    "pypomp_adapter.py": "82d212fd92ebefe3f363879dbae7d5344002fac79f831a17b618d85a471d4088"
+  }
+}

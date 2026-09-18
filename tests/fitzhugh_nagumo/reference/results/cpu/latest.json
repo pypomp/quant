@@ -1,0 +1,76 @@
+{
+  "provenance": "migrated from ../strang_comparison.json and archived JAX samples; no simulation rerun",
+  "timestamp": "2026-09-18T02:42:34.427554+00:00",
+  "jax_version": "0.7.1",
+  "jax_enable_x64": true,
+  "devices": [
+    "[CpuDevice(id=0)]"
+  ],
+  "pypomp_version": null,
+  "quant_git_sha": null,
+  "missing_provenance": "Original record did not capture PyPOMP version, quant SHA, CPU model, or SLURM details; not inferred during migration.",
+  "run_config": {
+    "kind": "reference",
+    "model": "fitzhugh_nagumo",
+    "scope": "Strang simulator reference check only; no likelihood, gradient, IF2, IFAD, ABC fit, or reproduction of the 2019 estimation experiment.",
+    "RUN_LEVEL": null,
+    "validation_scope": "historical full simulator check",
+    "coupled_scenarios": 55,
+    "n_paths_per_dt": 4096,
+    "dt": [
+      0.0001,
+      0.002,
+      0.02
+    ],
+    "horizon": 0.2
+  },
+  "source_sha256": {
+    "strang.py": "22f2d9beceb37ffae17a32bf075579edc8e226237406e707954ee45362bf2b89",
+    "validate_strang.py": "5e1889c4ee8456d0668500d9efa7fdad46a0173130cbb1b9fba3d0e5aeda5f7b",
+    "strang_validation/fixtures.json": "ba4128f36d0c0a7e4345254aebed4a337836ffd4f1d613c83d22989c30658086",
+    "strang_validation/distribution_samples.json": "51cadead10be8d66f6cd2f80e17ff6d3ff5759947134039c4ec9a3c8e91d016a",
+    "strang_validation/reference.R": "4fd055f14cf24a37fde7b767b071601db29887e2366b295fc2746996bb1d2817"
+  },
+  "archived_report_sha256": "40d859f019d55fa8f2d658fe4cfa5b58a22bfe8ce956e947baf3ef83404d0bc9",
+  "archived_jax_samples_sha256": "937822657bee54cabf5dbcf6482830f5d39704b19f21b830b28e633d6ba9391f",
+  "author_reference": {
+    "schema_version": 1,
+    "model": "dV=(V-V^3-U)/epsilon dt; dU=(gamma V-U+beta)dt + sigma dW",
+    "state_order": [
+      "V",
+      "U"
+    ],
+    "noise": "U only; s=0",
+    "observation": "exact V; no measurement noise",
+    "source_package_commit": "447d46a132d1df088d4826ae9f7369834bde8a42",
+    "experiment_commit": "55588cacf3f25e669f7238e1b527527781f208b5",
+    "source_sha256": {
+      "SMCABCFHN/src/FHN.cpp": "c3f7a6d760c85da12eee7b1f7afca07e2fb765f7f7663726670548db8e55f7f8",
+      "SMCABCFHN/src/FHN_S.h": "d50c118abf594a81a5b291f15b45e10562b0093d1e58de494dda776d65a2a481",
+      "SMC-ABC_FHN/functions_SMC_ABC_FHN.R": "0c8a01d44587612bebcfdc1da8a798e7dbafea3d654c07e85d8273643e9ccc5d",
+      "SMC-ABC_FHN/SplittingStochasticFHN_1.0.tar.gz": "1ec450b0371aefd784625ac373f85ba6cd5653c98fb8e0b466bb030f9956c5c4",
+      "SMC-ABC_FHN/SplittingStochasticFHN/src/FHN_Strang_Cpp.cpp": "a06b7ca1b7b2973f06dd6b5ad45819cd9788f36dc6e7249c1d403939c7811bca"
+    },
+    "R": "R version 4.5.1 (2025-06-13)",
+    "Rcpp": "1.1.1",
+    "jsonlite": "2.0.0",
+    "rng_kind": [
+      "Mersenne-Twister",
+      "Inversion",
+      "Rejection"
+    ],
+    "platform": "aarch64-apple-darwin20",
+    "author_cpp_modified": false,
+    "callback_instrumentation": "global rmvn returns prescribed additive innovations and records Sigma; only SMCABCFHN coupled fixtures use this callback",
+    "native_rng_note": "Experiment C++ draws 2*(n_steps+1) standard normals, dimension-major, and discards each dimension's first draw",
+    "scope": "Local simulator validation only. No ABC, parameter optimization, cluster job, or paper-level reproduction."
+  },
+  "reference_record_sha256": "ba73a1365921c911d47b291e51b3822598323031331b8cfcf1adb5a65da265f0",
+  "output_sha256": {
+    "coupled.csv": "d7319c2ca1e604d06165082a986d171588483ae8b2731bd2a69bef7ace17b73b",
+    "distribution.csv": "99ae4b6dcae8305dcb483831ca93e30ddba9fe791c3e04d73287db8f5d58197d",
+    "endpoints.csv": "70599ce11c73efe8f0ae60b0af670d5bb0594597e49866ecdcd7877578fdfd00",
+    "timings.csv": "ac5c3d799e0d4090dc68f45c52cce6531e15a4040192e1aefeab6ff2eccce361",
+    "validation.json": "4a77fd68e87dc957504ff26e1f8dc9cd691c782bd804da1854ec45f11a44e2cd"
+  }
+}

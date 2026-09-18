@@ -1,0 +1,115 @@
+---
+title: "Blowflies: Fixed-Parameter Likelihood Validation"
+subtitle: "R pomp::blowflies1() and PyPOMP"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python setup}
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path("..").resolve()))
+import report_utils as ru
+import numpy as np
+import pandas as pd
+from scipy.stats import ks_2samp
+from scipy.special import logsumexp
+from IPython.display import display, HTML
+```
+
+## Introduction
+
+We compare R pomp and PyPOMP particle-filter likelihoods for the
+[canonical discrete blowflies1 model](https://github.com/kingaa/pomp/blob/7cfb3f9aa84c85de687b82d71b081016b9cc5762/R/blowflies.R#L77-L130)
+at the six default parameter values. Both use the same 192 observations,
+fourteen-day delay, and daily process steps. Only the replicate seed varies.
+
+The daily process draws Gamma noise with mean one and variances
+`sigma.P^2` and `sigma.d^2`. Recruitment is Poisson with mean
+`P * N_lag * exp(-N_lag / N0) * e`; survival is Binomial with population
+`N` and probability `exp(-delta * eps)`. The next population is their sum.
+Observations are negative binomial with that population as the mean and
+`1 / sigma.y^2` as the size. JAX uses its standard discrete samplers.
+
+Days 0 through 14 initialize the fifteen daily lag values by linear
+interpolation. The likelihood uses days 16 through 398, at two-day intervals.
+With `t0=14` and `nstep=2`, the process step is one day. Fractional initial
+lags are retained. Source and data licensing are in the
+[third-party notice](../THIRD_PARTY_NOTICES.md).
+
+## Benchmark Settings & Environment
+
+The table summarizes settings and software for the stored runs: 5000 particles
+and 40 replicates per implementation. These runs were reformatted for this
+report without rerunning the simulations. Hardware details are shown where
+available; the timing records do not support a speed comparison.
+Source filenames and hashes in the metadata describe the original runs.
+
+```{python settings, results='asis'}
+platforms = {"R pomp": "results/R"}
+for platform in ("cpu", "gpu"):
+    if Path(f"results/{platform}/latest.json").exists():
+        platforms[f"pypomp ({platform.upper()})"] = f"results/{platform}"
+runs = ru.load_timing_data(platforms)
+display(HTML(ru.build_settings_comparison_html(runs)))
+for label, run in runs.items():
+    provenance = run["meta"].get("provenance")
+    if provenance:
+        print(f"{label}: {provenance}")
+```
+
+## Likelihood Evaluation at the Default Parameters
+
+### Summary and Kolmogorov-Smirnov (KS) test
+
+```{python comparison, results='asis'}
+r_meta, r_values, r_warning = ru.load_record("results/R")
+if r_warning:
+    print(r_warning)
+for platform in ("cpu", "gpu"):
+    directory = Path(f"results/{platform}")
+    if not (directory / "latest.json").exists():
+        continue
+    p_meta, p_values, warning = ru.load_record(directory)
+    if warning is None and r_warning is None:
+        warning = ru.comparison_warning(r_meta, p_meta)
+    if warning or r_warning:
+        print(warning or r_warning)
+        continue
+    rows = []
+    for label, values in (("R pomp", r_values), (f"pypomp ({platform.upper()})", p_values)):
+        weights = np.exp(values - values.max())
+        rows.append({"Source": label, "Replicates": len(values),
+                     "Mean logLik": values.mean(), "SD logLik": values.std(ddof=1),
+                     "Log mean likelihood": logsumexp(values) - np.log(len(values)),
+                     "MCSE": weights.std(ddof=1) / (np.sqrt(len(values))*weights.mean())})
+    display(HTML(pd.DataFrame(rows).round(4).to_html(index=False, classes="table table-striped table-hover")))
+    stat, pvalue = ks_2samp(r_values, p_values)
+    difference = rows[1]["Log mean likelihood"] - rows[0]["Log mean likelihood"]
+    se = np.hypot(rows[0]["MCSE"], rows[1]["MCSE"])
+    print(f"{platform}: difference = {difference:+.4f}; combined MCSE = {se:.4f}; KS D = {stat:.4f}, p = {pvalue:.4g}")
+```
+
+::: {.callout-note}
+### Interpretation
+
+The KS test compares the independent R and JAX runs. With 40 replicates,
+small differences may be hard to detect. MCSE measures
+Monte Carlo uncertainty in the log of the mean likelihood, which differs from
+the mean log likelihood.
+
+Optimization has not been tested. The discrete Poisson/Binomial simulator does
+not supply a pathwise IFAD gradient.
+:::

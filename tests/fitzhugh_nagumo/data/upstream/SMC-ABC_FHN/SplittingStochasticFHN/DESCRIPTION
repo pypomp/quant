@@ -1,0 +1,15 @@
+Package: SplittingStochasticFHN
+Type: Package
+Title: Strang splitting method for the stochastic FHN model
+Version: 1.0
+Date: 2024-08-29
+Author: Irene Tubikanec
+Maintainer: Irene Tubikanec <irene.tubikanec@jku.at>
+Description: One paragraph description of what the package does as one or more full sentences.
+License: GPL (>= 2)
+Encoding: UTF-8
+Imports: Rcpp (>= 1.0.12)
+LinkingTo: Rcpp
+RoxygenNote: 7.3.1
+NeedsCompilation: yes
+Packaged: 2024-08-29 09:08:25 UTC; AK115744

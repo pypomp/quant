@@ -1,0 +1,141 @@
+{
+  "metadata": {
+    "schema_version": 1,
+    "model": "dV=(V-V^3-U)/epsilon dt; dU=(gamma V-U+beta)dt + sigma dW",
+    "state_order": ["V", "U"],
+    "noise": "U only; s=0",
+    "observation": "exact V; no measurement noise",
+    "source_package_commit": "447d46a132d1df088d4826ae9f7369834bde8a42",
+    "experiment_commit": "55588cacf3f25e669f7238e1b527527781f208b5",
+    "source_sha256": {
+      "SMCABCFHN/src/FHN.cpp": "c3f7a6d760c85da12eee7b1f7afca07e2fb765f7f7663726670548db8e55f7f8",
+      "SMCABCFHN/src/FHN_S.h": "d50c118abf594a81a5b291f15b45e10562b0093d1e58de494dda776d65a2a481",
+      "SMC-ABC_FHN/functions_SMC_ABC_FHN.R": "0c8a01d44587612bebcfdc1da8a798e7dbafea3d654c07e85d8273643e9ccc5d",
+      "SMC-ABC_FHN/SplittingStochasticFHN_1.0.tar.gz": "1ec450b0371aefd784625ac373f85ba6cd5653c98fb8e0b466bb030f9956c5c4",
+      "SMC-ABC_FHN/SplittingStochasticFHN/src/FHN_Strang_Cpp.cpp": "a06b7ca1b7b2973f06dd6b5ad45819cd9788f36dc6e7249c1d403939c7811bca"
+    },
+    "R": "R version 4.5.1 (2025-06-13)",
+    "Rcpp": "1.1.1",
+    "jsonlite": "2.0.0",
+    "rng_kind": ["Mersenne-Twister", "Inversion", "Rejection"],
+    "platform": "aarch64-apple-darwin20",
+    "author_cpp_modified": false,
+    "callback_instrumentation": "global rmvn returns prescribed additive innovations and records Sigma; only SMCABCFHN coupled fixtures use this callback",
+    "native_rng_note": "Experiment C++ draws 2*(n_steps+1) standard normals, dimension-major, and discards each dimension's first draw",
+    "scope": "Local simulator validation only. No ABC, parameter optimization, cluster job, or paper-level reproduction."
+  },
+  "sources": [
+    {
+      "path": "upstream/SMC-ABC_FHN/COPYING.GPLv3.0.txt",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/COPYING.GPLv3.0.txt",
+      "sha256": "c3069321e339a754d810a467c8bdd13a4cc3be8c8d46bf55b6ba0d0478cd41ea",
+      "extracted_from_archive": false
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/functions_SMC_ABC_FHN.R",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/functions_SMC_ABC_FHN.R",
+      "sha256": "0c8a01d44587612bebcfdc1da8a798e7dbafea3d654c07e85d8273643e9ccc5d",
+      "extracted_from_archive": false
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/LICENCE.txt",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/LICENCE.txt",
+      "sha256": "6a2326d6b9add70d7fb8417533a94c5f0212257609139eafdc9d90e9259d1021",
+      "extracted_from_archive": false
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/main_SMC_ABC_FHN.R",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/main_SMC_ABC_FHN.R",
+      "sha256": "9d5613ce302e2eabca651a6a86eb8759501bfbe64662195567f96184703058d9",
+      "extracted_from_archive": false
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/readme.txt",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/readme.txt",
+      "sha256": "13ad805488cf3f4c70b869d146a0bf9691667d36a27069cb74f75aeded4f4735",
+      "extracted_from_archive": false
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/SplittingStochasticFHN_1.0.tar.gz",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/SplittingStochasticFHN_1.0.tar.gz",
+      "sha256": "1ec450b0371aefd784625ac373f85ba6cd5653c98fb8e0b466bb030f9956c5c4",
+      "extracted_from_archive": false
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/SplittingStochasticFHN/DESCRIPTION",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/SplittingStochasticFHN_1.0.tar.gz",
+      "sha256": "c168ef99774791ee081fe7057a2bbd9ffab04f93cfea84b622cf4d3437bd2392",
+      "extracted_from_archive": true
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/SplittingStochasticFHN/man/SplittingStochasticFHN-package.Rd",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/SplittingStochasticFHN_1.0.tar.gz",
+      "sha256": "95228a5b2e1eaff8d79822e98c1766757b44c52084488446f2c272ee693509c7",
+      "extracted_from_archive": true
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/SplittingStochasticFHN/NAMESPACE",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/SplittingStochasticFHN_1.0.tar.gz",
+      "sha256": "7c22bcc6f4ab23e106fa34e91feb096aefa71b53d0e9826d988937cdcd7b9509",
+      "extracted_from_archive": true
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/SplittingStochasticFHN/R/FHN_Strang_Cpp.R",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/SplittingStochasticFHN_1.0.tar.gz",
+      "sha256": "dd86a117dfb5eb4cfcb3b994f6cceb5251770af66920264f6f1f94160fb1e9be",
+      "extracted_from_archive": true
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/SplittingStochasticFHN/R/RcppExports.R",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/SplittingStochasticFHN_1.0.tar.gz",
+      "sha256": "78ee8cc1787ca4ac976d271fd4487fba1a6f1b5f97c7b07dcfde16265961bbda",
+      "extracted_from_archive": true
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/SplittingStochasticFHN/src/FHN_Strang_Cpp.cpp",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/SplittingStochasticFHN_1.0.tar.gz",
+      "sha256": "a06b7ca1b7b2973f06dd6b5ad45819cd9788f36dc6e7249c1d403939c7811bca",
+      "extracted_from_archive": true
+    },
+    {
+      "path": "upstream/SMC-ABC_FHN/SplittingStochasticFHN/src/RcppExports.cpp",
+      "source_url": "https://raw.githubusercontent.com/IreneTubikanec/SMC-ABC_FHN/55588cacf3f25e669f7238e1b527527781f208b5/SplittingStochasticFHN_1.0.tar.gz",
+      "sha256": "43a3975b63c6891f55a71fe42282cbe97c358e6a98c30b989730730bb43e5440",
+      "extracted_from_archive": true
+    },
+    {
+      "path": "upstream/SMCABCFHN/DESCRIPTION",
+      "source_url": "https://raw.githubusercontent.com/massimilianotamborrino/SMCABCFHN/447d46a132d1df088d4826ae9f7369834bde8a42/DESCRIPTION",
+      "sha256": "e15016831d448ab3e168df333ced70a704d0146f5bb50671eabe31fe55321945",
+      "extracted_from_archive": false
+    },
+    {
+      "path": "upstream/SMCABCFHN/README.md",
+      "source_url": "https://raw.githubusercontent.com/massimilianotamborrino/SMCABCFHN/447d46a132d1df088d4826ae9f7369834bde8a42/README.md",
+      "sha256": "768a9db369964850ef049b9b3f310136000102e3065ec26194a07f29a0c9816f",
+      "extracted_from_archive": false
+    },
+    {
+      "path": "upstream/SMCABCFHN/src/FHN_S.h",
+      "source_url": "https://raw.githubusercontent.com/massimilianotamborrino/SMCABCFHN/447d46a132d1df088d4826ae9f7369834bde8a42/src/FHN_S.h",
+      "sha256": "d50c118abf594a81a5b291f15b45e10562b0093d1e58de494dda776d65a2a481",
+      "extracted_from_archive": false
+    },
+    {
+      "path": "upstream/SMCABCFHN/src/FHN.cpp",
+      "source_url": "https://raw.githubusercontent.com/massimilianotamborrino/SMCABCFHN/447d46a132d1df088d4826ae9f7369834bde8a42/src/FHN.cpp",
+      "sha256": "c3f7a6d760c85da12eee7b1f7afca07e2fb765f7f7663726670548db8e55f7f8",
+      "extracted_from_archive": false
+    }
+  ],
+  "coupled_scenarios": 55,
+  "native_rng_coupled_scenarios": 28,
+  "max_authors_voltage_difference": 7.54951656745106e-15,
+  "distribution_ran_this_invocation": true,
+  "distribution_paths_per_dt": 4096,
+  "distribution_horizon": 0.2,
+  "output_sha256": {
+    "fixtures": "ba4128f36d0c0a7e4345254aebed4a337836ffd4f1d613c83d22989c30658086",
+    "distribution_samples": "51cadead10be8d66f6cd2f80e17ff6d3ff5759947134039c4ec9a3c8e91d016a"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "timestamp": "2026-09-18 01:48:14 UTC",
+  "quant_git_sha": null,
+  "provenance": "Migrated default scenario from the historical J5000 R40 audit; no experiment rerun.",
+  "source_file": "../validation_R_J5000_R40.json",
+  "source_file_sha256": "fc3df9a400bce7b59cafc88d3d26be5efd82e963dca1ff0d3e0091b7814125ac",
+  "missing_historical_metadata": [
+    "quant_git_sha",
+    "hardware",
+    "slurm"
+  ],
+  "run_config": {
+    "kind": "loglik",
+    "model": "blowflies",
+    "RUN_LEVEL": null,
+    "NP_EVAL": 5000,
+    "NREPS_EVAL": 40,
+    "NOBS": 192,
+    "theta": {
+      "P": 3.2838,
+      "delta": 0.16073,
+      "N0": 679.94,
+      "sigma.P": 1.3512,
+      "sigma.d": 0.74677,
+      "sigma.y": 0.026649
+    },
+    "USE_64BIT": true,
+    "data_sha256": "aed36213ce260b7b92787d4d802c2dfb15fbee66e358431f769a2ddd456c05fb",
+    "model_source_commit": "7cfb3f9aa84c85de687b82d71b081016b9cc5762",
+    "optimization_performed": false,
+    "pathwise_ad_supported": false,
+    "MAIN_SEED": 4517000,
+    "seed_rule": "4517000 + 10000 * scenario_index_1based + replicate_index_1based"
+  },
+  "r_version": "R version 4.5.1 (2025-06-13)",
+  "pomp_version": "6.4",
+  "r_platform": "aarch64-apple-darwin20",
+  "historical_model_source_sha256": "dfff458d56aaa4328d5d9d7cd05ef3591df4a071551108550035cec6aaa5fce6"
+}

@@ -1,0 +1,213 @@
+---
+title: "FitzHugh–Nagumo: Strang Simulator Reference"
+subtitle: "JAX implementation compared with the authors' C++/R code"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Setup, results='asis'}
+import json
+import os
+import sys
+from pathlib import Path
+
+os.environ.setdefault("JAX_PLATFORMS", "cpu")
+sys.path.insert(0, str(Path("../../spx").resolve()))
+import report_utils as ru
+import pandas as pd
+from IPython.display import HTML, Markdown, display
+from plotnine import aes, facet_grid, geom_density, ggplot, labs
+
+def load_meta(directory):
+    path = directory / "latest.json"
+    return json.loads(path.read_text()) if path.exists() else {}
+
+CPU = Path("results/cpu")
+R = Path("results/R")
+cpu_meta, r_meta = load_meta(CPU), load_meta(R)
+paired = bool(cpu_meta and r_meta and cpu_meta.get("reference_record_sha256")
+              == r_meta.get("reference_record_sha256")
+              and cpu_meta.get("reference_record_sha256"))
+have_tables = all((directory / name).exists() for directory, name in [
+    (CPU, "coupled.csv"), (CPU, "distribution.csv"), (CPU, "endpoints.csv"),
+    (R, "coupled.csv"), (R, "endpoints.csv"),
+])
+ready = paired and have_tables
+```
+
+## Introduction
+
+We compare the JAX Strang simulator with the authors' C++/R implementation in
+Samson, Tamborrino and Tubikanec's
+[*Inference for the stochastic FitzHugh–Nagumo model from real action potential
+data via approximate Bayesian computation*](https://arxiv.org/abs/2405.17972).
+The comparison uses shared-innovation paths and independent endpoint samples.
+`model.py` also provides the Taylor-1.5 scheme from Ditlevsen and Samson (2019)
+and its PyPOMP simulation interface; this report tests `strang.py`.
+
+## Benchmark settings
+
+Both implementations use the SDE
+
+$$
+dV_t=(V_t-V_t^3-U_t)\,dt/\epsilon,\qquad
+dU_t=(\gamma V_t-U_t+\beta)\,dt+\sigma\,dW_t.
+$$
+
+The state order is $(V,U)$, noise acts on $U$ only, and the observation is exact
+$V$. The authors' $\beta$ corresponds to `alpha` in the 2019 parameterization,
+with known `s=0`.
+
+The coupled comparison covers 55 scenarios across three parameter vectors,
+three step sizes (`0.0001`, `0.002`, `0.02`) and three initial states,
+including a 1000-step path at `dt=0.02` (`T=20`). Both implementations
+receive the same additive Gaussian innovations.
+
+The distribution comparison uses 4096 independent paths per implementation
+at each step size, with `(epsilon,gamma,beta,sigma)=(0.1,1.5,0.8,0.3)`,
+initial state `(0,0)` and horizon `T=0.2`.
+
+## Coupled path comparison
+
+```{python Coupled checks, results='asis'}
+if ready:
+    coupled = pd.read_csv(CPU / "coupled.csv")
+    r_coupled = pd.read_csv(R / "coupled.csv")
+    summary = pd.DataFrame([
+        {"Quantity": "Coupled path cases", "Value": len(coupled)},
+        {"Quantity": "Maximum V/U absolute error", "Value": coupled.max_absolute_state_error.max()},
+        {"Quantity": "Maximum covariance relative error vs quadrature",
+         "Value": coupled.jax_covariance_max_relative_error_vs_quadrature.max()},
+        {"Quantity": "Maximum voltage difference between the two author programs",
+         "Value": r_coupled.authors_voltage_max_abs_difference.max()},
+    ])
+    display(HTML(summary.to_html(index=False, classes="table table-striped table-hover",
+                                float_format=lambda x: f"{x:.6g}")))
+```
+
+The JAX implementation evaluates the linear substep covariance with a Van Loan
+matrix exponential. This avoids cancellation in the authors' closed-form
+formula at small step sizes. Separate checks use matrix exponentials and
+numerical quadrature. This is the covariance of the linear substep, not the
+final nonlinear step.
+
+## Endpoint distribution comparison
+
+Mean and covariance differences are measured in combined Monte Carlo standard
+errors, with a diagnostic threshold of 5. The marginal empirical-CDF distances
+use a simultaneous DKW/union-bound threshold at family level `0.001`.
+
+```{python Distribution checks, results='asis'}
+if ready:
+    distribution = pd.read_csv(CPU / "distribution.csv")
+    display(HTML(distribution[["dt", "n_paths", "max_abs_mean_z",
+        "max_abs_covariance_z", "max_cdf_distance", "cdf_distance_bound", "passed"]]
+        .to_html(index=False, classes="table table-striped table-hover", float_format="%.5g")))
+    complete = len(coupled) == 55 and len(distribution) == 3
+    passed = complete and coupled.passed.all() and distribution.passed.all()
+    display(Markdown("**Stored full simulator check: " + ("PASS" if passed else "NOT PASSED / INCOMPLETE") + ".**"))
+```
+
+```{python Endpoint distributions, fig.width=10, fig.height=6}
+if ready:
+    native = pd.read_csv(CPU / "endpoints.csv").assign(source="python (CPU)")
+    author = pd.read_csv(R / "endpoints.csv").assign(source="R")
+    endpoints = pd.concat([native, author], ignore_index=True)
+    endpoints["dt"] = endpoints["dt"].map(lambda x: f"dt={x:g}")
+    long = endpoints.melt(id_vars=["name", "dt", "path", "source"],
+                          value_vars=["V", "U"], var_name="coordinate", value_name="value")
+    display(ggplot(long, aes(x="value", color="source", fill="source"))
+        + geom_density(alpha=0.20)
+        + facet_grid("coordinate ~ dt", scales="free")
+        + labs(title="Independent endpoint distributions at T=0.2",
+               x="State coordinate", y="Density", color="Source", fill="Source")
+        + ru.scale_color_premium() + ru.scale_fill_premium() + ru.theme_premium)
+```
+
+## Interpretation
+
+Agreement in the coupled paths checks the state updates for the same inputs.
+The independent-path checks assess sampling consistency within Monte Carlo
+error; they do not prove equality of every distribution.
+
+The PyPOMP model has `dmeas=None` because observations are exact $V$. A suitable
+conditional filter is still needed for likelihood evaluation and IFAD; adding
+measurement noise would change the model. These simulator checks also do not
+reproduce the original 2019 experiment, its initial condition or dataset.
+
+## Run records
+
+<details>
+<summary>Software versions, archived records and source hashes</summary>
+
+```{python Provenance, results='asis'}
+rows = []
+for label, meta in (("JAX (CPU)", cpu_meta), ("Author C++/R", r_meta)):
+    config = meta.get("run_config", {})
+    rows.append({
+        "Source": label,
+        "Record": meta.get("provenance", "new run" if meta else "missing"),
+        "Scope": config.get("validation_scope", "not recorded"),
+        "JAX": meta.get("jax_version") or "not used / not recorded",
+        "R": meta.get("r_version") or "not used / not recorded",
+        "Timestamp": meta.get("timestamp") or "not recorded",
+    })
+display(HTML(pd.DataFrame(rows).to_html(index=False,
+    classes="table table-striped table-hover")))
+for label, meta in (("JAX", cpu_meta), ("R", r_meta)):
+    if meta.get("missing_provenance"):
+        display(Markdown(f"**{label}:** {meta['missing_provenance']}"))
+if not ready:
+    display(HTML("<div class='alert alert-warning'>Missing tables or unmatched R/CPU "
+                 "reference hashes. No joint validation result is reported. "
+                 "Run R first, then Python at the same full run level.</div>"))
+else:
+    display(Markdown("Both records refer to author reference SHA-256 `"
+                     + cpu_meta["reference_record_sha256"] + "`."))
+```
+
+Stored results retain the original versions and timings; missing hardware
+information is left unspecified. JAX times include compilation. The R archive
+has no runtime record, so the report makes no speed comparison. Source filenames
+and hashes in the metadata describe the original runs.
+
+</details>
+
+## Reproduce
+
+Run R before Python from the quant root:
+
+```sh
+RUN_LEVEL=2 Rscript tests/fitzhugh_nagumo/reference/run.R
+RUN_LEVEL=2 python tests/fitzhugh_nagumo/reference/run.py
+quarto render tests/fitzhugh_nagumo/reference/report.qmd
+```
+
+`RUN_LEVEL=1` runs coupled-only smoke checks in `results/smoke/`.
+Levels 2–4 run the same full check. Python verifies the R fixture hashes;
+the report displays a joint result only when the R and CPU records match.
+
+## Sources
+
+- [Ditlevsen and Samson (2019), defining SDE and Taylor scheme](https://doi.org/10.1111/rssb.12307).
+- [Samson, Tamborrino and Tubikanec, later FHN/ABC paper](https://arxiv.org/abs/2405.17972).
+- [Pinned experiment code](https://github.com/IreneTubikanec/SMC-ABC_FHN/tree/55588cacf3f25e669f7238e1b527527781f208b5).
+- [Pinned package simulator](https://github.com/massimilianotamborrino/SMCABCFHN/tree/447d46a132d1df088d4826ae9f7369834bde8a42).
+- [Per-file source URLs and hashes](../data/reference_results.json).
+
+The source files and their original licenses are retained in `data/upstream/`.
+For coupled paths, the SMCABCFHN simulator's `rmvn` callback supplies the saved
+additive innovations; its state updates and covariance formulas are unchanged.
+Independent paths use the experiment simulator's original Rcpp random draws.

@@ -1,0 +1,1600 @@
+{
+  "scope": "Strang simulator reference check only; no likelihood, gradient, IF2, IFAD, ABC fit, or reproduction of the 2019 estimation experiment.",
+  "all_passed": true,
+  "coupled_scenarios": [
+    {
+      "name": "theta1_dt0.0001_state1_fixed",
+      "dt": 0.0001,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 1.214306433183765e-17,
+      "max_absolute_voltage_error_vs_package": 7.199780051661553e-21,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.676726112996026e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 4.256205130332135e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.4188414941520353e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.28630604788034e-06,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.0001_state1_native",
+      "dt": 0.0001,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 4.85722573273506e-17,
+      "max_absolute_voltage_error_vs_package": 1.3552527156068805e-18,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.676726112996026e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 4.256205130332135e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.4188414941520353e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.28630604788034e-06,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.0001_state2_fixed",
+      "dt": 0.0001,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 8.881784197001252e-16,
+      "max_absolute_voltage_error_vs_package": 8.881784197001252e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.676726112996026e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 4.256205130332135e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.4188414941520353e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.28630604788034e-06,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.0001_state2_native",
+      "dt": 0.0001,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 3.7192471324942744e-15,
+      "max_absolute_voltage_error_vs_package": 3.7192471324942744e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.676726112996026e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 4.256205130332135e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.4188414941520353e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.28630604788034e-06,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.0001_state3_fixed",
+      "dt": 0.0001,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 8.881784197001252e-16,
+      "max_absolute_voltage_error_vs_package": 9.992007221626409e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.676726112996026e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 4.256205130332135e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.4188414941520353e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.28630604788034e-06,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.0001_state3_native",
+      "dt": 0.0001,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 4.440892098500626e-15,
+      "max_absolute_voltage_error_vs_package": 4.440892098500626e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.676726112996026e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 4.256205130332135e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.4188414941520353e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.28630604788034e-06,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.002_state1_fixed",
+      "dt": 0.002,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 5.204170427930421e-17,
+      "max_absolute_voltage_error_vs_package": 9.215718466126788e-19,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.870193696797787e-10,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.002_state1_native",
+      "dt": 0.002,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 1.0408340855860843e-16,
+      "max_absolute_voltage_error_vs_package": 2.5153490401663703e-17,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.870193696797787e-10,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.002_state2_fixed",
+      "dt": 0.002,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 4.996003610813204e-16,
+      "max_absolute_voltage_error_vs_package": 4.996003610813204e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.870193696797787e-10,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.002_state2_native",
+      "dt": 0.002,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 2.7755575615628914e-15,
+      "max_absolute_voltage_error_vs_package": 8.881784197001252e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.870193696797787e-10,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.002_state3_fixed",
+      "dt": 0.002,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 5.551115123125783e-16,
+      "max_absolute_voltage_error_vs_package": 2.220446049250313e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.870193696797787e-10,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.002_state3_native",
+      "dt": 0.002,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 1.887379141862766e-15,
+      "max_absolute_voltage_error_vs_package": 1.887379141862766e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
+      "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.870193696797787e-10,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.02_state1_fixed",
+      "dt": 0.02,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 5.551115123125783e-17,
+      "max_absolute_voltage_error_vs_package": 4.85722573273506e-17,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.02_state1_native",
+      "dt": 0.02,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 4.218847493575595e-15,
+      "max_absolute_voltage_error_vs_package": 4.218847493575595e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.02_state2_fixed",
+      "dt": 0.02,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 3.3306690738754696e-16,
+      "max_absolute_voltage_error_vs_package": 6.661338147750939e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.02_state2_native",
+      "dt": 0.02,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 3.6637359812630166e-15,
+      "max_absolute_voltage_error_vs_package": 3.6637359812630166e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.02_state3_fixed",
+      "dt": 0.02,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 4.996003610813204e-16,
+      "max_absolute_voltage_error_vs_package": 4.440892098500626e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
+      "passed": true
+    },
+    {
+      "name": "theta1_dt0.02_state3_native",
+      "dt": 0.02,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 4.6629367034256575e-15,
+      "max_absolute_voltage_error_vs_package": 4.6629367034256575e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.0001_state1_fixed",
+      "dt": 0.0001,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 4.119968255444917e-18,
+      "max_absolute_voltage_error_vs_package": 1.5881867761018131e-21,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.20757374140958e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 2.2479189479616535e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.8734063008727227e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.3543528370775532e-05,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.0001_state1_native",
+      "dt": 0.0001,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 1.9949319973733282e-17,
+      "max_absolute_voltage_error_vs_package": 5.421010862427522e-20,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.20757374140958e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 2.2479189479616535e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.8734063008727227e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.3543528370775532e-05,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.0001_state2_fixed",
+      "dt": 0.0001,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 5.551115123125783e-16,
+      "max_absolute_voltage_error_vs_package": 3.885780586188048e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.20757374140958e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 2.2479189479616535e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.8734063008727227e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.3543528370775532e-05,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.0001_state2_native",
+      "dt": 0.0001,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 3.1086244689504383e-15,
+      "max_absolute_voltage_error_vs_package": 6.106226635438361e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.20757374140958e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 2.2479189479616535e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.8734063008727227e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.3543528370775532e-05,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.0001_state3_fixed",
+      "dt": 0.0001,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 4.440892098500626e-16,
+      "max_absolute_voltage_error_vs_package": 4.440892098500626e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.20757374140958e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 2.2479189479616535e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.8734063008727227e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.3543528370775532e-05,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.0001_state3_native",
+      "dt": 0.0001,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 9.159339953157541e-16,
+      "max_absolute_voltage_error_vs_package": 6.661338147750939e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 4.20757374140958e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 2.2479189479616535e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.8734063008727227e-05,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.3543528370775532e-05,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.002_state1_fixed",
+      "dt": 0.002,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 8.673617379884035e-18,
+      "max_absolute_voltage_error_vs_package": 1.4907779871675686e-19,
+      "jax_covariance_max_relative_error_vs_quadrature": 8.845154294877377e-15,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 8.890221033930793e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 9.274569492791497e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.3768711565322724e-09,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.002_state1_native",
+      "dt": 0.002,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 1.0755285551056204e-16,
+      "max_absolute_voltage_error_vs_package": 1.0462550964485118e-17,
+      "jax_covariance_max_relative_error_vs_quadrature": 8.845154294877377e-15,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 8.890221033930793e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 9.274569492791497e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.3768711565322724e-09,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.002_state2_fixed",
+      "dt": 0.002,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 6.661338147750939e-16,
+      "max_absolute_voltage_error_vs_package": 4.440892098500626e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 8.845154294877377e-15,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 8.890221033930793e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 9.274569492791497e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.3768711565322724e-09,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.002_state2_native",
+      "dt": 0.002,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 2.55351295663786e-15,
+      "max_absolute_voltage_error_vs_package": 1.5543122344752192e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 8.845154294877377e-15,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 8.890221033930793e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 9.274569492791497e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.3768711565322724e-09,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.002_state3_fixed",
+      "dt": 0.002,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 5.551115123125783e-16,
+      "max_absolute_voltage_error_vs_package": 8.881784197001252e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 8.845154294877377e-15,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 8.890221033930793e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 9.274569492791497e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.3768711565322724e-09,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.002_state3_native",
+      "dt": 0.002,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 2.1094237467877974e-15,
+      "max_absolute_voltage_error_vs_package": 2.1094237467877974e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 8.845154294877377e-15,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 8.890221033930793e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 9.274569492791497e-09,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.3768711565322724e-09,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.02_state1_fixed",
+      "dt": 0.02,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 4.85722573273506e-17,
+      "max_absolute_voltage_error_vs_package": 1.214306433183765e-17,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.22278998891392e-12,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.02_state1_native",
+      "dt": 0.02,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 5.273559366969494e-16,
+      "max_absolute_voltage_error_vs_package": 5.273559366969494e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.22278998891392e-12,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.02_state2_fixed",
+      "dt": 0.02,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 3.3306690738754696e-16,
+      "max_absolute_voltage_error_vs_package": 2.220446049250313e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.22278998891392e-12,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.02_state2_native",
+      "dt": 0.02,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 9.454242944073599e-16,
+      "max_absolute_voltage_error_vs_package": 1.4068607390171906e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.22278998891392e-12,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.02_state3_fixed",
+      "dt": 0.02,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 4.440892098500626e-16,
+      "max_absolute_voltage_error_vs_package": 7.771561172376096e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.22278998891392e-12,
+      "passed": true
+    },
+    {
+      "name": "theta2_dt0.02_state3_native",
+      "dt": 0.02,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.25,
+        "gamma": 0.8,
+        "beta": 0.4,
+        "sigma": 0.15
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 9.992007221626409e-16,
+      "max_absolute_voltage_error_vs_package": 9.992007221626409e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 6.22278998891392e-12,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.0001_state1_fixed",
+      "dt": 0.0001,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 1.5612511283791264e-17,
+      "max_absolute_voltage_error_vs_package": 3.3881317890172014e-20,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.0001_state1_native",
+      "dt": 0.0001,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 2.1510571102112408e-16,
+      "max_absolute_voltage_error_vs_package": 1.8648277366750676e-17,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.0001_state2_fixed",
+      "dt": 0.0001,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 9.992007221626409e-16,
+      "max_absolute_voltage_error_vs_package": 5.551115123125783e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.0001_state2_native",
+      "dt": 0.0001,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 4.218847493575595e-15,
+      "max_absolute_voltage_error_vs_package": 1.7763568394002505e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.0001_state3_fixed",
+      "dt": 0.0001,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 4.440892098500626e-16,
+      "max_absolute_voltage_error_vs_package": 3.3306690738754696e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.0001_state3_native",
+      "dt": 0.0001,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 2.7755575615628914e-15,
+      "max_absolute_voltage_error_vs_package": 2.886579864025407e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.002_state1_fixed",
+      "dt": 0.002,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 4.423544863740858e-17,
+      "max_absolute_voltage_error_vs_package": 5.204170427930421e-18,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.771450504315393e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.4464654585319599e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.4346898612345416e-10,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.253317935201132e-10,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.002_state1_native",
+      "dt": 0.002,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 5.412337245047638e-16,
+      "max_absolute_voltage_error_vs_package": 1.0547118733938987e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.771450504315393e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.4464654585319599e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.4346898612345416e-10,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.253317935201132e-10,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.002_state2_fixed",
+      "dt": 0.002,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 5.551115123125783e-16,
+      "max_absolute_voltage_error_vs_package": 5.551115123125783e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.771450504315393e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.4464654585319599e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.4346898612345416e-10,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.253317935201132e-10,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.002_state2_native",
+      "dt": 0.002,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 1.9984014443252818e-15,
+      "max_absolute_voltage_error_vs_package": 3.497202527569243e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.771450504315393e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.4464654585319599e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.4346898612345416e-10,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.253317935201132e-10,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.002_state3_fixed",
+      "dt": 0.002,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 3.608224830031759e-16,
+      "max_absolute_voltage_error_vs_package": 2.220446049250313e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.771450504315393e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.4464654585319599e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.4346898612345416e-10,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.253317935201132e-10,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.002_state3_native",
+      "dt": 0.002,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 1.4432899320127035e-15,
+      "max_absolute_voltage_error_vs_package": 1.5543122344752192e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.771450504315393e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 1.4464654585319599e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 4.4346898612345416e-10,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 1.253317935201132e-10,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.02_state1_fixed",
+      "dt": 0.02,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 4.440892098500626e-16,
+      "max_absolute_voltage_error_vs_package": 3.469446951953614e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.6235226974771227e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.838943052336674e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.1952988810012082e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 4.673440383128312e-13,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.02_state1_native",
+      "dt": 0.02,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 5.329070518200751e-15,
+      "max_absolute_voltage_error_vs_package": 5.329070518200751e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.6235226974771227e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.838943052336674e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.1952988810012082e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 4.673440383128312e-13,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.02_state2_fixed",
+      "dt": 0.02,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 5.10702591327572e-15,
+      "max_absolute_voltage_error_vs_package": 5.10702591327572e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.6235226974771227e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.838943052336674e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.1952988810012082e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 4.673440383128312e-13,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.02_state2_native",
+      "dt": 0.02,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        -0.5,
+        -0.6
+      ],
+      "max_absolute_state_error": 5.329070518200751e-15,
+      "max_absolute_voltage_error_vs_package": 5.329070518200751e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.6235226974771227e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.838943052336674e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.1952988810012082e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 4.673440383128312e-13,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.02_state3_fixed",
+      "dt": 0.02,
+      "n_steps": 5,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 1.4988010832439613e-15,
+      "max_absolute_voltage_error_vs_package": 4.440892098500626e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.6235226974771227e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.838943052336674e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.1952988810012082e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 4.673440383128312e-13,
+      "passed": true
+    },
+    {
+      "name": "theta3_dt0.02_state3_native",
+      "dt": 0.02,
+      "n_steps": 30,
+      "parameters": {
+        "epsilon": 0.02,
+        "gamma": 0.5,
+        "beta": 1.5,
+        "sigma": 0.7
+      },
+      "initial_state": [
+        0.7,
+        0.2
+      ],
+      "max_absolute_state_error": 2.603472992745992e-14,
+      "max_absolute_voltage_error_vs_package": 2.1038726316646716e-14,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.6235226974771227e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 3.838943052336674e-15,
+      "author_package_covariance_max_relative_error_vs_quadrature": 1.1952988810012082e-12,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 4.673440383128312e-13,
+      "passed": true
+    },
+    {
+      "name": "baseline_dt0.02_state1_native_T20",
+      "dt": 0.02,
+      "n_steps": 1000,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "max_absolute_state_error": 1.4654943925052066e-14,
+      "max_absolute_voltage_error_vs_package": 1.4210854715202004e-14,
+      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
+      "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
+      "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
+      "passed": true
+    }
+  ],
+  "distribution_scenarios": [
+    {
+      "name": "native_dt0.0001",
+      "dt": 0.0001,
+      "horizon": 0.2,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "paths_per_implementation": 4096,
+      "jax_seed": 672013,
+      "elapsed_jax_seconds_including_compile": 0.621002416999545,
+      "R_mean": [
+        -0.28581361351557744,
+        0.12207046615458414
+      ],
+      "JAX_mean": [
+        -0.28424420800698064,
+        0.12111921596008518
+      ],
+      "R_covariance": [
+        [
+          0.08445652747221814,
+          -0.01823480308293456
+        ],
+        [
+          -0.01823480308293456,
+          0.010985204437931047
+        ]
+      ],
+      "JAX_covariance": [
+        [
+          0.08200623830372969,
+          -0.018725351449879614
+        ],
+        [
+          -0.018725351449879614,
+          0.0110216708959698
+        ]
+      ],
+      "mean_difference_combined_mcse": [
+        0.006374976366683135,
+        0.0023179241355824475
+      ],
+      "mean_difference_z": [
+        0.24618216889380445,
+        -0.41038883883053806
+      ],
+      "covariance_difference_combined_mcse": [
+        0.002350484781107942,
+        0.0007476068095454967,
+        0.00033954024995341223
+      ],
+      "covariance_difference_z": [
+        -1.042461192764442,
+        -0.6561582381028347,
+        0.10739951461942107
+      ],
+      "ks_distance": [
+        0.015869140625,
+        0.018798828125
+      ],
+      "ks_pvalue": [
+        0.6809027843561286,
+        0.4642459811031755
+      ],
+      "cdf_distance_bound": 0.07017628858214917,
+      "cdf_family_alpha": 0.001,
+      "moment_z_threshold": 5.0,
+      "quantile_probabilities": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "R_quantiles": [
+        [
+          -0.7181255354225078,
+          -0.051821566971097126
+        ],
+        [
+          -0.5057686322048485,
+          0.05292239480715795
+        ],
+        [
+          -0.31070571854949947,
+          0.122498333098279
+        ],
+        [
+          -0.08987726566113137,
+          0.1912381419087915
+        ],
+        [
+          0.2244551925685695,
+          0.2938530858048445
+        ]
+      ],
+      "JAX_quantiles": [
+        [
+          -0.7149222802121851,
+          -0.05010462262354629
+        ],
+        [
+          -0.5013279368656811,
+          0.048717740554812934
+        ],
+        [
+          -0.3078880361092553,
+          0.11881291575660871
+        ],
+        [
+          -0.08745853589170514,
+          0.19135407399556803
+        ],
+        [
+          0.21728436639424464,
+          0.29742476608884505
+        ]
+      ],
+      "passed": true
+    },
+    {
+      "name": "native_dt0.002",
+      "dt": 0.002,
+      "horizon": 0.2,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "paths_per_implementation": 4096,
+      "jax_seed": 672014,
+      "elapsed_jax_seconds_including_compile": 0.2215410829958273,
+      "R_mean": [
+        -0.2909136377666977,
+        0.12134937232585942
+      ],
+      "JAX_mean": [
+        -0.2809226994434261,
+        0.11743395054773655
+      ],
+      "R_covariance": [
+        [
+          0.08323269651398102,
+          -0.018449580890514336
+        ],
+        [
+          -0.018449580890514336,
+          0.011036745511678648
+        ]
+      ],
+      "JAX_covariance": [
+        [
+          0.08403689539663381,
+          -0.019132215207230626
+        ],
+        [
+          -0.019132215207230626,
+          0.011102669579377215
+        ]
+      ],
+      "mean_difference_combined_mcse": [
+        0.006390407085041801,
+        0.002324893683045487
+      ],
+      "mean_difference_z": [
+        1.5634275235231323,
+        -1.6841293890883988
+      ],
+      "covariance_difference_combined_mcse": [
+        0.002370390607376375,
+        0.0007678693413801119,
+        0.0003429631456661512
+      ],
+      "covariance_difference_z": [
+        0.339268507118708,
+        -0.8889980103768348,
+        0.19221910147377627
+      ],
+      "ks_distance": [
+        0.0244140625,
+        0.01904296875
+      ],
+      "ks_pvalue": [
+        0.1739719237247936,
+        0.4476370966906906
+      ],
+      "cdf_distance_bound": 0.07017628858214917,
+      "cdf_family_alpha": 0.001,
+      "moment_z_threshold": 5.0,
+      "quantile_probabilities": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "R_quantiles": [
+        [
+          -0.7211519718351858,
+          -0.05325386534973215
+        ],
+        [
+          -0.5058208262606427,
+          0.050543836593541974
+        ],
+        [
+          -0.31732687505354396,
+          0.119810824620985
+        ],
+        [
+          -0.09734186516415488,
+          0.19313192321682324
+        ],
+        [
+          0.2315213191215225,
+          0.2969688733420237
+        ]
+      ],
+      "JAX_quantiles": [
+        [
+          -0.7161823963198115,
+          -0.05672240108871562
+        ],
+        [
+          -0.5003598610645467,
+          0.04613058611137658
+        ],
+        [
+          -0.3008511434890092,
+          0.118886122829237
+        ],
+        [
+          -0.07763247638671687,
+          0.188392848428277
+        ],
+        [
+          0.229080815940568,
+          0.28964916829087783
+        ]
+      ],
+      "passed": true
+    },
+    {
+      "name": "native_dt0.02",
+      "dt": 0.02,
+      "horizon": 0.2,
+      "parameters": {
+        "epsilon": 0.1,
+        "gamma": 1.5,
+        "beta": 0.8,
+        "sigma": 0.3
+      },
+      "initial_state": [
+        0,
+        0
+      ],
+      "paths_per_implementation": 4096,
+      "jax_seed": 672015,
+      "elapsed_jax_seconds_including_compile": 0.2286602919921279,
+      "R_mean": [
+        -0.2850784031245574,
+        0.12085450667166091
+      ],
+      "JAX_mean": [
+        -0.2827896689956139,
+        0.1203145341602016
+      ],
+      "R_covariance": [
+        [
+          0.0808371436413171,
+          -0.01870770386417992
+        ],
+        [
+          -0.01870770386417992,
+          0.011279142595435101
+        ]
+      ],
+      "JAX_covariance": [
+        [
+          0.08626166434712448,
+          -0.018598754564905288
+        ],
+        [
+          -0.018598754564905288,
+          0.011049468278657458
+        ]
+      ],
+      "mean_difference_combined_mcse": [
+        0.0063871439172022045,
+        0.002334806418995535
+      ],
+      "mean_difference_z": [
+        0.3583345167437574,
+        -0.23127078419272487
+      ],
+      "covariance_difference_combined_mcse": [
+        0.0024127630643446295,
+        0.0007719834489896124,
+        0.0003529793675438172
+      ],
+      "covariance_difference_z": [
+        2.248260836702103,
+        0.14112906101449255,
+        -0.6506734894331536
+      ],
+      "ks_distance": [
+        0.020263671875,
+        0.01708984375
+      ],
+      "ks_pvalue": [
+        0.3696876571672056,
+        0.5880232950049137
+      ],
+      "cdf_distance_bound": 0.07017628858214917,
+      "cdf_family_alpha": 0.001,
+      "moment_z_threshold": 5.0,
+      "quantile_probabilities": [
+        0.05,
+        0.25,
+        0.5,
+        0.75,
+        0.95
+      ],
+      "R_quantiles": [
+        [
+          -0.712767317953263,
+          -0.05224119979784485
+        ],
+        [
+          -0.495641285600391,
+          0.05071116856805332
+        ],
+        [
+          -0.3026969310218945,
+          0.121362357050687
+        ],
+        [
+          -0.09158629711634625,
+          0.19376788480280624
+        ],
+        [
+          0.21664496184940274,
+          0.289038738431093
+        ]
+      ],
+      "JAX_quantiles": [
+        [
+          -0.7266780096202601,
+          -0.053347624005348405
+        ],
+        [
+          -0.5006513816089886,
+          0.04795285879457141
+        ],
+        [
+          -0.31057872271952935,
+          0.12013143395196876
+        ],
+        [
+          -0.08562398887100536,
+          0.1913388321545178
+        ],
+        [
+          0.23947639373395654,
+          0.29281763018773305
+        ]
+      ],
+      "passed": true
+    }
+  ],
+  "covariance_note": "Native uses stable Van Loan moments. Author closed-form covariance has small-step cancellation; common-additive-noise tests separate that rounding from the state update. The linear-substep covariance is not the final nonlinear-step covariance."
+}
