@@ -44,7 +44,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent
 DEFAULT_BIF_REPO = Path(os.environ.get("BIF_REPO", "/Users/mac/git/bif"))
 TARGET = os.environ.get("TARGET", "all").lower()

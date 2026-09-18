@@ -35,6 +35,7 @@ Jobs:
 #         sbatch_args: { time: "00:40:00" }
 # --- END SLURM CONFIG ---
 
+import contextlib
 import json
 import os
 import subprocess
@@ -64,27 +65,22 @@ class VramPoller:
         self.peak_bytes = 0
         self._device = None
         self._thread = None
-        try:
+        with contextlib.suppress(Exception):
             d = jax.devices()[0]
             if hasattr(d, "memory_stats"):
                 stats = d.memory_stats()
                 if isinstance(stats, dict) and "bytes_in_use" in stats:
                     self._device = d
                     self.peak_bytes = stats.get("bytes_in_use", 0)
-        except Exception:
-            pass
 
     def _poll(self):
         while not self._stop_event.is_set():
-            try:
+            with contextlib.suppress(Exception):
                 if self._device is not None and hasattr(self._device, "memory_stats"):
                     stats = self._device.memory_stats()
                     if isinstance(stats, dict) and "bytes_in_use" in stats:
                         b = stats["bytes_in_use"]
-                        if b > self.peak_bytes:
-                            self.peak_bytes = b
-            except Exception:
-                pass
+                        self.peak_bytes = max(self.peak_bytes, b)
             self._stop_event.wait(self.interval_sec)
 
     def start(self):
@@ -99,15 +95,12 @@ class VramPoller:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join()
-        try:
+        with contextlib.suppress(Exception):
             if hasattr(self._device, "memory_stats"):
                 stats = self._device.memory_stats()
                 if isinstance(stats, dict) and "bytes_in_use" in stats:
                     b = stats["bytes_in_use"]
-                    if b > self.peak_bytes:
-                        self.peak_bytes = b
-        except Exception:
-            pass
+                    self.peak_bytes = max(self.peak_bytes, b)
         return self.peak_bytes / (1024**2)
 
 
@@ -115,14 +108,12 @@ def get_vram_bytes_in_use() -> float | None:
     """Query current active VRAM allocated by JAX buffers on the primary device in MB."""
     import jax
 
-    try:
+    with contextlib.suppress(Exception):
         d = jax.devices()[0]
         if hasattr(d, "memory_stats"):
             stats = d.memory_stats()
             if isinstance(stats, dict) and "bytes_in_use" in stats:
                 return stats["bytes_in_use"] / (1024**2)
-    except Exception:
-        pass
     return None
 
 
@@ -130,21 +121,19 @@ def get_peak_vram_mb() -> float | None:
     """Query peak VRAM allocated by JAX buffers on the primary device in MB."""
     import jax
 
-    try:
+    with contextlib.suppress(Exception):
         d = jax.devices()[0]
         if hasattr(d, "memory_stats"):
             stats = d.memory_stats()
             if isinstance(stats, dict) and "peak_bytes_in_use" in stats:
                 return stats["peak_bytes_in_use"] / (1024**2)
-    except Exception:
-        pass
     return None
 
 
 def run_one(spec: dict) -> dict:
     import jax
-    import numpy as np
     import model
+    import numpy as np
 
     scaling_type = spec["scaling_type"]
     J = spec["J"]
@@ -336,6 +325,7 @@ for spec in specs:
         capture_output=True,
         text=True,
         env=os.environ,
+        check=False,
     )
 
     stdout_lines = []
@@ -378,7 +368,7 @@ for spec in specs:
     else:
         try:
             entry = json.loads(result_json)
-        except Exception as e:
+        except json.JSONDecodeError as e:
             print(f"  [ERROR] Failed to parse worker RESULT_JSON: {e}")
             entry = {
                 "scaling_type": spec["scaling_type"],
@@ -403,9 +393,9 @@ for spec in specs:
 # =========================================================================
 # Output and Provenance
 # =========================================================================
+import jax
 import model
 from utils import run_metadata
-import jax
 
 platform_name = jax.devices()[0].platform
 out_dir = os.path.join("results", platform_name)

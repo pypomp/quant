@@ -83,12 +83,12 @@ if USE_CPU:
             + f" --xla_force_host_platform_device_count={os.environ['SLURM_CPUS_PER_TASK']}"
         )
 
-import jax  # noqa: E402
-import jax.numpy as jnp  # noqa: E402
-import model  # noqa: E402
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
-from utils import save_run  # noqa: E402
+import jax
+import jax.numpy as jnp
+import model
+import numpy as np
+import pandas as pd
+from utils import save_run
 
 print(jax.devices())
 print("Using CPU:", USE_CPU)

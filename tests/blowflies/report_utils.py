@@ -1,9 +1,9 @@
 """Reuse Aaron's quant report styling; keep blowflies data checks local."""
 
 import json
+import sys
 from copy import deepcopy
 from pathlib import Path
-import sys
 
 import numpy as np
 import pandas as pd

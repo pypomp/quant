@@ -101,8 +101,7 @@ def format_metadata(data):
     slurm = data.get("slurm", {}) or {}
     lines = [
         f"- **Run at**: {data.get('timestamp', 'unknown')}",
-        f"- **pypomp**: {data.get('pypomp_version', 'unknown')}"
-        f" / **JAX**: {data.get('jax_version', 'unknown')}",
+        f"- **pypomp**: {data.get('pypomp_version', 'unknown')} / **JAX**: {data.get('jax_version', 'unknown')}",
         f"- **Commit**: `{str(data.get('quant_git_sha', 'unknown'))[:10]}`",
         f"- **Devices**: {data.get('devices', 'unknown')}",
     ]
@@ -121,8 +120,7 @@ def format_r_metadata(data):
     hw = data.get("hardware", {}) or {}
     lines = [
         f"- **Run at**: {data.get('timestamp', 'unknown')}",
-        f"- **pomp**: {data.get('pomp_version', 'unknown')}"
-        f" / **R**: {data.get('r_version', 'unknown')}",
+        f"- **pomp**: {data.get('pomp_version', 'unknown')} / **R**: {data.get('r_version', 'unknown')}",
         f"- **Commit**: `{str(data.get('quant_git_sha', 'unknown'))[:10]}`",
     ]
     if hw.get("cpu_model"):
@@ -176,7 +174,7 @@ def _rank_normalize(chains):
 
 def _split(chains):
     """Split each chain in half, doubling the chain count."""
-    m, n = chains.shape
+    _, n = chains.shape
     half = n // 2
     if half < 2:
         return chains

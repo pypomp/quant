@@ -130,7 +130,7 @@ def run_metadata(run_config: dict[str, Any] | None = None) -> dict[str, Any]:
     hw_info = _hardware_info()
 
     return {
-        "timestamp": datetime.datetime.now(datetime.timezone.utc)
+        "timestamp": datetime.datetime.now(datetime.UTC)
         .replace(microsecond=0)
         .isoformat(),
         "pypomp_version": _package_version("pypomp"),
@@ -427,7 +427,7 @@ def get_pomp_metrics(
         run_config (dict, optional): Metadata for the run (e.g., N_UNITS, RUN_LEVEL).
     """
     metrics = {
-        "timestamp": datetime.datetime.now(datetime.timezone.utc)
+        "timestamp": datetime.datetime.now(datetime.UTC)
         .replace(microsecond=0)
         .isoformat(),
         "run_config": run_config or {},
@@ -505,7 +505,12 @@ def load_timing_data(platform_dirs: dict[str, str]) -> dict[str, dict[str, Any]]
                     phases = dict(zip(tm["phase"], tm["time_seconds"]))
                 elif "stage" in tm.columns and "seconds" in tm.columns:
                     phases = dict(zip(tm["stage"], tm["seconds"]))
-            except Exception as e:
+            except (
+                OSError,
+                pd.errors.EmptyDataError,
+                pd.errors.ParserError,
+                ValueError,
+            ) as e:
                 logger.warning("Error reading %s: %s", timing_path, e)
 
         meta = {}
@@ -513,7 +518,7 @@ def load_timing_data(platform_dirs: dict[str, str]) -> dict[str, dict[str, Any]]
             try:
                 with open(json_path) as f:
                     meta = json.load(f)
-            except Exception as e:
+            except (OSError, json.JSONDecodeError, ValueError) as e:
                 logger.warning("Error reading %s: %s", json_path, e)
 
         cfg = meta.get("run_config", {}) or {}
@@ -850,7 +855,7 @@ def _extract_software_settings(runs: dict[str, dict[str, Any]], is_panel: bool =
             return "—"
         try:
             return ts.replace("T", " ")[:19]
-        except Exception:
+        except AttributeError, ValueError:
             return str(ts)
 
     rows.append(("Run Timestamp", [get_time(r["meta"]) for r in runs.values()]))
@@ -1003,11 +1008,6 @@ def build_timing_comparison_df(
         return np.nan
 
     base_pf = get_pf_cold(base)
-    base_total = (
-        base_mif + base_pf
-        if not np.isnan(base_mif) and not np.isnan(base_pf)
-        else np.nan
-    )
 
     r_cores = 36
     if base and base.get("meta"):
@@ -1088,10 +1088,14 @@ def build_timing_comparison_df(
             scaled_base_pf = base_pf * pf_scale
             scaled_base_tot = scaled_base_mif + scaled_base_pf
 
-            mif_sp = scaled_base_mif / mif if (mif == mif and mif > 0) else np.nan
-            pf_sp = scaled_base_pf / pf if (pf == pf and pf > 0) else np.nan
+            mif_sp = (
+                scaled_base_mif / mif if (not np.isnan(mif) and mif > 0) else np.nan
+            )
+            pf_sp = scaled_base_pf / pf if (not np.isnan(pf) and pf > 0) else np.nan
             tot_sp = (
-                scaled_base_tot / total if (total == total and total > 0) else np.nan
+                scaled_base_tot / total
+                if (not np.isnan(total) and total > 0)
+                else np.nan
             )
 
             mif_sp_str = f"{mif_sp:.2f}x" if not np.isnan(mif_sp) else "—"
@@ -1099,7 +1103,9 @@ def build_timing_comparison_df(
             tot_sp_str = f"{tot_sp:.2f}x" if not np.isnan(tot_sp) else "—"
             tp_str = f"{tot_sp * r_cores:.2f}x" if not np.isnan(tot_sp) else "—"
 
-        fmt = lambda s: "—" if (s != s or np.isnan(s)) else f"{s:.1f}s ({s / 60:.2f}m)"
+        fmt = lambda s: (
+            "—" if (s is None or np.isnan(s)) else f"{s:.1f}s ({s / 60:.2f}m)"
+        )
         rows.append(
             {
                 "Configuration": label,
@@ -1133,7 +1139,7 @@ def build_cold_vs_warm_df(runs: dict[str, dict[str, Any]]) -> pd.DataFrame:
 
         overhead = cold - warm if not np.isnan(cold) and not np.isnan(warm) else np.nan
 
-        fmt = lambda s: "—" if (s != s or np.isnan(s)) else f"{s:.2f}s"
+        fmt = lambda s: "—" if (s is None or np.isnan(s)) else f"{s:.2f}s"
         rows.append(
             {
                 "Configuration": label,

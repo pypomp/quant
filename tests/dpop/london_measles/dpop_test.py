@@ -57,7 +57,6 @@ import pickle
 
 import jax
 import pypomp as pp
-
 from prep import ALPHA, BETA1, COOLING_RATE, RUN_LEVEL, RW_SD, key, panel
 
 

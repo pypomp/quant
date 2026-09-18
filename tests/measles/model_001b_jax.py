@@ -67,7 +67,7 @@ def rinit(theta_: ParamDict, key: RNGKey, covars: CovarDict, t0: InitialTimeFloa
     m = covars["pop"] / (S_0 + E_0 + I_0 + R_0)
     S = jnp.round(m * S_0)
     E = jnp.round(m * E_0)
-    I = jnp.round(m * I_0)  # noqa
+    I = jnp.round(m * I_0)
     R = jnp.round(m * R_0)
     W = 0
     C = 0
@@ -82,7 +82,7 @@ def rproc(
     t: TimeFloat,
     dt: StepSizeFloat,
 ):
-    S, E, I, R, W, C = X_["S"], X_["E"], X_["I"], X_["R"], X_["W"], X_["C"]  # noqa
+    S, E, I, R, W, C = X_["S"], X_["E"], X_["I"], X_["R"], X_["W"], X_["C"]
     R0 = theta_["R0"]
     sigma = theta_["sigma"]
     gamma = theta_["gamma"]
@@ -152,7 +152,7 @@ def rproc(
 
     S = S + births - trans_S[0] - trans_S[1]
     E = E + trans_S[0] - trans_E[0] - trans_E[1]
-    I = I + trans_E[0] - trans_I[0] - trans_I[1]  # noqa
+    I = I + trans_E[0] - trans_I[0] - trans_I[1]
     R = pop - S - E - I
     W = W + (dw - dt) / sigmaSE
     C = C + trans_I[0]

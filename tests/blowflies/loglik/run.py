@@ -39,9 +39,9 @@ Only replicate seeds vary; parameters remain at the R defaults.
 import argparse
 import hashlib
 import os
-from pathlib import Path
 import sys
 import time
+from pathlib import Path
 
 os.environ.setdefault("JAX_ENABLE_X64", "true")
 

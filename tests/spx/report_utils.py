@@ -6,23 +6,17 @@ tests_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if tests_dir not in sys.path:
     sys.path.append(tests_dir)
 
-from utils import (
-    load_timing_data,
-    build_settings_comparison_html,
-    build_timing_comparison_df,
-    build_cold_vs_warm_df,
-)
 
 import numpy as np
 import pandas as pd
 from plotnine import (
-    theme_minimal,
-    theme,
-    element_text,
-    element_rect,
     element_line,
+    element_rect,
+    element_text,
     scale_color_manual,
     scale_fill_manual,
+    theme,
+    theme_minimal,
 )
 
 # Hide noisy JAX CUDA log messages

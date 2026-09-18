@@ -23,13 +23,13 @@
 # --- END SLURM CONFIG ---
 
 import argparse
-from functools import partial
 import hashlib
 import json
 import os
-from pathlib import Path
 import sys
 import time
+from functools import partial
+from pathlib import Path
 
 os.environ["JAX_ENABLE_X64"] = "true"
 os.environ["JAX_PLATFORMS"] = "cpu"
@@ -44,11 +44,10 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
+import strang
 from scipy.integrate import quad_vec
 from scipy.linalg import expm
 from scipy.stats import ks_2samp
-
-import strang
 from utils import run_metadata
 
 
@@ -113,8 +112,8 @@ def coupled_checks(directory=DATA):
         )
         a = np.array([[0.0, -1 / p.epsilon], [p.gamma, -1.0]])
 
-        def integrand(t):
-            column = expm(a * t)[:, 1] * p.sigma
+        def integrand(t, a=a, sigma=p.sigma):
+            column = expm(a * t)[:, 1] * sigma
             return np.outer(column, column)
 
         independent, _ = quad_vec(

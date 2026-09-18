@@ -146,7 +146,7 @@ def simulate_taylor15(
     ):
         raise ValueError("Time values must be finite and both intervals positive.")
     ratio = observation_dt / simulation_dt
-    nstep = int(round(ratio))
+    nstep = round(ratio)
     if nstep < 1 or not np.isclose(ratio, nstep, rtol=0, atol=1e-10):
         raise ValueError("observation_dt must be an integer multiple of simulation_dt.")
     initial = jnp.asarray(initial)

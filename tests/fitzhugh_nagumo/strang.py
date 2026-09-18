@@ -14,8 +14,7 @@ import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
 import numpy as np
-
-from model import FHNParameters, REFERENCE_PARAMETERS, Trajectory
+from model import REFERENCE_PARAMETERS, Trajectory
 
 
 def validate_parameters(params=REFERENCE_PARAMETERS):
@@ -161,7 +160,7 @@ def simulate_strang(
     ):
         raise ValueError("Require finite positive step sizes and finite t0.")
     ratio = observation_dt / simulation_dt
-    nstep = int(round(ratio))
+    nstep = round(ratio)
     if nstep < 1 or not np.isclose(ratio, nstep, rtol=0, atol=1e-10):
         raise ValueError("observation_dt must be an integer multiple of simulation_dt.")
     transition, unit_covariance = _unit_linear_moments(simulation_dt, params)
@@ -186,7 +185,7 @@ def simulate_strang(
         return (state, key), state
 
     _, states = jax.lax.scan(
-        advance_interval, (initial, key), None, length=n_observations
+        advance_interval, (initial, key), None, length=int(n_observations)
     )
     if not np.isfinite(np.asarray(states)).all():
         raise FloatingPointError("Nonfinite Strang trajectory; no clipping applied.")
