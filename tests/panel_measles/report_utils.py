@@ -7,7 +7,6 @@ tests_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if tests_dir not in sys.path:
     sys.path.append(tests_dir)
 
-
 import numpy as np
 import pandas as pd
 from plotnine import (
@@ -20,6 +19,19 @@ from plotnine import (
     theme_minimal,
 )
 from scipy.special import logit
+from utils import (
+    build_cold_vs_warm_df,
+    build_settings_comparison_html,
+    build_timing_comparison_df,
+    load_timing_data,
+)
+
+__all__ = [
+    "build_cold_vs_warm_df",
+    "build_settings_comparison_html",
+    "build_timing_comparison_df",
+    "load_timing_data",
+]
 
 logging.getLogger("jax._src.xla_bridge").setLevel(logging.CRITICAL)
 

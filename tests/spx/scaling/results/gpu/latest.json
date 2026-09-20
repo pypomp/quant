@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-09-02T19:11:02+00:00",
-  "pypomp_version": "1.0.0rc1",
-  "jax_version": "0.11.1",
-  "quant_git_sha": "630cc2325273e7af2386effd11b3ae827dfde18f",
+  "timestamp": "2026-09-20T16:48:18+00:00",
+  "pypomp_version": "1.0.5",
+  "jax_version": "0.11.2",
+  "quant_git_sha": "35b50958c5c89df5f63e7811ddda2044ac87935e",
   "hardware": {
     "cpu_model": "AMD EPYC 9575F 64-Core Processor",
     "nodelist": "gl1805",
@@ -12,7 +12,7 @@
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "59673768",
+    "job_id": "61595109",
     "partition": "gpu-rtx6000",
     "gpus": "rtx_pro_6000_blackwell:1",
     "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
@@ -53,14 +53,14 @@
       "reps": 36,
       "total_particles_mif": 600000,
       "total_particles_pfilter": 21600000,
-      "mif_time_seconds": 38.39939904212952,
-      "mif_per_iter_seconds": 0.7679879808425903,
-      "pfilter_cold_seconds": 23.043705701828003,
-      "pfilter_warm_seconds": 21.566166162490845,
+      "mif_time_seconds": 20.723939895629883,
+      "mif_per_iter_seconds": 0.4144787979125977,
+      "pfilter_cold_seconds": 10.369513750076294,
+      "pfilter_warm_seconds": 8.58953595161438,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 128.093994140625,
-      "peak_vram_pfilter_mb": 32.148193359375,
-      "peak_vram_mb": 128.093994140625
+      "peak_vram_mif_mb": 96.261474609375,
+      "peak_vram_pfilter_mb": 32.181396484375,
+      "peak_vram_mb": 146.689697265625
     },
     {
       "scaling_type": "particles",
@@ -70,14 +70,14 @@
       "reps": 36,
       "total_particles_mif": 1200000,
       "total_particles_pfilter": 43200000,
-      "mif_time_seconds": 54.03704285621643,
-      "mif_per_iter_seconds": 1.0807408571243287,
-      "pfilter_cold_seconds": 30.76302480697632,
-      "pfilter_warm_seconds": 30.87405014038086,
+      "mif_time_seconds": 27.999992609024048,
+      "mif_per_iter_seconds": 0.559999852180481,
+      "pfilter_cold_seconds": 12.843757152557373,
+      "pfilter_warm_seconds": 11.175456047058105,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 224.2578125,
+      "peak_vram_mif_mb": 151.2890625,
       "peak_vram_pfilter_mb": 64.148193359375,
-      "peak_vram_mb": 256.093994140625
+      "peak_vram_mb": 276.978515625
     },
     {
       "scaling_type": "particles",
@@ -87,14 +87,14 @@
       "reps": 36,
       "total_particles_mif": 1800000,
       "total_particles_pfilter": 64800000,
-      "mif_time_seconds": 73.66160273551941,
-      "mif_per_iter_seconds": 1.473232054710388,
-      "pfilter_cold_seconds": 38.31668543815613,
-      "pfilter_warm_seconds": 36.83242702484131,
+      "mif_time_seconds": 41.112921953201294,
+      "mif_per_iter_seconds": 0.8222584390640258,
+      "pfilter_cold_seconds": 15.973414421081543,
+      "pfilter_warm_seconds": 14.291237115859985,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 297.292724609375,
-      "peak_vram_pfilter_mb": 128.148193359375,
-      "peak_vram_mb": 354.491455078125
+      "peak_vram_mif_mb": 238.26416015625,
+      "peak_vram_pfilter_mb": 64.148193359375,
+      "peak_vram_mb": 347.9970703125
     },
     {
       "scaling_type": "particles",
@@ -104,14 +104,14 @@
       "reps": 36,
       "total_particles_mif": 2400000,
       "total_particles_pfilter": 86400000,
-      "mif_time_seconds": 103.75175905227661,
-      "mif_per_iter_seconds": 2.075035181045532,
-      "pfilter_cold_seconds": 48.005085945129395,
-      "pfilter_warm_seconds": 46.507266998291016,
+      "mif_time_seconds": 52.47173762321472,
+      "mif_per_iter_seconds": 1.0494347524642944,
+      "pfilter_cold_seconds": 18.692580699920654,
+      "pfilter_warm_seconds": 16.93704867362976,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 448.2578125,
+      "peak_vram_mif_mb": 311.33251953125,
       "peak_vram_pfilter_mb": 128.148193359375,
-      "peak_vram_mb": 448.2578125
+      "peak_vram_mb": 448.40087890625
     },
     {
       "scaling_type": "particles",
@@ -121,14 +121,14 @@
       "reps": 36,
       "total_particles_mif": 3600000,
       "total_particles_pfilter": 129600000,
-      "mif_time_seconds": 162.87798190116882,
-      "mif_per_iter_seconds": 3.2575596380233764,
-      "pfilter_cold_seconds": 70.34975934028625,
-      "pfilter_warm_seconds": 68.77832651138306,
+      "mif_time_seconds": 104.92517638206482,
+      "mif_per_iter_seconds": 2.0985035276412964,
+      "pfilter_cold_seconds": 25.52118706703186,
+      "pfilter_warm_seconds": 23.625656604766846,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 610.491455078125,
-      "peak_vram_pfilter_mb": 256.148193359375,
-      "peak_vram_mb": 692.888916015625
+      "peak_vram_mif_mb": 512.66162109375,
+      "peak_vram_pfilter_mb": 128.148193359375,
+      "peak_vram_mb": 775.59326171875
     },
     {
       "scaling_type": "particles",
@@ -138,14 +138,14 @@
       "reps": 36,
       "total_particles_mif": 4800000,
       "total_particles_pfilter": 172800000,
-      "mif_time_seconds": 251.97059869766235,
-      "mif_per_iter_seconds": 5.039411973953247,
-      "pfilter_cold_seconds": 95.81549024581909,
-      "pfilter_warm_seconds": 94.2165539264679,
+      "mif_time_seconds": 166.39106726646423,
+      "mif_per_iter_seconds": 3.327821345329285,
+      "pfilter_cold_seconds": 39.81928515434265,
+      "pfilter_warm_seconds": 37.95165491104126,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 713.813232421875,
+      "peak_vram_mif_mb": 631.33251953125,
       "peak_vram_pfilter_mb": 256.148193359375,
-      "peak_vram_mb": 841.987060546875
+      "peak_vram_mb": 969.46923828125
     }
   ],
   "chain_scaling": [
@@ -157,14 +157,14 @@
       "reps": 36,
       "total_particles_mif": 250000,
       "total_particles_pfilter": 9000000,
-      "mif_time_seconds": 23.305352449417114,
-      "mif_per_iter_seconds": 0.46610704898834227,
-      "pfilter_cold_seconds": 14.6450514793396,
-      "pfilter_warm_seconds": 13.265098810195923,
+      "mif_time_seconds": 13.495280504226685,
+      "mif_per_iter_seconds": 0.2699056100845337,
+      "pfilter_cold_seconds": 7.296395301818848,
+      "pfilter_warm_seconds": 5.816162586212158,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 64.1025390625,
-      "peak_vram_pfilter_mb": 16.2041015625,
-      "peak_vram_mb": 82.38330078125
+      "peak_vram_mif_mb": 32.450927734375,
+      "peak_vram_pfilter_mb": 8.873046875,
+      "peak_vram_mb": 77.35302734375
     },
     {
       "scaling_type": "chains",
@@ -174,14 +174,14 @@
       "reps": 36,
       "total_particles_mif": 500000,
       "total_particles_pfilter": 18000000,
-      "mif_time_seconds": 32.15387964248657,
-      "mif_per_iter_seconds": 0.6430775928497314,
-      "pfilter_cold_seconds": 18.731333017349243,
-      "pfilter_warm_seconds": 17.25746512413025,
+      "mif_time_seconds": 17.677502393722534,
+      "mif_per_iter_seconds": 0.35355004787445066,
+      "pfilter_cold_seconds": 8.414080381393433,
+      "pfilter_warm_seconds": 6.764542102813721,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 112.785400390625,
+      "peak_vram_mif_mb": 96.7978515625,
       "peak_vram_pfilter_mb": 32.30810546875,
-      "peak_vram_mb": 128.10546875
+      "peak_vram_mb": 153.03125
     },
     {
       "scaling_type": "chains",
@@ -191,14 +191,14 @@
       "reps": 36,
       "total_particles_mif": 750000,
       "total_particles_pfilter": 27000000,
-      "mif_time_seconds": 35.714489698410034,
-      "mif_per_iter_seconds": 0.7142897939682007,
-      "pfilter_cold_seconds": 20.679375886917114,
-      "pfilter_warm_seconds": 19.17910099029541,
+      "mif_time_seconds": 20.607657432556152,
+      "mif_per_iter_seconds": 0.41215314865112307,
+      "pfilter_cold_seconds": 9.71873927116394,
+      "pfilter_warm_seconds": 8.060496807098389,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 195.465087890625,
+      "peak_vram_mif_mb": 129.14990234375,
       "peak_vram_pfilter_mb": 32.468505859375,
-      "peak_vram_mb": 195.465087890625
+      "peak_vram_mb": 194.75048828125
     },
     {
       "scaling_type": "chains",
@@ -208,14 +208,14 @@
       "reps": 36,
       "total_particles_mif": 1000000,
       "total_particles_pfilter": 36000000,
-      "mif_time_seconds": 41.39834117889404,
-      "mif_per_iter_seconds": 0.8279668235778809,
-      "pfilter_cold_seconds": 23.855121850967407,
-      "pfilter_warm_seconds": 22.63304615020752,
+      "mif_time_seconds": 24.63223433494568,
+      "mif_per_iter_seconds": 0.4926446866989136,
+      "pfilter_cold_seconds": 11.227651596069336,
+      "pfilter_warm_seconds": 9.6272554397583,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 226.15966796875,
-      "peak_vram_pfilter_mb": 64.616943359375,
-      "peak_vram_mb": 226.15966796875
+      "peak_vram_mif_mb": 194.1826171875,
+      "peak_vram_pfilter_mb": 32.616943359375,
+      "peak_vram_mb": 244.2119140625
     },
     {
       "scaling_type": "chains",
@@ -225,14 +225,14 @@
       "reps": 36,
       "total_particles_mif": 1500000,
       "total_particles_pfilter": 54000000,
-      "mif_time_seconds": 53.125184297561646,
-      "mif_per_iter_seconds": 1.062503685951233,
-      "pfilter_cold_seconds": 27.738114595413208,
-      "pfilter_warm_seconds": 26.254753828048706,
+      "mif_time_seconds": 31.986018180847168,
+      "mif_per_iter_seconds": 0.6397203636169434,
+      "pfilter_cold_seconds": 13.872522115707397,
+      "pfilter_warm_seconds": 12.214785814285278,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 390.937255859375,
+      "peak_vram_mif_mb": 223.63134765625,
       "peak_vram_pfilter_mb": 64.914794921875,
-      "peak_vram_mb": 390.937255859375
+      "peak_vram_mb": 313.853271484375
     },
     {
       "scaling_type": "chains",
@@ -242,14 +242,14 @@
       "reps": 36,
       "total_particles_mif": 2000000,
       "total_particles_pfilter": 72000000,
-      "mif_time_seconds": 68.24502801895142,
-      "mif_per_iter_seconds": 1.3649005603790283,
-      "pfilter_cold_seconds": 32.44885540008545,
-      "pfilter_warm_seconds": 30.925807237625122,
+      "mif_time_seconds": 43.203092098236084,
+      "mif_per_iter_seconds": 0.8640618419647217,
+      "pfilter_cold_seconds": 15.666045665740967,
+      "pfilter_warm_seconds": 14.042464256286621,
       "baseline_vram_mb": 0.021240234375,
-      "peak_vram_mif_mb": 450.874267578125,
-      "peak_vram_pfilter_mb": 129.212158203125,
-      "peak_vram_mb": 450.874267578125
+      "peak_vram_mif_mb": 368.736572265625,
+      "peak_vram_pfilter_mb": 65.212158203125,
+      "peak_vram_mb": 453.294189453125
     }
   ]
 }
