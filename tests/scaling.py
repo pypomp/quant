@@ -1,4 +1,4 @@
-"""Shared driver for the GPU scaling tests (dacca, measles, panel_measles).
+"""Shared driver for the GPU scaling tests (spx, dacca, measles, panel_measles).
 
 Each grid point runs in its own subprocess so XLA's allocator starts fresh and
 peak VRAM is per-configuration. The driver must not initialise JAX (importing
