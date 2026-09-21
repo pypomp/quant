@@ -1,0 +1,134 @@
+---
+title: "Dhaka Scaling Benchmark"
+subtitle: "IF2 and particle filter throughput vs. particles in flight on GPU"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+engine: jupyter
+---
+
+```{python Navigation header, results='asis'}
+import os
+import sys
+
+sys.path.append("..")
+sys.path.append("../..")
+import pandas as pd
+import report_utils as ru
+import scaling
+from IPython.display import HTML, Markdown, display
+from plotnine import aes, geom_line, geom_point, ggplot, labs, scale_x_log10
+
+display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('scaling')}</div>"))
+```
+
+## Introduction
+
+This benchmark finds how many concurrent particles it takes to saturate the GPU on the Dhaka cholera model (`nstep=20` Euler steps per monthly observation). The number of particles in flight during IF2 is $J \times \text{chains}$. We grow it two ways: by raising $J$ at a fixed number of chains, and by adding chains at a fixed $J$.
+
+Iteration counts are kept small on purpose. Each grid point runs `mif` twice with the same $M$. The first call pays for JIT compilation, and the second is timed to give the steady-state cost per iteration. The key column is **IF2 ns / particle / iter**. It falls while the GPU is underused, levels off once the GPU is saturated, and rises if larger batches start to lose efficiency. Each grid point runs in its own subprocess so that peak VRAM is measured per configuration.
+
+## Benchmark Settings & Environment
+
+```{python Settings}
+runs = ru.load_timing_data({"pypomp (GPU)": os.path.join("results", "gpu")})
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+
+csv_path = os.path.join("results", "gpu", "scaling.csv")
+has_data = os.path.exists(csv_path)
+if has_data:
+    df = pd.read_csv(csv_path)
+    if "error" in df.columns and df["error"].notna().any():
+        errs = df[df["error"].notna()]
+        items = "".join(
+            f"<li>{r.scaling_type} J={r.J} chains={r.chains}: <pre>{r.error}</pre></li>"
+            for r in errs.itertuples()
+        )
+        display(HTML(f"<div class='alert alert-warning'><strong>Failed grid points:</strong><ul>{items}</ul></div>"))
+    df = df.dropna(subset=["mif_per_iter_seconds"])
+    df["Sweep"] = df["scaling_type"].map(
+        {"particles": "Varying J (fixed chains)", "chains": "Varying chains (fixed J)"}
+    )
+    df["ns_per_particle"] = df["mif_per_iter_seconds"] / df["total_particles_mif"] * 1e9
+    df["pf_ns_per_particle"] = df["pfilter_warm_seconds"] / df["total_particles_pfilter"] * 1e9
+else:
+    display(HTML(
+        "<div class='alert alert-info'><strong>Not run yet:</strong> "
+        "<code>python scripts/run_tests.py run tests/dacca/scaling/run.py --run-level 4</code></div>"
+    ))
+```
+
+## 1. Particle Scaling ($J$)
+
+```{python Particle Table}
+if has_data:
+    sub = df[df["scaling_type"] == "particles"]
+    display(HTML(scaling.cost_table(sub, "J").to_html(classes="table table-striped table-hover", index=False)))
+```
+
+## 2. Chain Scaling
+
+```{python Chain Table}
+if has_data:
+    sub = df[df["scaling_type"] == "chains"]
+    display(HTML(scaling.cost_table(sub, "chains").to_html(classes="table table-striped table-hover", index=False)))
+```
+
+## 3. Where the GPU Saturates
+
+```{python Saturation Plots}
+if has_data:
+    display(
+        ggplot(df, aes("total_particles_mif", "ns_per_particle", color="Sweep"))
+        + geom_line(size=1.2)
+        + geom_point(size=3)
+        + scale_x_log10()
+        + labs(
+            title="IF2 cost per particle per iteration",
+            subtitle="Flat region = GPU saturated",
+            x="Particles in flight (J × chains)",
+            y="ns / particle / iteration",
+        )
+        + ru.theme_premium
+    )
+    display(
+        ggplot(df, aes("total_particles_pfilter", "pf_ns_per_particle", color="Sweep"))
+        + geom_line(size=1.2)
+        + geom_point(size=3)
+        + scale_x_log10()
+        + labs(
+            title="Particle filter cost per particle (warm)",
+            x="Total pfilter particles (J × chains × reps)",
+            y="ns / particle / filter pass",
+        )
+        + ru.theme_premium
+    )
+```
+
+## 4. VRAM
+
+```{python VRAM}
+if has_data and df["peak_vram_mb"].notna().any():
+    display(
+        ggplot(df, aes("total_particles_mif", "peak_vram_mb", color="Sweep"))
+        + geom_line(size=1.2)
+        + geom_point(size=3)
+        + scale_x_log10()
+        + labs(
+            title="Peak VRAM vs. particles in flight",
+            x="Particles in flight (J × chains)",
+            y="Peak VRAM (MB)",
+        )
+        + ru.theme_premium
+    )
+```

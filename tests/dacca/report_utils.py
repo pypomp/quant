@@ -160,6 +160,7 @@ def nav_bar(current):
     pages = [
         ("algorithms", "IF2 vs IFAD", "../algorithms/report.html"),
         ("timing", "Timing & Throughput", "../timing/report.html"),
+        ("scaling", "Scaling", "../scaling/report.html"),
         ("loglik", "Likelihood Evaluation", "../loglik/report.html"),
     ]
     parts = []

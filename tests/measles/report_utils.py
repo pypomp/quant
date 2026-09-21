@@ -252,6 +252,7 @@ def nav_bar(current):
         ("loglik", "Likelihood Evaluation", "../loglik/report.html"),
         ("estimation", "Parameter Estimation", "../estimation/report.html"),
         ("timing", "Timing & Throughput", "../timing/report.html"),
+        ("scaling", "Scaling", "../scaling/report.html"),
         ("algorithms", "IF2 vs IFAD", "../algorithms/report.html"),
     ]
     parts = []

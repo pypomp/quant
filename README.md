@@ -27,6 +27,7 @@ Below is a list of quantitative test reports available in this repository:
 ### 2. Dhaka Cholera Model
 * **[IF2 vs IFAD](tests/dacca/algorithms/report.html)** (`tests/dacca/algorithms`): Compares how far iterated filtering alone and iterated filtering with gradient training get on the same likelihood for a comparable wall-clock budget.
 * **[Runtime & Performance Benchmark](tests/dacca/timing/report.html)** (`tests/dacca/timing`): Benchmarks IF2 and particle filter execution speed in `pypomp` (CPU/GPU) against R `pomp`, on identical work.
+* **[Computational Scaling Benchmark](tests/dacca/scaling/report.html)** (`tests/dacca/scaling`): Finds how many concurrent particles (J × chains) saturate the GPU for IF2 and the particle filter, with peak VRAM.
 * **[Fixed-Parameter Likelihood Validation](tests/dacca/loglik/report.html)** (`tests/dacca/loglik`): Checks that the particle filter yields the same distribution of log-likelihoods in `pypomp` and `pomp` at the published MLE.
 
 ### 3. Random Number Generators
@@ -36,6 +37,7 @@ Below is a list of quantitative test reports available in this repository:
 * **[Fixed-Parameter Likelihood Validation](tests/measles/loglik/report.html)** (`tests/measles/loglik`): Compares the distribution of particle filter log-likelihoods at the He et al. (2010) estimates in `pypomp` (32- and 64-bit) against R's `pomp`.
 * **[Parameter Estimation](tests/measles/estimation/report.html)** (`tests/measles/estimation`): Compares the distribution of IF2 parameter estimates from a global search in `pypomp` versus `pomp`, from identical starting points.
 * **[Runtime & Throughput Benchmark](tests/measles/timing/report.html)** (`tests/measles/timing`): Benchmarks IF2 and particle filter execution speed on the discrete measles model. Contrasts `pypomp` on GPU and CPU with R `pomp`, and the fast samplers in `pypomp.random` with stock JAX samplers.
+* **[Computational Scaling Benchmark](tests/measles/scaling/report.html)** (`tests/measles/scaling`): Finds how many concurrent particles (J × chains) saturate the GPU for IF2 and the particle filter on London, with peak VRAM.
 
 ### 5. Panel Measles Model
 * **[Fixed-Parameter Likelihood Validation](tests/panel_measles/loglik/report.html)** (`tests/panel_measles/loglik`): Compares the distribution of panel particle filter log-likelihoods at the He et al. (2010) estimates in `pypomp` against R's `panelPomp`.
