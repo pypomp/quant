@@ -43,6 +43,7 @@ Below is a list of quantitative test reports available in this repository:
 * **[Fixed-Parameter Likelihood Validation](tests/panel_measles/loglik/report.html)** (`tests/panel_measles/loglik`): Compares the distribution of panel particle filter log-likelihoods at the He et al. (2010) estimates in `pypomp` against R's `panelPomp`.
 * **[Parameter Estimation](tests/panel_measles/estimation/report.html)** (`tests/panel_measles/estimation`): Compares the distribution of block-IF2 parameter estimates from a global search in `pypomp` versus `panelPomp`, from identical starting points, and reports the `pypomp`-only mix-and-match step.
 * **[Runtime & Throughput Benchmark](tests/panel_measles/timing/report.html)** (`tests/panel_measles/timing`): Benchmarks block-IF2 and particle filter execution speed on the 4-unit mixed panel model, contrasting `pypomp` on GPU and CPU with R `panelPomp`.
+* **[Computational Scaling Benchmark](tests/panel_measles/scaling/report.html)** (`tests/panel_measles/scaling`): Finds how many concurrent particles (J × chains) saturate the GPU for block-IF2 and the panel particle filter, with peak VRAM.
 
 ### 6. Blowflies Model
 * **[Fixed-Parameter Likelihood Validation](tests/blowflies/loglik/report.html)** (`tests/blowflies/loglik`): Compares particle filter log-likelihood estimates at the default parameters of `blowflies1()` in `pypomp` and R `pomp`.

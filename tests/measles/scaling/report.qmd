@@ -61,6 +61,8 @@ if has_data:
     )
     df["ns_per_particle"] = df["mif_per_iter_seconds"] / df["total_particles_mif"] * 1e9
     df["pf_ns_per_particle"] = df["pfilter_warm_seconds"] / df["total_particles_pfilter"] * 1e9
+    df_part = df[df["scaling_type"] == "particles"].sort_values("J")
+    df_chain = df[df["scaling_type"] == "chains"].sort_values("chains")
 else:
     display(HTML(
         "<div class='alert alert-info'><strong>Not run yet:</strong> "
@@ -72,22 +74,87 @@ else:
 
 ```{python Particle Table}
 if has_data:
-    sub = df[df["scaling_type"] == "particles"]
-    display(HTML(scaling.cost_table(sub, "J").to_html(classes="table table-striped table-hover", index=False)))
+    display(HTML(scaling.cost_table(df_part, "J").to_html(classes="table table-striped table-hover", index=False)))
+```
+
+```{python Particle Plots}
+if has_data:
+    display(
+        ggplot(df_part, aes("J", "mif_per_iter_seconds"))
+        + geom_line(color="#1abc9c", size=1.2)
+        + geom_point(color="#16a085", size=3)
+        + labs(
+            title="IF2 time per iteration vs. particle count (J)",
+            subtitle=f"{int(df_part['chains'].iloc[0])} chains; warm (compiled) wall-clock",
+            x="Particles per chain (J)",
+            y="IF2 seconds / iteration",
+        )
+        + ru.theme_premium
+    )
+    display(
+        ggplot(df_part, aes("J", "pfilter_warm_seconds"))
+        + geom_line(color="#3498db", size=1.2)
+        + geom_point(color="#2980b9", size=3)
+        + labs(
+            title="Warm pfilter wall-clock vs. particle count (J)",
+            subtitle=f"{int(df_part['chains'].iloc[0])} chains × {int(df_part['reps'].iloc[0])} reps",
+            x="Particles per chain (J)",
+            y="pfilter seconds (warm)",
+        )
+        + ru.theme_premium
+    )
 ```
 
 ## 2. Chain Scaling
 
 ```{python Chain Table}
 if has_data:
-    sub = df[df["scaling_type"] == "chains"]
-    display(HTML(scaling.cost_table(sub, "chains").to_html(classes="table table-striped table-hover", index=False)))
+    display(HTML(scaling.cost_table(df_chain, "chains").to_html(classes="table table-striped table-hover", index=False)))
+```
+
+```{python Chain Plots}
+if has_data:
+    display(
+        ggplot(df_chain, aes("chains", "mif_per_iter_seconds"))
+        + geom_line(color="#e67e22", size=1.2)
+        + geom_point(color="#d35400", size=3)
+        + labs(
+            title="IF2 time per iteration vs. number of chains",
+            subtitle=f"J = {int(df_chain['J'].iloc[0])}; warm (compiled) wall-clock",
+            x="Parallel chains",
+            y="IF2 seconds / iteration",
+        )
+        + ru.theme_premium
+    )
+    display(
+        ggplot(df_chain, aes("chains", "pfilter_warm_seconds"))
+        + geom_line(color="#9b59b6", size=1.2)
+        + geom_point(color="#8e44ad", size=3)
+        + labs(
+            title="Warm pfilter wall-clock vs. number of chains",
+            subtitle=f"J = {int(df_chain['J'].iloc[0])} × {int(df_chain['reps'].iloc[0])} reps",
+            x="Parallel chains",
+            y="pfilter seconds (warm)",
+        )
+        + ru.theme_premium
+    )
 ```
 
 ## 3. Where the GPU Saturates
 
 ```{python Saturation Plots}
 if has_data:
+    display(
+        ggplot(df, aes("total_particles_mif", "mif_per_iter_seconds", color="Sweep"))
+        + geom_line(size=1.2)
+        + geom_point(size=3)
+        + labs(
+            title="IF2 time per iteration vs. particles in flight",
+            x="Particles in flight (J × chains)",
+            y="IF2 seconds / iteration",
+        )
+        + ru.theme_premium
+    )
     display(
         ggplot(df, aes("total_particles_mif", "ns_per_particle", color="Sweep"))
         + geom_line(size=1.2)

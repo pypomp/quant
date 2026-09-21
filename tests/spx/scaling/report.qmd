@@ -47,7 +47,7 @@ import json
 import pandas as pd
 from plotnine import (
     ggplot, aes, geom_line, geom_point, labs, scale_y_continuous,
-    scale_x_continuous, facet_wrap
+    scale_x_continuous, scale_x_log10, facet_wrap
 )
 
 results_dir = os.path.join("results", "gpu")
@@ -219,6 +219,43 @@ if os.path.exists(scaling_csv_path):
         + ru.theme_premium
     )
     display(p_comp)
+```
+
+### Cost per particle
+
+Cost per particle falls while the GPU is underused, flattens once it is saturated, and rises when larger batches lose efficiency. Unlike the Dhaka and measles scaling tests, SPX times a single `mif` call, so IF2 cost here includes JIT compilation spread over the $M$ iterations. That inflates the per-particle cost most at small particle counts.
+
+```{python Cost Per Particle Plots, fig.width=10, fig.height=4.5}
+if os.path.exists(scaling_csv_path):
+    df_all["ns_per_particle"] = df_all["mif_per_iter_seconds"] / df_all["total_particles_mif"] * 1e9
+    df_all["pf_ns_per_particle"] = df_all["pfilter_warm_seconds"] / df_all["total_particles_pfilter"] * 1e9
+    display(
+        ggplot(df_all, aes(x="total_particles_mif", y="ns_per_particle", color="scaling_dimension"))
+        + geom_line(size=1.2)
+        + geom_point(size=3)
+        + scale_x_log10()
+        + labs(
+            title="IF2 cost per particle per iteration",
+            subtitle="Flat region = GPU saturated (includes compilation)",
+            x="Particles in flight (J × Chains)",
+            y="ns / particle / iteration",
+            color="Scaling Experiment"
+        )
+        + ru.theme_premium
+    )
+    display(
+        ggplot(df_all, aes(x="total_particles_pfilter", y="pf_ns_per_particle", color="scaling_dimension"))
+        + geom_line(size=1.2)
+        + geom_point(size=3)
+        + scale_x_log10()
+        + labs(
+            title="Particle filter cost per particle (warm)",
+            x="Total pfilter particles (J × Chains × reps)",
+            y="ns / particle / filter pass",
+            color="Scaling Experiment"
+        )
+        + ru.theme_premium
+    )
 ```
 
 ---

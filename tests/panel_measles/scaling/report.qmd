@@ -1,6 +1,6 @@
 ---
-title: "Dhaka Scaling Benchmark"
-subtitle: "IF2 and particle filter throughput vs. particles in flight on GPU"
+title: "Panel Measles Scaling Benchmark"
+subtitle: "Block-IF2 and particle filter throughput vs. particles in flight on GPU"
 date: now
 format:
   html:
@@ -34,7 +34,9 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('scaling')}</div>")
 
 ## Introduction
 
-This benchmark finds how many concurrent particles it takes to saturate the GPU on the Dhaka cholera model (`nstep=20` Euler steps per monthly observation). The number of particles in flight during IF2 is $J \times \text{chains}$. We grow it two ways: by raising $J$ at a fixed number of chains, and by adding chains at a fixed $J$.
+This benchmark finds how many concurrent particles it takes to saturate the GPU on the 4-unit panel measles model (001b; London, Halesworth, Hastings, Cardiff). The number of particles in flight during block-IF2 is $J \times \text{chains}$. We grow it two ways: by raising $J$ at a fixed number of chains, and by adding chains at a fixed $J$.
+
+Units are filtered one after another inside each iteration, so $J$ is particles *per unit* and one iteration does roughly four single-unit filter passes. $M$ and reps are smaller here than in the single-unit tests to keep the run near 20 minutes.
 
 Iteration counts are kept small on purpose. Each grid point runs `mif` twice with the same $M$. The first call pays for JIT compilation, and the second is timed to give the steady-state cost per iteration. The key column is **IF2 ns / particle / iter**. It falls while the GPU is underused, levels off once the GPU is saturated, and rises if larger batches start to lose efficiency. Each grid point runs in its own subprocess so that peak VRAM is measured per configuration.
 
@@ -42,7 +44,7 @@ Iteration counts are kept small on purpose. Each grid point runs `mif` twice wit
 
 ```{python Settings}
 runs = ru.load_timing_data({"pypomp (GPU)": os.path.join("results", "gpu")})
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
 
 csv_path = os.path.join("results", "gpu", "scaling.csv")
 has_data = os.path.exists(csv_path)
@@ -66,7 +68,7 @@ if has_data:
 else:
     display(HTML(
         "<div class='alert alert-info'><strong>Not run yet:</strong> "
-        "<code>python scripts/run_tests.py run tests/dacca/scaling/run.py --run-level 4</code></div>"
+        "<code>python scripts/run_tests.py run tests/panel_measles/scaling/run.py --run-level 4</code></div>"
     ))
 ```
 
