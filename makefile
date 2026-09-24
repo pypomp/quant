@@ -1,4 +1,4 @@
-.PHONY: sync sync-gpu lock install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports render-reports-slurm lint format pre-commit
+.PHONY: sync sync-gpu lock upgrade-pypomp install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports render-reports-slurm lint format pre-commit
 
 sync:
 	uv sync
@@ -8,6 +8,11 @@ sync-gpu:
 
 lock:
 	uv lock
+
+upgrade-pypomp:
+	uv lock --upgrade-package pypomp --upgrade-package jax --upgrade-package jaxlib \
+		--upgrade-package jax-cuda12-plugin --upgrade-package jax-cuda12-pjrt
+	uv sync --extra gpu
 
 install_requirements: sync
 
