@@ -1,18 +1,18 @@
 {
-  "timestamp": "2026-09-02T19:41:37+00:00",
-  "pypomp_version": "1.0.0rc1",
-  "jax_version": "0.11.1",
-  "quant_git_sha": "630cc2325273e7af2386effd11b3ae827dfde18f",
+  "timestamp": "2026-09-24T20:22:07+00:00",
+  "pypomp_version": "1.0.6",
+  "jax_version": "0.11.2",
+  "quant_git_sha": "9c649ea1313692f15097918ceee4bc1762801caf",
   "hardware": {
     "cpu_model": "AMD EPYC 9575F 64-Core Processor",
-    "nodelist": "gl1809",
+    "nodelist": "gl1801",
     "cores": 128
   },
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "59687786",
+    "job_id": "61826877",
     "partition": "gpu-rtx6000",
     "gpus": "rtx_pro_6000_blackwell:1",
     "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
@@ -30,7 +30,7 @@
     "NP_FITR": 5000,
     "NFITR": 100,
     "NSTARTS": 360,
-    "execution_time": 696.5991113185883
+    "execution_time": 445.8408262729645
   },
   "results_history": {
     "London": [
@@ -38,7 +38,7 @@
         "method": "mif",
         "kind": "trace",
         "panel": false,
-        "execution_time": 347.9283993244171,
+        "execution_time": 222.81483840942383,
         "config": {
           "J": 5000,
           "M": 100,
@@ -53,7 +53,7 @@
         "method": "mif",
         "kind": "trace",
         "panel": false,
-        "execution_time": 345.01163601875305,
+        "execution_time": 219.0169153213501,
         "config": {
           "J": 5000,
           "M": 100,
