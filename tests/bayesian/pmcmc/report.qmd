@@ -1,6 +1,6 @@
 ---
 title: "SIR: PMCMC"
-subtitle: "Does pypomp's particle marginal Metropolis-Hastings target the right posterior?"
+subtitle: "Does pypomp's particle MCMC sample the right posterior?"
 date: now
 format:
   html:
@@ -28,32 +28,14 @@ from IPython.display import display, HTML, Markdown
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('pmcmc')}</div>"))
 ```
 
-## Introduction
-
-SIR has no analytic posterior, so correctness here rests on **one reference plus
-two checks of different things** — not on three interchangeable references. Two
-things can independently be wrong, the *model translation* and the *sampler*, and
-the sections below separate along that axis:
-
-| Check | Tests the model? | Tests the sampler? | Absolute or comparative? |
-|---|---|---|---|
-| pfilter-logLik precondition | **yes** | no | comparative (vs R) |
-| grid reference posterior | no — blind to it | **yes** | absolute |
-| R `pomp` cross-check | yes (confounded) | yes (confounded) | comparative |
-| J-invariance | no | **yes**, one property | internal, no reference |
-
-The asymmetry that matters: the grid reference runs pypomp's own filter on
-pypomp's own model, so a wrong translation would produce a wrong reference that a
-wrong sampler matches perfectly. Only the R leg can see model errors, and only
-after the precondition below de-confounds it.
-
-**A note on the proposals.** pypomp and pomp are *not* given identical proposals,
-because they cannot be: pypomp runs its chain on the estimation scale (log
-`beta1`, logit `rho`) and takes its `rw_sd` there, while pomp's `mvn_diag_rw`
-perturbs parameters directly. The R scales are the local linearization of the
-Python ones at the true theta. Both are valid Metropolis-Hastings kernels for the
-same posterior, so the **stationary distributions must agree**; acceptance rates
-and mixing are expected to differ and are reported separately.
+PMCMC is a random walk over (`beta1`, `rho`) that accepts or rejects each move
+using a particle-filter estimate of the likelihood. Run long enough, its draws
+are draws from the posterior. This report checks that pypomp's
+`Pomp.pmcmc` produces the posterior that the
+[grid reference](../reference/report.html) computes by brute force, and the
+same one R `pomp`'s `pmcmc` produces. The
+[overview](../reference/report.html#start-here) explains the setup and how to
+read the verdicts.
 
 ```{python Setup}
 import glob
@@ -74,372 +56,314 @@ os.environ["JAX_PLATFORMS"] = "cpu"
 
 GPU = os.path.join("results", "gpu")
 R_DIR = os.path.join("results", "R")
-# Deliberately reads a sibling kind's output: the reference is expensive and
-# identical for both samplers, so it is computed once rather than duplicated.
 REFERENCE = os.path.join("..", "reference", "results", "gpu", "grid_posterior.csv")
-
 PARAMS = ["beta1", "rho"]
+OTHER = {"beta1": "rho", "rho": "beta1"}
 BURN_FRAC = 0.5
 
 truth = pd.read_csv("../data/true_theta.csv")
 truth = dict(zip(truth["parameter"], truth["value"]))
 
-# One sweep per particle count, discovered from disk.
 sweeps = {}
 for path in sorted(glob.glob(os.path.join(GPU, "J*"))):
     m = re.search(r"J(\d+)$", path)
-    if not m:
-        continue
     tr = ru.load_mcmc_traces(os.path.join(path, "traces.csv.gz"), "pypomp")
-    if tr is not None:
+    if m and tr is not None:
         sweeps[int(m.group(1))] = {
             "traces": tr,
+            "post": ru.drop_burnin(tr, BURN_FRAC),
             "acceptance": ru.read_if_exists(os.path.join(path, "acceptance.csv")),
             "meta": ru.load_json(os.path.join(path, "latest.json")),
         }
 
 r_traces = ru.load_mcmc_traces(os.path.join(R_DIR, "traces.csv.gz"), "R pomp")
+r_post = ru.drop_burnin(r_traces, BURN_FRAC) if r_traces is not None else None
 r_meta = ru.load_json(os.path.join(R_DIR, "latest.json"))
+r_acc = ru.read_if_exists(os.path.join(R_DIR, "acceptance.csv"))
 grid = ru.read_if_exists(REFERENCE)
-
-have_py = len(sweeps) > 0
-have_r = r_traces is not None
-have_grid = grid is not None
-```
-
-```{python Provenance, results='asis'}
-notes = []
-if not have_py:
-    notes.append(ru.missing_note("pypomp PMCMC sweeps", os.path.join(GPU, "J*")))
-if not have_r:
-    notes.append(ru.missing_note("R pomp traces", R_DIR))
-if not have_grid:
-    notes.append(ru.missing_note("Reference posterior", REFERENCE))
-for note in notes:
-    display(HTML(note))
-
-if have_py:
-    largest = max(sweeps)
-    display(Markdown("### pypomp\n\n" + ru.format_metadata(sweeps[largest]["meta"])))
-if have_r:
-    display(Markdown("### R pomp\n\n" + ru.format_r_metadata(r_meta)))
-```
-
-## 1. Precondition: do the two models agree?
-
-pypomp's SIR is a translation of `pomp::sir`, and the two could diverge in the
-process noise, the Euler-multinomial transition, the b-spline basis, the accumvar
-reset, or the negative-binomial parameterization of `k`. Any of those would show
-up later as a posterior disagreement and be mistaken for a sampler bug.
-
-The check is the particle-filter log-likelihood at the **true** theta, on the
-identical dataset, with replicates. If these two clouds do not overlap within
-Monte Carlo error, **stop** — nothing below is interpretable.
-
-```{python Precondition}
 py_pf = ru.read_if_exists(os.path.join(GPU, "pfilter_logliks.csv"))
 r_pf = ru.read_if_exists(os.path.join(R_DIR, "pfilter_logliks.csv"))
+pf_vs_J = ru.read_if_exists(os.path.join(GPU, "pfilter_vs_J.csv"))
 
+have_py = len(sweeps) > 0
+have_r = r_post is not None
+have_grid = grid is not None
+J_HI = max(sweeps) if have_py else None
+J_LO = min(sweeps) if have_py else None
+```
+
+```{python Analysis}
+# Everything the scorecard summarizes is computed here; later sections display it.
+scorecard = []
+
+precond = None
 if py_pf is not None and r_pf is not None:
-    both = pd.concat(
-        [
-            py_pf[["logLik"]].assign(source="pypomp"),
-            r_pf[["logLik"]].assign(source="R pomp"),
-        ]
-    )
-    summary = (
-        both.groupby("source")["logLik"]
-        .agg(["count", "mean", "std", "min", "max"])
-        .reset_index()
-    )
-    display(HTML(summary.to_html(
-        classes="table table-striped table-hover", index=False, float_format="%.3f"
-    )))
+    a, b = py_pf["logLik"], r_pf["logLik"]
+    se = float(np.hypot(a.std(ddof=1) / np.sqrt(len(a)), b.std(ddof=1) / np.sqrt(len(b))))
+    z = (a.mean() - b.mean()) / se if se > 0 else float("nan")
+    precond = {"pypomp": a.mean(), "R pomp": b.mean(), "difference": a.mean() - b.mean(),
+               "SE": se, "z": z, "verdict": ru.verdict(z)}
+    scorecard.append({
+        "check": "1. Same model",
+        "question": "Do pypomp and R give the same likelihood at the true parameters?",
+        "verdict": precond["verdict"],
+        "detail": f"logLik differs by {precond['difference']:.2f} ({z:+.1f} SE)",
+    })
 
-    gap = abs(py_pf["logLik"].mean() - r_pf["logLik"].mean())
-    se = np.sqrt(
-        py_pf["logLik"].var(ddof=1) / len(py_pf)
-        + r_pf["logLik"].var(ddof=1) / len(r_pf)
-    )
-    if not np.isfinite(se) or se <= 0:
-        verdict = (
-            "**Precondition: inconclusive.** Too few replicates to estimate a "
-            "standard error; run at level 2 or above."
-        )
-    else:
-        label = "PASS" if gap < 3 * se else "FAIL"
-        verdict = (
-            f"**Precondition: {label}.** Mean logLik differs by {gap:.2f} nats "
-            f"against a standard error of {se:.2f} ({gap / se:.1f} SE)."
-        )
-    display(Markdown(verdict))
+py_m = {J: {p: ru.mcmc_moments(s["post"], p) for p in PARAMS} for J, s in sweeps.items()}
+grid_m = {p: ru.grid_moments(grid, p, OTHER[p]) for p in PARAMS} if have_grid else None
+r_m = {p: ru.mcmc_moments(r_post, p) for p in PARAMS} if have_r else None
 
+
+def comparison(a, b, la, lb):
+    rows = [r for p in PARAMS for r in ru.compare(a[p], b[p], p, la, lb)]
+    return pd.DataFrame(rows)
+
+
+def score(df, check, question):
+    worst = ru.worst_row(df, "z")
+    detail = ("no standard errors (run level too low)" if worst is None else
+              f"largest gap: {worst['statistic']} {worst['parameter']}, {worst['z']:+.1f} SE")
+    scorecard.append({
+        "check": check, "question": question,
+        "verdict": ru.worst_verdict(df["verdict"]), "detail": detail,
+    })
+
+
+vs_grid = vs_J = vs_R = None
+if have_py and have_grid:
+    vs_grid = {J: comparison(py_m[J], grid_m, f"pypomp J={J}", "grid") for J in sweeps}
+    score(vs_grid[J_HI], "2. Right posterior",
+          f"Does pypomp (J={J_HI}) match the grid reference?")
+if have_py and len(sweeps) > 1:
+    vs_J = comparison(py_m[J_LO], py_m[J_HI], f"J={J_LO}", f"J={J_HI}")
+    score(vs_J, "3. Particle count irrelevant",
+          f"Do J={J_LO} and J={J_HI} give the same posterior?")
+if have_py and have_r:
+    vs_R = comparison(py_m[J_HI], r_m, f"pypomp J={J_HI}", "R pomp")
+    score(vs_R, "4. Agrees with R", "Does pypomp match R pomp's pmcmc?")
+
+conv_rows = []
+for label, post in [(f"pypomp J={J}", s["post"]) for J, s in sorted(sweeps.items())] + (
+    [("R pomp", r_post)] if have_r else []
+):
+    for p in PARAMS:
+        arr = ru.chains_array(post, p)
+        conv_rows.append({"source": label, "parameter": p, "chains": arr.shape[0],
+                          "draws per chain": arr.shape[1], "split R-hat": ru.split_rhat(arr),
+                          "bulk ESS": ru.bulk_ess(arr)})
+conv = pd.DataFrame(conv_rows)
+worst = ru.worst_row(conv, "split R-hat") if len(conv) else None
+if worst is not None:
+    rhat = worst["split R-hat"]
+    scorecard.append({
+        "check": "5. Converged",
+        "question": "Have the chains forgotten their starting points?",
+        "verdict": "PASS" if rhat < 1.01 else ("CHECK" if rhat < 1.05 else "FAIL"),
+        "detail": f"worst split R-hat {rhat:.3f} ({worst['source']}, {worst['parameter']})",
+    })
+```
+
+## Summary
+
+```{python Scorecard, results='asis'}
+for label, ok, path in (
+    ("pypomp PMCMC runs", have_py, os.path.join(GPU, "J*")),
+    ("R pomp traces", have_r, R_DIR),
+    ("Grid reference", have_grid, REFERENCE),
+):
+    if not ok:
+        display(HTML(ru.missing_note(label, path)))
+if scorecard:
+    display(HTML(ru.scorecard_html(scorecard)))
+```
+
+Checks 1 and 4 involve R; checks 2 and 3 do not, so a failure in 4 with 1–3
+passing points to a difference between the two implementations' models that
+the likelihood check did not resolve, not to pypomp's sampler.
+
+```{python Provenance, results='asis'}
+if have_py:
+    display(Markdown("**pypomp run**\n\n" + ru.format_metadata(sweeps[J_HI]["meta"])))
+if have_r:
+    display(Markdown("**R pomp run**\n\n" + ru.format_r_metadata(r_meta)))
+```
+
+## 1. Same model?
+
+pypomp's SIR is a translation of `pomp::sir`; a small difference in, say, the
+seasonal spline or the reporting distribution would make every later
+comparison with R misleading. So first: at the true parameters, on the same
+data, both particle filters should estimate the same log-likelihood (2000
+particles each, many replicates).
+
+```{python Precondition}
+if precond is not None:
+    display(HTML(ru.table_html(pd.DataFrame([precond]), fmt="%.3f")))
+    both = pd.concat([
+        py_pf[["logLik"]].assign(source="pypomp"),
+        r_pf[["logLik"]].assign(source="R pomp"),
+    ])
     display(
         ggplot(both, aes(x="logLik", fill="source", color="source"))
         + geom_density(alpha=0.4)
-        + labs(
-            title="Particle filter logLik at the true theta",
-            subtitle="Same data, same parameters, both implementations",
-            x="log likelihood",
-        )
+        + labs(title="Particle filter log-likelihood at the true parameters",
+               subtitle="Each curve is the spread over replicate filters", x="log likelihood")
         + ru.scale_fill_premium()
         + ru.scale_color_premium()
         + ru.theme_premium
     )
 else:
-    display(Markdown("_Precondition data not on disk; run both run.py and run.R._"))
+    display(Markdown("_Needs both run.py and run.R results._"))
 ```
 
-Note the particle counts are not matched across languages — pypomp runs many more
-particles for the same wall clock — so the two clouds have different *widths*.
-The comparison of interest is between their **means**, not their spreads.
+## 2. Right posterior?
 
-## 2. Posterior accuracy
+pypomp's draws (after discarding the first half of each chain as burn-in)
+against the grid reference. The curves should lie on top of each other, and
+the means and standard deviations should agree within Monte Carlo error.
 
-Marginals from pypomp at the largest `J`, from R, and from the grid reference.
-These three should coincide.
-
-```{python Posterior marginals}
-def burned(tr):
-    return ru.drop_burnin(tr, BURN_FRAC)
-
-if have_py:
-    largest = max(sweeps)
-    py_post = burned(sweeps[largest]["traces"])
-    pieces = [py_post[PARAMS].assign(source="pypomp")]
-    if have_r:
-        pieces.append(burned(r_traces)[PARAMS].assign(source="R pomp"))
-    posts = pd.concat(pieces)
-
+```{python Posterior vs grid}
+if have_py and have_grid:
     for param in PARAMS:
-        p = (
-            ggplot(posts, aes(x=param, fill="source", color="source"))
+        axis, dens = ru.grid_marginals(grid, param, OTHER[param])
+        frames = [ru.thin_for_plot(s["post"][[param]]).assign(source=f"pypomp J={J}")
+                  for J, s in sorted(sweeps.items())]
+        display(
+            ggplot(pd.concat(frames), aes(x=param, color="source"))
+            + geom_density(size=1)
+            + geom_line(pd.DataFrame({param: axis, "density": dens}),
+                        aes(x=param, y="density"), inherit_aes=False,
+                        color=ru.color_palette["reference"], linetype="dashed", size=1)
+            + geom_vline(xintercept=truth[param], color=ru.color_palette["truth"], linetype="dotted")
+            + labs(title=f"PMCMC against the grid reference: {param}",
+                   subtitle="Dashed black: grid reference. Dotted orange: true value.")
+            + ru.theme_premium
+        )
+    for J in sorted(sweeps):
+        display(Markdown(f"**pypomp J={J} vs grid**"))
+        display(HTML(ru.table_html(vs_grid[J])))
+```
+
+## 3. Does the particle count matter?
+
+It should not. With few particles the likelihood estimate is noisy, so the chain
+sticks more often (lower acceptance) and needs more iterations for the same
+precision, but it still targets the same posterior. That holds only if the
+sampler reuses the accepted likelihood estimate instead of re-estimating it;
+re-estimating would make the posterior depend on `J`. The low arm is chosen so
+that the noise is large (see the table of log-likelihood spread below).
+
+```{python J invariance}
+if vs_J is not None:
+    display(HTML(ru.table_html(vs_J)))
+if pf_vs_J is not None:
+    noise = pf_vs_J.groupby("J")["logLik"].agg(["mean", "std"]).reset_index()
+    noise.columns = ["J", "mean logLik at truth", "sd of logLik estimate"]
+    display(Markdown("Log-likelihood estimate at the truth, by particle count:"))
+    display(HTML(ru.table_html(noise, fmt="%.3f")))
+```
+
+```{python Efficiency}
+if have_py:
+    rows = []
+    for J, s in sorted(sweeps.items()):
+        secs = (s["meta"].get("run_config") or {}).get("execution_time", np.nan)
+        acc = s["acceptance"]
+        row = {"source": f"pypomp J={J}",
+               "acceptance": acc["acceptance_rate"].mean() if acc is not None else np.nan,
+               "seconds": secs}
+        for p in PARAMS:
+            ess = ru.bulk_ess(ru.chains_array(s["post"], p))
+            row[f"ESS {p}"] = ess
+            row[f"ESS/s {p}"] = ess / secs if secs else np.nan
+        rows.append(row)
+    if have_r:
+        secs = (r_meta.get("run_config") or {}).get("execution_time", np.nan)
+        row = {"source": "R pomp", "acceptance": r_acc["acceptance_rate"].mean()
+               if r_acc is not None else np.nan, "seconds": secs}
+        for p in PARAMS:
+            ess = ru.bulk_ess(ru.chains_array(r_post, p))
+            row[f"ESS {p}"] = ess
+            row[f"ESS/s {p}"] = ess / secs if secs else np.nan
+        rows.append(row)
+    display(Markdown("**Cost and efficiency.** ESS counts draws kept after burn-in."))
+    display(HTML(ru.table_html(pd.DataFrame(rows), fmt="%.3g")))
+```
+
+## 4. Agrees with R?
+
+R `pomp`'s `pmcmc` is an independent implementation of the same algorithm on
+the same model. Its proposal is not identical: pypomp takes random-walk steps
+on the log scale for `beta1` and the logit scale for `rho`, while pomp steps on
+the natural scale. Both are valid, so acceptance rates differ but the
+posteriors must not.
+
+```{python R comparison}
+if vs_R is not None:
+    for param in PARAMS:
+        both = pd.concat([
+            ru.thin_for_plot(sweeps[J_HI]["post"][[param]]).assign(source="pypomp"),
+            ru.thin_for_plot(r_post[[param]]).assign(source="R pomp"),
+        ])
+        display(
+            ggplot(both, aes(x=param, fill="source", color="source"))
             + geom_density(alpha=0.35)
-            + geom_vline(xintercept=truth[param],
-                         color=ru.color_palette["truth"], linetype="dashed")
-            + labs(
-                title=f"Posterior marginal: {param}",
-                subtitle=f"pypomp at J={largest}; dashed line is the simulating value",
-                x=param,
-            )
+            + geom_vline(xintercept=truth[param], color=ru.color_palette["truth"], linetype="dashed")
+            + labs(title=f"pypomp against R pomp: {param}",
+                   subtitle=f"pypomp at J={J_HI}; dashed line is the true value")
             + ru.scale_fill_premium()
             + ru.scale_color_premium()
             + ru.theme_premium
         )
-        display(p)
+    display(HTML(ru.table_html(vs_R)))
+else:
+    display(Markdown("_Needs both run.py and run.R results._"))
 ```
 
-```{python Reference overlay}
-if have_py and have_grid:
-    largest = max(sweeps)
-    py_post = burned(sweeps[largest]["traces"])
-    for param, other in (("beta1", "rho"), ("rho", "beta1")):
-        axis, dens = ru.grid_marginals(grid, param, other)
-        ref = pd.DataFrame({param: axis, "density": dens})
-        display(
-            ggplot()
-            + geom_density(
-                py_post, aes(x=param), alpha=0.35,
-                fill=ru.color_palette["pypomp"], color=ru.color_palette["pypomp"],
-            )
-            + geom_line(ref, aes(x=param, y="density"),
-                        color=ru.color_palette["reference"], size=1)
-            + labs(
-                title=f"pypomp PMCMC against the grid reference: {param}",
-                subtitle="Filled: PMCMC samples. Line: grid-quadrature reference.",
-                x=param,
-                y="density",
-            )
-            + ru.theme_premium
-        )
-```
+## 5. Did the chains converge?
 
-```{python Summary table}
-if have_py:
-    largest = max(sweeps)
-    rows = [ru.posterior_summary(burned(sweeps[largest]["traces"]), PARAMS, "pypomp")]
-    if have_r:
-        rows.append(ru.posterior_summary(burned(r_traces), PARAMS, "R pomp"))
-    table = pd.concat(rows, ignore_index=True)
+All chains start at random points across the prior box. Split R-hat compares
+the spread within chains to the spread between them (and between each chain's
+two halves); near 1 means the chains have forgotten where they started and
+agree. Above about 1.01, the comparisons above may reflect starting points
+rather than the posterior.
 
-    if have_grid:
-        ref_rows = []
-        for param, other in (("beta1", "rho"), ("rho", "beta1")):
-            axis, dens = ru.grid_marginals(grid, param, other)
-            w = np.gradient(axis)
-            mean = float(np.sum(axis * dens * w))
-            sd = float(np.sqrt(np.sum((axis - mean) ** 2 * dens * w)))
-            ref_rows.append({
-                "source": "grid reference", "parameter": param,
-                "mean": mean, "sd": sd,
-                "q05": np.nan, "q95": np.nan,
-                "split_rhat": np.nan, "bulk_ess": np.nan,
-            })
-        table = pd.concat([table, pd.DataFrame(ref_rows)], ignore_index=True)
-
-    display(HTML(
-        table.sort_values(["parameter", "source"]).to_html(
-            classes="table table-striped table-hover", index=False,
-            float_format="%.4f", na_rep="—",
-        )
-    ))
-```
-
-```{python KS against reference}
-if have_py and have_grid:
-    rows = []
-    for J, sweep in sorted(sweeps.items()):
-        post = burned(sweep["traces"])
-        for param, other in (("beta1", "rho"), ("rho", "beta1")):
-            axis, dens = ru.grid_marginals(grid, param, other)
-            rows.append({
-                "source": f"pypomp J={J}",
-                "parameter": param,
-                "KS vs reference": ru.ks_vs_grid(post[param], axis, dens),
-            })
-    if have_r:
-        post = burned(r_traces)
-        for param, other in (("beta1", "rho"), ("rho", "beta1")):
-            axis, dens = ru.grid_marginals(grid, param, other)
-            rows.append({
-                "source": "R pomp",
-                "parameter": param,
-                "KS vs reference": ru.ks_vs_grid(post[param], axis, dens),
-            })
-    display(HTML(pd.DataFrame(rows).to_html(
-        classes="table table-striped table-hover", index=False, float_format="%.4f"
-    )))
-```
-
-The KS figures are bounded below by the grid's own resolution — see the
-resolution table in the reference report. A floor of a few hundredths is expected
-and is not evidence of sampler error.
-
-## 3. J-invariance
-
-The headline internal check. PMCMC is exact-approximate: its stationary
-distribution does not depend on the particle count `J`, only its mixing does. The
-marginals below must coincide across `J` while acceptance and ESS need not.
-
-This is a **regression guard rather than a bug hunt**: the classic failure it
-would catch — recomputing the likelihood denominator each iteration instead of
-carrying the accepted estimate forward — is not present in pypomp, whose
-`_pmcmc_step` threads `ll_cur` through the scan carry.
-
-```{python J invariance}
-if have_py and len(sweeps) > 1:
-    stacked = pd.concat(
-        [burned(s["traces"])[PARAMS].assign(J=f"J={J}") for J, s in sorted(sweeps.items())]
-    )
-    for param in PARAMS:
-        display(
-            ggplot(stacked, aes(x=param, color="J"))
-            + geom_density(size=1)
-            + geom_vline(xintercept=truth[param],
-                         color=ru.color_palette["truth"], linetype="dashed")
-            + labs(
-                title=f"Posterior marginal across particle counts: {param}",
-                subtitle="These must coincide; only mixing may depend on J",
-                x=param,
-            )
-            + ru.theme_premium
-        )
-elif have_py:
-    display(Markdown(
-        "_Only one particle count at this run level, so J-invariance cannot be "
-        "assessed. Run at level 3 or above._"
-    ))
-```
-
-```{python Efficiency by J}
-if have_py:
-    rows = []
-    for J, sweep in sorted(sweeps.items()):
-        post = burned(sweep["traces"])
-        acc = sweep["acceptance"]
-        cfg = (sweep["meta"].get("run_config") or {})
-        secs = cfg.get("execution_time", np.nan)
-        row = {
-            "J": J,
-            "acceptance": acc["acceptance_rate"].mean() if acc is not None else np.nan,
-            "seconds": secs,
-        }
-        for param in PARAMS:
-            ess = ru.bulk_ess(ru.chains_array(post, param))
-            row[f"ESS {param}"] = ess
-            row[f"ESS/s {param}"] = ess / secs if secs and np.isfinite(secs) else np.nan
-        rows.append(row)
-    display(HTML(pd.DataFrame(rows).to_html(
-        classes="table table-striped table-hover", index=False, float_format="%.3f"
-    )))
-```
-
-## 4. Convergence
-
-```{python Diagnostics}
-if have_py:
-    largest = max(sweeps)
-    rows = [ru.posterior_summary(burned(sweeps[largest]["traces"]), PARAMS, f"pypomp J={largest}")]
-    if have_r:
-        rows.append(ru.posterior_summary(burned(r_traces), PARAMS, "R pomp"))
-    diag = pd.concat(rows, ignore_index=True)[
-        ["source", "parameter", "split_rhat", "bulk_ess"]
-    ]
-    display(HTML(diag.to_html(
-        classes="table table-striped table-hover", index=False, float_format="%.3f"
-    )))
-    display(Markdown(
-        "Split-R-hat above about 1.01 indicates the chains have not mixed; bulk "
-        "ESS is the effective number of independent draws behind each marginal."
-    ))
+```{python Convergence}
+if len(conv):
+    display(HTML(ru.table_html(conv, fmt="%.3f")))
 ```
 
 ```{python Trace plots}
 if have_py:
-    largest = max(sweeps)
-    tr = sweeps[largest]["traces"]
-    thin = tr.iloc[:: max(1, len(tr) // 4000)]
-    for param in PARAMS:
-        display(
-            ggplot(thin, aes(x="iter", y=param, group="chain", color="factor(chain)"))
-            + geom_line(alpha=0.7, size=0.4)
-            + geom_vline(xintercept=tr["iter"].max() * BURN_FRAC,
-                         linetype="dotted", color="#7f8c8d")
-            + labs(
-                title=f"Chains at J={largest}: {param}",
-                subtitle="Dotted line marks the end of the discarded burn-in",
-                x="iteration",
-                color="chain",
+    for J, s in sorted(sweeps.items()):
+        tr = s["traces"]
+        shown = tr[tr["chain"] < 16]
+        for param in PARAMS:
+            display(
+                ggplot(shown, aes(x="iter", y=param, group="chain", color="factor(chain)"))
+                + geom_line(alpha=0.7, size=0.4)
+                + geom_vline(xintercept=tr["iter"].max() * BURN_FRAC, linetype="dotted", color="#7f8c8d")
+                + labs(title=f"First 16 chains at J={J}: {param}",
+                       subtitle="Left of the dotted line is discarded as burn-in",
+                       x="iteration", color="chain")
+                + ru.theme_premium
             )
-            + ru.theme_premium
-        )
 ```
 
-## 5. Coverage of the true parameters
+## 6. Do the credible intervals cover the truth?
+
+A sanity check rather than a test: one dataset gives one draw, and a 90%
+interval misses the truth one time in ten even when everything is right.
 
 ```{python Coverage}
 if have_py:
-    largest = max(sweeps)
     rows = []
-    sources = [(f"pypomp J={largest}", burned(sweeps[largest]["traces"]))]
-    if have_r:
-        sources.append(("R pomp", burned(r_traces)))
+    sources = [(f"pypomp J={J_HI}", sweeps[J_HI]["post"])] + ([("R pomp", r_post)] if have_r else [])
     for label, post in sources:
         for param in PARAMS:
             lo, hi = np.quantile(post[param], [0.05, 0.95])
-            rows.append({
-                "source": label,
-                "parameter": param,
-                "truth": truth[param],
-                "q05": lo,
-                "q95": hi,
-                "covers truth": bool(lo <= truth[param] <= hi),
-            })
-    display(HTML(pd.DataFrame(rows).to_html(
-        classes="table table-striped table-hover", index=False, float_format="%.4f"
-    )))
+            rows.append({"source": label, "parameter": param, "truth": truth[param],
+                         "5%": lo, "95%": hi, "covers truth": bool(lo <= truth[param] <= hi)})
+    display(HTML(ru.table_html(pd.DataFrame(rows))))
 ```
-
-A single dataset gives a single draw from the coverage distribution, so a 90%
-interval missing the truth on one parameter is weak evidence of anything. This
-table is a sanity check, not a calibration study.

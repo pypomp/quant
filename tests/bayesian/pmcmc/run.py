@@ -1,32 +1,22 @@
-"""SIR: PMCMC posterior over (beta1, rho), swept over the particle count J.
+"""SIR: PMCMC posterior over (beta1, rho), at two particle counts J.
 
 Runs NCHAINS independent chains from dispersed starts for each J in J_GRID,
-writing each sweep into results/gpu/J<J>/.
+writing each into results/gpu/J<J>/. report.qmd compares them with the grid
+reference (reference/), with R pomp (run.R), and with each other.
 
-The J sweep is the point. PMCMC is exact-approximate: the stationary
-distribution of the chain does not depend on J, only its mixing does. So the
-posteriors from every J must coincide while acceptance rate and ESS/second do
-not -- a correctness check that needs no external reference. Note that the
-classic bug this would catch (recomputing the likelihood denominator each
-iteration rather than carrying the accepted estimate forward) is not present in
-pypomp: _pmcmc_step threads ll_cur through the scan carry. Treat this as a
-regression guard, not a bug hunt.
+Why two J: PMCMC's stationary distribution does not depend on J (only its
+mixing does), so the two posteriors must agree. The low arm is chosen for a
+noisy likelihood estimate (sd ~1.3 at J=25, the efficient regime for PMMH), the
+high arm for a nearly exact one (sd ~0.14 at J=2000); a sampler that mishandled
+the noise would give posteriors that differ between them.
 
-The grid is chosen by log-likelihood noise, not by size: that bug inflates the
-posterior in proportion to the variance of the loglik estimate, so the sweep
-sees it only if the arms differ in that variance. sd(logLik) is 0.132 at J=2000
-and scales like 1/sqrt(J), so {10, 2000} spans a ~14x range where the old
-{100, 500, 2000} spanned ~4x, all of it effectively exact.
-
-Cost model: wall-clock is latency-bound, not FLOP-bound. Each iteration is 208
-observations x NSTEP=20 = 4160 sequential scan steps at ~35us of dispatch
-overhead, costing ~0.17s regardless of J or chain count (J=500 cost 6.5% more
-than J=100). So M is the only expensive axis; buy ESS with NCHAINS instead.
+Cost is dominated by M: each iteration is 4160 sequential scan steps, so extra
+chains are nearly free while extra iterations are not.
 """
 
 # --- SLURM CONFIG ---
 # importance: high
-# description: "SIR: PMCMC posterior over (beta1, rho), swept over particle count J"
+# description: "SIR: PMCMC posterior over (beta1, rho), at two particle counts J"
 # tags: [bayesian, sir, pmcmc, gpu]
 # sbatch_args:
 #   job-name: "bayesian pmcmc (pypomp)"
@@ -44,14 +34,12 @@ than J=100). So M is the only expensive axis; buy ESS with NCHAINS instead.
 #   3:
 #     sbatch_args: { time: "00:30:00" }
 #   4:
-#     sbatch_args: { time: "00:30:00" }
+#     sbatch_args: { time: "00:40:00" }
 # --- END SLURM CONFIG ---
-#
-# Level 4 samples for only ~12 minutes across both J arms; the rest of the
-# budget is headroom for XLA, which takes several minutes to build
-# jit__pmcmc_internal (4m33s on CPU) since the scan over M nests a pfilter scan.
 
+import glob
 import os
+import shutil
 import sys
 import time
 
@@ -62,7 +50,6 @@ model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if model_dir not in sys.path:
     sys.path.append(model_dir)
 
-# JAX reads these at import time, so they must be set before it is imported.
 os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.95")
 os.environ.setdefault("TF_GPU_ALLOCATOR", "cuda_malloc_async")
 
@@ -87,26 +74,16 @@ print("Using CPU:", USE_CPU)
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 print(f"Running pmcmc at level {RUN_LEVEL}")
 
-#: M's floor is burn-in and split-R-hat validity, ~10-20x the autocorrelation
-#: time of ~25; M=2000 sits at 80x. ESS comes from NCHAINS, which is free.
 NCHAINS = (2, 8, 32, 128)[RUN_LEVEL - 1]
 M = (20, 1000, 2000, 2000)[RUN_LEVEL - 1]
-J_GRID = ((5,), (100,), (10, 2000), (10, 2000))[RUN_LEVEL - 1]
+J_GRID = ((5,), (100,), (25, 2000), (25, 2000))[RUN_LEVEL - 1]
 
-#: The precondition check: pfilter logLik at the true theta, to be compared
-#: against the same quantity from R. This gates everything else -- if the two
-#: model implementations disagree here, no posterior comparison downstream means
-#: anything, and the grid reference cannot detect the problem because it shares
-#: this implementation.
+#: pfilter logLik at the true theta, compared against R in report.qmd: the check
+#: that the two SIR implementations are the same model.
 NP_PRECOND = (10, 500, 2000, 2000)[RUN_LEVEL - 1]
 NREPS_PRECOND = (2, 12, 24, 24)[RUN_LEVEL - 1]
-
-#: Written to its own file, not pfilter_logliks.csv: report.qmd pools every row
-#: of that one against R, so mixing noise levels in would corrupt the check.
 J_NOISE_GRID = ((5,), (100,), (10, 25, 100, 2000), (10, 25, 100, 2000))[RUN_LEVEL - 1]
 
-#: At this chain count the traces dominate the record. Only beta1 and rho are
-#: estimated, and thinning by 10 against IACT ~25 discards nothing.
 TRACE_COLS = list(model.FREE) + ["logLik", "log_prior"]
 TRACE_THIN = 10
 
@@ -115,6 +92,8 @@ np.random.seed(model.MAIN_SEED)
 
 out_root = os.path.join("results", "gpu")
 os.makedirs(out_root, exist_ok=True)
+for stale in glob.glob(os.path.join(out_root, "J*")):
+    shutil.rmtree(stale)
 
 truth_obj = model.sir_pomp(theta=model.params_from_frame(model.theta_frame(1)))
 key, pf_key = jax.random.split(key)
@@ -129,9 +108,6 @@ print(
     f"({time.time() - pf_start:.1f}s)"
 )
 
-# Loglik noise vs J, which sets whether the J sweep can see anything at all.
-# Also the degeneracy check on the low arm: a -inf or wildly inflated sd there
-# means the chain is stuck rather than informative, and the arm should be raised.
 noise_rows = []
 for J in J_NOISE_GRID:
     key, nk = jax.random.split(key)
@@ -158,7 +134,8 @@ for J in J_GRID:
     key, subkey = jax.random.split(key)
 
     start = time.time()
-    obj.pmcmc(J=J, M=M, proposal=model.proposal(), dprior=model.sir_dprior, key=subkey)
+    # Private until these tests pass (pypomp c2fbb62).
+    obj._pmcmc(J=J, M=M, proposal=model.proposal(), dprior=model.sir_dprior, key=subkey)
     execution_time = time.time() - start
 
     result = obj.results_history[-1]
@@ -168,7 +145,7 @@ for J in J_GRID:
         f"acceptance {acceptance.min():.3f}-{acceptance.max():.3f}"
     )
 
-    out_dir = os.path.join("results", "gpu", f"J{J}")
+    out_dir = os.path.join(out_root, f"J{J}")
     save_run(
         obj,
         out_dir=out_dir,
@@ -193,8 +170,6 @@ for J in J_GRID:
         thin=TRACE_THIN,
     )
 
-    # save_run does not capture acceptance, which is the diagnostic the J sweep
-    # exists to show alongside the posteriors.
     pd.DataFrame(
         {
             "chain": np.arange(len(acceptance)),

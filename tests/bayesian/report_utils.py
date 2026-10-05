@@ -60,7 +60,7 @@ def scale_fill_premium():
 
 def nav_bar(current):
     pages = [
-        ("reference", "Reference Posterior", "../reference/report.html"),
+        ("reference", "Overview & References", "../reference/report.html"),
         ("pmcmc", "PMCMC", "../pmcmc/report.html"),
         ("abc", "ABC", "../abc/report.html"),
     ]
@@ -157,8 +157,18 @@ def drop_burnin(traces, frac=0.5):
 
 def chains_array(traces, param):
     """A (n_chains, n_draws) array for one parameter, for the diagnostics."""
-    wide = traces.pivot_table(index="chain", columns="iter", values=param)
-    return wide.to_numpy(dtype=float)
+    chains = [
+        g.sort_values("iter")[param].to_numpy(dtype=float)
+        for _, g in traces.groupby("chain", sort=True)
+    ]
+    if not chains:
+        return np.empty((0, 0), dtype=float)
+    min_len = min(len(c) for c in chains)
+    return np.array([c[:min_len] for c in chains], dtype=float)
+
+
+def thin_for_plot(df, n=10000):
+    return df.iloc[:: max(1, len(df) // n)]
 
 
 # --- Diagnostics (Vehtari et al. 2021) --------------------------------------
@@ -259,63 +269,6 @@ def bulk_ess(chains):
     return _ess(_rank_normalize(_split(chains)))
 
 
-def ks_stat(x, y):
-    """Two-sample Kolmogorov-Smirnov statistic."""
-    from scipy.stats import ks_2samp
-
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    if len(x) == 0 or len(y) == 0:
-        return float("nan")
-    return float(ks_2samp(x, y).statistic)
-
-
-def ks_vs_grid(samples, axis, density):
-    """KS distance between MCMC samples and a gridded marginal density.
-
-    The reference posterior is a density on a lattice, not a sample, so the
-    usual two-sample statistic does not apply: this compares the empirical CDF
-    of `samples` against the CDF obtained by integrating `density` over `axis`.
-    """
-    samples = np.sort(np.asarray(samples, dtype=float))
-    axis = np.asarray(axis, dtype=float)
-    density = np.asarray(density, dtype=float)
-    if len(samples) == 0 or len(axis) < 2:
-        return float("nan")
-
-    widths = np.gradient(axis)
-    cdf = np.cumsum(density * widths)
-    if cdf[-1] <= 0:
-        return float("nan")
-    cdf = cdf / cdf[-1]
-
-    ref_at = np.interp(samples, axis, cdf)
-    emp = np.arange(1, len(samples) + 1) / len(samples)
-    return float(np.max(np.abs(emp - ref_at)))
-
-
-def posterior_summary(traces, params, label):
-    """Mean, sd, and a 90% credible interval per parameter."""
-    rows = []
-    for p in params:
-        if p not in traces.columns:
-            continue
-        v = traces[p].to_numpy(dtype=float)
-        rows.append(
-            {
-                "source": label,
-                "parameter": p,
-                "mean": np.mean(v),
-                "sd": np.std(v, ddof=1),
-                "q05": np.quantile(v, 0.05),
-                "q95": np.quantile(v, 0.95),
-                "split_rhat": split_rhat(chains_array(traces, p)),
-                "bulk_ess": bulk_ess(chains_array(traces, p)),
-            }
-        )
-    return pd.DataFrame(rows)
-
-
 def grid_marginals(grid, param, other):
     """Marginalize the reference posterior surface onto one axis."""
     g = grid.groupby(param, as_index=False)["post"].sum()
@@ -327,3 +280,136 @@ def grid_marginals(grid, param, other):
     if area > 0:
         dens = dens / area
     return axis, dens
+
+
+# --- Comparisons with Monte Carlo error -------------------------------------
+# Each estimate is a mean and sd, each with a standard error. Two estimates
+# agree when z = difference / combined SE is small.
+
+PASS_Z = 3.0
+FAIL_Z = 5.0
+
+
+def mcmc_moments(traces, param):
+    """Mean and sd of MCMC draws, with standard errors from the bulk ESS."""
+    v = traces[param].to_numpy(dtype=float)
+    ess = bulk_ess(chains_array(traces, param))
+    sd = float(np.std(v, ddof=1))
+    return {
+        "mean": float(np.mean(v)),
+        "sd": sd,
+        "se_mean": sd / np.sqrt(ess),
+        "se_sd": sd / np.sqrt(2 * ess),
+    }
+
+
+def iid_moments(values):
+    """Mean and sd of independent draws, e.g. rejection-ABC samples."""
+    v = np.asarray(values, dtype=float)
+    n = len(v)
+    sd = float(np.std(v, ddof=1))
+    return {
+        "mean": float(np.mean(v)),
+        "sd": sd,
+        "se_mean": sd / np.sqrt(n),
+        "se_sd": sd / np.sqrt(2 * n),
+    }
+
+
+def grid_moments(grid, param, other):
+    """Mean and sd of a grid reference marginal, treated as exact.
+
+    Sheppard's correction (variance minus h^2/12) removes the widening that
+    binning onto cells of width h introduces.
+    """
+    axis, dens = grid_marginals(grid, param, other)
+    w = np.gradient(axis)
+    mean = float(np.sum(axis * dens * w))
+    var = float(np.sum((axis - mean) ** 2 * dens * w))
+    var -= float(np.mean(np.diff(axis))) ** 2 / 12
+    return {"mean": mean, "sd": float(np.sqrt(var)), "se_mean": 0.0, "se_sd": 0.0}
+
+
+def uniform_moments(lo, hi):
+    return {
+        "mean": (lo + hi) / 2,
+        "sd": (hi - lo) / np.sqrt(12),
+        "se_mean": 0.0,
+        "se_sd": 0.0,
+    }
+
+
+def verdict(z):
+    if not np.isfinite(z):
+        return "n/a"
+    if abs(z) < PASS_Z:
+        return "PASS"
+    return "CHECK" if abs(z) < FAIL_Z else "FAIL"
+
+
+def compare(a, b, param, label_a, label_b):
+    """Rows comparing the mean and sd of two moment dicts."""
+    rows = []
+    for stat in ("mean", "sd"):
+        diff = a[stat] - b[stat]
+        se = float(np.hypot(a[f"se_{stat}"], b[f"se_{stat}"]))
+        z = diff / se if se > 0 else float("nan")
+        rows.append(
+            {
+                "parameter": param,
+                "statistic": stat,
+                label_a: a[stat],
+                label_b: b[stat],
+                "difference": diff,
+                "SE": se,
+                "z": z,
+                "verdict": verdict(z),
+            }
+        )
+    return rows
+
+
+def worst_row(df, col):
+    """The row with the largest |col|, or None when every value is NaN."""
+    vals = df[col].abs()
+    if vals.notna().sum() == 0:
+        return None
+    return df.loc[vals.idxmax()]
+
+
+def worst_verdict(verdicts):
+    verdicts = [v for v in verdicts if v != "n/a"]
+    if not verdicts:
+        return "n/a"
+    for v in ("FAIL", "CHECK"):
+        if v in verdicts:
+            return v
+    return "PASS"
+
+
+_BADGE = {"PASS": "#27ae60", "CHECK": "#e67e22", "FAIL": "#c0392b", "n/a": "#95a5a6"}
+
+
+def badge(v):
+    return (
+        f"<span style='background:{_BADGE.get(v, '#95a5a6')};color:white;"
+        f"padding:2px 8px;border-radius:4px;font-weight:bold'>{v}</span>"
+    )
+
+
+def table_html(df, fmt="%.4f"):
+    out = df.copy()
+    if "verdict" in out.columns:
+        out["verdict"] = out["verdict"].map(badge)
+    return out.to_html(
+        classes="table table-striped table-hover",
+        index=False,
+        float_format=fmt,
+        escape=False,
+        na_rep="—",
+    )
+
+
+def scorecard_html(rows):
+    """Rows of dicts with check, question, verdict and detail."""
+    return table_html(pd.DataFrame(rows)[["check", "question", "verdict", "detail"]])

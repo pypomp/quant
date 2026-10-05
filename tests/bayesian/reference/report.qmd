@@ -1,6 +1,6 @@
 ---
-title: "SIR: Reference Posterior"
-subtitle: "A grid-quadrature posterior over (beta1, rho) for the samplers to be measured against"
+title: "SIR Bayesian Tests: Overview and Reference Answers"
+subtitle: "What the PMCMC and ABC tests check, and the brute-force answers they are checked against"
 date: now
 format:
   html:
@@ -28,190 +28,292 @@ from IPython.display import display, HTML, Markdown
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('reference')}</div>"))
 ```
 
-## Introduction
+## Start here
 
-Neither PMCMC nor ABC has an analytic target on the SIR model, so this report
-builds one numerically. The particle-filter log-likelihood is evaluated on a
-lattice over the prior box, replicates are combined with `logmeanexp`, the flat
-log-prior is added, and the result is normalized by the cell area. The `pmcmc`
-and `abc` reports both read the CSV produced here.
+### The problem
 
-**What this reference can and cannot do.** It runs pypomp's own particle filter
-on pypomp's own model, so it is *blind* to errors in the SIR translation: a
-wrong model would produce a wrong reference that a wrong PMCMC would match
-perfectly. It is the only **absolute** test that a sampler targets the posterior
-implied by this model and prior. Detecting model errors is the job of the R
-cross-check, and of the pfilter-logLik precondition that gates it — see the
-PMCMC report.
+All three reports share one inference problem. Weekly case reports (208 weeks)
+were simulated from R `pomp`'s seasonal SIR model at known parameters. Two
+parameters are treated as unknown:
 
-A reference is only a reference to the extent its own Monte Carlo error is
-small, so that error is reported below alongside the surface.
+- `beta1`, one of three coefficients setting the seasonal shape of transmission
+  (truth 400);
+- `rho`, the fraction of infections that get reported (truth 0.6).
+
+The prior is flat on the box `beta1` ∈ (300, 500), `rho` ∈ (0.45, 0.80).
+Everything else is fixed at its true value. The goal of Bayesian inference is
+the **posterior**: the distribution of (`beta1`, `rho`) given the data.
+
+### The two algorithms being tested
+
+**PMCMC** (particle marginal Metropolis–Hastings) is a random walk over
+parameter space. At each step it proposes a nearby parameter value, estimates
+the likelihood there with a particle filter, and accepts or rejects the move by
+comparing the likelihood with the current one. The particle filter only gives a
+noisy *estimate* of the likelihood, but a key result (Andrieu, Doucet and
+Holenstein, 2010) is that the noise does not bias the answer: as long as the
+chain keeps the estimate it accepted rather than recomputing it, it targets the
+exact posterior. More particles `J` only make it mix faster.
+
+**ABC** (approximate Bayesian computation) avoids the likelihood altogether. It
+reduces each dataset to a few summary statistics ("probes"; here, the mean
+reports in each quarter of the year), proposes a parameter, simulates *one*
+dataset there, and accepts only if the simulated probes land within a tolerance
+ε of the observed ones. Its answer is the **ABC posterior**, which is
+deliberately approximate: it depends on ε and on which probes are used, and is
+wider than the true posterior. As ε → ∞ it is just the prior.
+
+Both are run as many independent chains in parallel. Early iterations depend on
+where a chain started and are discarded as burn-in.
+
+### What could be wrong, and which check catches it
+
+A disagreement can come from two places: pypomp's SIR model could differ from
+pomp's (a translation error), or the sampling algorithm could be wrong. The
+checks are designed so that each one isolates one of these:
+
+| Check | Catches | Where |
+|---|---|---|
+| Particle-filter log-likelihood at the truth matches R | model translation | PMCMC §1 |
+| ABC probes on the data match R | probe definitions | ABC §1 |
+| PMCMC posterior matches the **grid reference** below | PMCMC sampler | PMCMC §2 |
+| ABC posterior matches the **rejection reference** below | ABC sampler | ABC §2 |
+| PMCMC with few vs many particles agree | mishandled likelihood noise | PMCMC §3 |
+| pypomp agrees with R `pomp` | either, end to end | PMCMC §4, ABC §3 |
+| ABC at huge ε returns the prior | distance / acceptance logic | ABC §4 |
+| Chains converged (R-hat, stuck chains) | test is long enough to judge | both |
+
+The references below use pypomp's own simulator and filter, so they test the
+samplers only; a model translation error would shift the references and the
+samplers together. That is what the comparisons with R are for.
+
+### How to read the verdicts
+
+Every number from a sampler has Monte Carlo error. Each comparison reports the
+difference between two estimates divided by its standard error (a z-score).
+Standard errors for MCMC output come from the effective sample size (ESS), the
+number of independent draws the correlated chain is worth.
+
+- **PASS**: |z| < 3, the difference is consistent with Monte Carlo noise.
+- **CHECK**: 3 ≤ |z| < 5, worth a look; can happen by chance across many comparisons.
+- **FAIL**: |z| ≥ 5, a real discrepancy.
 
 ```{python Setup}
 import numpy as np
 import pandas as pd
 from plotnine import (
     aes,
+    geom_density,
     geom_line,
+    geom_point,
     geom_raster,
     geom_vline,
     ggplot,
     labs,
-    scale_fill_continuous,
 )
 
 os.environ["JAX_PLATFORMS"] = "cpu"
+import model
 
 RESULTS = os.path.join("results", "gpu")
 grid = ru.read_if_exists(os.path.join(RESULTS, "grid_posterior.csv"))
+rejection = ru.read_if_exists(os.path.join(RESULTS, "abc_rejection.csv.gz"))
 meta = ru.load_json(os.path.join(RESULTS, "latest.json"))
-have_grid = grid is not None
+cfg = meta.get("run_config", {}) if meta else {}
+
+truth = model.true_theta()
+PARAMS = list(model.FREE)
 ```
 
 ```{python Provenance, results='asis'}
 if meta:
     display(Markdown("### Provenance\n\n" + ru.format_metadata(meta)))
-if not have_grid:
-    display(HTML(ru.missing_note(
-        "Reference grid", os.path.join(RESULTS, "grid_posterior.csv")
-    )))
+for label, obj, name in (
+    ("Reference grid", grid, "grid_posterior.csv"),
+    ("Rejection ABC sample", rejection, "abc_rejection.csv.gz"),
+):
+    if obj is None:
+        display(HTML(ru.missing_note(label, os.path.join(RESULTS, name))))
 ```
 
-## The posterior surface
+## Reference 1: the posterior, by grid
 
-```{python Surface}
-if have_grid:
+The log-likelihood is estimated by particle filter at every point of a lattice
+over the prior box (replicates combined with `logmeanexp`). With a flat prior,
+the posterior is that likelihood normalized to integrate to one. This needs no
+Markov chain, so it is the answer PMCMC should reproduce.
+
+```{python Grid surface}
+if grid is not None:
     surface = grid.copy()
-    # The dynamic range spans hundreds of nats, so plot on the log scale and
-    # floor it well below the mode -- a linear scale shows one bright cell.
+    # Plotted on the log scale, floored 30 nats below the mode: on a linear
+    # scale the posterior is a single bright cell.
     floor = surface["log_post"].max() - 30.0
     surface["log_post_clipped"] = surface["log_post"].clip(lower=floor)
     display(
         ggplot(surface, aes(x="beta1", y="rho", fill="log_post_clipped"))
         + geom_raster()
+        + geom_point(
+            pd.DataFrame({"beta1": [truth["beta1"]], "rho": [truth["rho"]]}),
+            aes(x="beta1", y="rho"),
+            inherit_aes=False,
+            color="white",
+            shape="x",
+            size=4,
+        )
         + labs(
             title="Reference log posterior density",
-            subtitle="Clipped 30 nats below the mode; the true theta is marked",
-            x="beta1",
-            y="rho",
+            subtitle="Clipped 30 nats below the mode; x marks the true parameters",
             fill="log density",
         )
         + ru.theme_premium
     )
-else:
-    display(Markdown("_No grid on disk._"))
 ```
 
-```{python Truth and mode}
-if have_grid:
-    truth = pd.read_csv("../data/true_theta.csv")
-    truth = dict(zip(truth["parameter"], truth["value"]))
-    best = grid.loc[grid["log_post"].idxmax()]
-    summary = pd.DataFrame(
-        [
-            {"quantity": "true beta1", "value": truth["beta1"]},
-            {"quantity": "grid mode beta1", "value": float(best["beta1"])},
-            {"quantity": "true rho", "value": truth["rho"]},
-            {"quantity": "grid mode rho", "value": float(best["rho"])},
-        ]
-    )
-    display(HTML(summary.to_html(
-        classes="table table-striped table-hover", index=False, float_format="%.4f"
-    )))
-```
-
-The grid mode is the maximum over cell centres, so it is quantized to the grid
-spacing and is not expected to land exactly on the truth even for a perfect
-reference. Posterior *mass* covering the truth is the meaningful check, and that
-is made in the PMCMC report where credible intervals are available.
-
-## Marginals
-
-```{python Marginals}
-if have_grid:
-    frames = []
+```{python Grid marginals}
+if grid is not None:
     for param, other in (("beta1", "rho"), ("rho", "beta1")):
         axis, dens = ru.grid_marginals(grid, param, other)
-        frames.append(pd.DataFrame({"value": axis, "density": dens, "parameter": param}))
-
-    for frame in frames:
-        param = frame["parameter"].iloc[0]
+        frame = pd.DataFrame({param: axis, "density": dens})
         display(
-            ggplot(frame, aes(x="value", y="density"))
+            ggplot(frame, aes(x=param, y="density"))
             + geom_line(color=ru.color_palette["reference"], size=1)
-            + geom_vline(xintercept=truth[param], color=ru.color_palette["truth"],
-                         linetype="dashed")
+            + geom_vline(
+                xintercept=truth[param], color=ru.color_palette["truth"], linetype="dashed"
+            )
             + labs(
                 title=f"Reference marginal posterior: {param}",
-                subtitle="Dashed line is the simulating value",
-                x=param,
+                subtitle="Dashed line is the true value",
                 y="density",
             )
             + ru.theme_premium
         )
-```
 
-## Monte Carlo error of the reference
-
-Each grid point is a `logmeanexp` over replicate particle filters. The spread of
-those replicates bounds how much of the surface's structure is noise rather than
-signal. If this is comparable to the log-density differences between neighbouring
-cells, the grid is under-resolved and `NREPS_REF`, `NP_REF`, or `GRID_N` should
-be raised before the reference is trusted.
-
-```{python MC error}
-if have_grid and grid["logLik_sd"].notna().any():
-    err = grid["logLik_sd"].dropna()
-    stats = pd.DataFrame(
-        [
-            {"quantity": "median replicate sd (nats)", "value": err.median()},
-            {"quantity": "max replicate sd (nats)", "value": err.max()},
-            {
-                "quantity": "log-density range across grid (nats)",
-                "value": grid["log_post"].max() - grid["log_post"].min(),
-            },
-        ]
-    )
-    display(HTML(stats.to_html(
-        classes="table table-striped table-hover", index=False, float_format="%.3f"
-    )))
-elif have_grid:
-    display(Markdown(
-        "_Only one replicate per grid point at this run level, so no Monte "
-        "Carlo error estimate is available. Run at level 2 or above._"
-    ))
-```
-
-## Resolution
-
-```{python Resolution}
-if have_grid:
-    n_side = int(np.sqrt(len(grid)))
-    b_axis = np.sort(grid["beta1"].unique())
-    r_axis = np.sort(grid["rho"].unique())
-    # Posterior sd from the gridded marginals, for a cells-per-sd figure.
     rows = []
-    for param, other, axis in (("beta1", "rho", b_axis), ("rho", "beta1", r_axis)):
-        ax, dens = ru.grid_marginals(grid, param, other)
-        w = np.gradient(ax)
-        mean = np.sum(ax * dens * w)
-        sd = np.sqrt(np.sum((ax - mean) ** 2 * dens * w))
-        spacing = float(np.mean(np.diff(axis)))
+    for param, other in (("beta1", "rho"), ("rho", "beta1")):
+        m = ru.grid_moments(grid, param, other)
+        spacing = float(np.mean(np.diff(np.sort(grid[param].unique()))))
         rows.append(
             {
                 "parameter": param,
-                "posterior sd": sd,
+                "truth": truth[param],
+                "posterior mean": m["mean"],
+                "posterior sd": m["sd"],
                 "grid spacing": spacing,
-                "cells per sd": sd / spacing if spacing else np.nan,
+                "cells per sd": m["sd"] / spacing,
             }
         )
-    display(HTML(pd.DataFrame(rows).to_html(
-        classes="table table-striped table-hover", index=False, float_format="%.4f"
-    )))
-    display(Markdown(
-        f"Grid is {n_side}x{n_side}. Fewer than about two cells per posterior "
-        "standard deviation means the marginals above are visibly discretized "
-        "and the KS comparisons in the sampler reports will be dominated by "
-        "grid resolution rather than by sampler error."
-    ))
+    display(HTML(ru.table_html(pd.DataFrame(rows))))
+```
+
+**Is the grid fine and accurate enough?** It needs at least a couple of cells per
+posterior standard deviation (table above), and the particle-filter noise at each
+point must be small next to the log-density differences between neighbouring
+points (below).
+
+```{python Grid error}
+if grid is not None and grid["logLik_sd"].notna().any():
+    err = grid["logLik_sd"].dropna()
+    near = grid[grid["log_post"] > grid["log_post"].max() - 10]
+    step = np.abs(np.diff(near.sort_values(["beta1", "rho"])["log_post"])).mean()
+    display(
+        HTML(
+            ru.table_html(
+                pd.DataFrame(
+                    [
+                        {"quantity": "median sd of one logLik replicate (nats)", "value": err.median()},
+                        {"quantity": "median sd near the mode (nats)", "value": near["logLik_sd"].median()},
+                        {"quantity": "mean log-density step between neighbours near the mode", "value": step},
+                    ]
+                ),
+                fmt="%.3f",
+            )
+        )
+    )
+```
+
+## Reference 2: the ABC posterior, by rejection sampling
+
+The ABC posterior at tolerance ε is the prior, reweighted by the probability
+that a dataset simulated at that parameter lands within ε of the observed
+probes. Plain rejection sampling draws from it exactly: draw a parameter from
+the prior, simulate one dataset, compute the probe distance, and keep the draw
+if the distance is below ε². One pass over many prior draws gives the exact ABC
+posterior at every ε in the ladder simultaneously (keep the draws below each
+threshold). It is very wasteful at small ε, which is why ABC-MCMC exists, but
+on a GPU it is affordable here, and it is the answer ABC-MCMC should reproduce.
+
+```{python Rejection summary}
+if rejection is not None:
+    n_drawn = cfg.get("N_REJ", np.nan)
+    box = model.PRIOR_BOX
+    rows = []
+    for eps in model.ABC_EPS_LADDER:
+        if eps > cfg.get("EPS_KEEP", np.inf):
+            m = {p: ru.uniform_moments(*box[p]) for p in PARAMS}
+            n = n_drawn
+        else:
+            acc = rejection[rejection["distance"] < eps**2]
+            m = {p: ru.iid_moments(acc[p]) for p in PARAMS}
+            n = len(acc)
+        row = {"epsilon": eps, "accepted draws": n, "acceptance": n / n_drawn}
+        for p in PARAMS:
+            row[f"mean {p}"] = m[p]["mean"]
+            row[f"sd {p}"] = m[p]["sd"]
+        rows.append(row)
+    if grid is not None:
+        row = {"epsilon": 0.0, "accepted draws": np.nan, "acceptance": np.nan}
+        for param, other in (("beta1", "rho"), ("rho", "beta1")):
+            m = ru.grid_moments(grid, param, other)
+            row[f"mean {param}"] = m["mean"]
+            row[f"sd {param}"] = m["sd"]
+        rows.append(row)
+    table = pd.DataFrame(rows)
+    table["epsilon"] = table["epsilon"].map(
+        lambda e: "full posterior (grid)" if e == 0 else f"{e:g}"
+    )
+    display(Markdown(f"{n_drawn:,.0f} prior draws in total."))
+    display(HTML(ru.table_html(table, fmt="%.4g")))
+```
+
+Reading down the table, the ABC posterior narrows as ε shrinks, but even at the
+smallest ε it stays wider than the full posterior (last row). That is expected:
+four seasonal means discard information that the full likelihood uses, so the
+ABC posterior converges to the posterior *given the probes*, not to the full
+posterior. The ABC report therefore compares pypomp's ABC-MCMC with this table,
+not with the grid.
+
+```{python Rejection marginals}
+if rejection is not None:
+    eps_tight = [e for e in model.ABC_EPS_LADDER if e <= cfg.get("EPS_KEEP", np.inf)]
+    frames = []
+    for eps in eps_tight:
+        acc = rejection[rejection["distance"] < eps**2]
+        frames.append(ru.thin_for_plot(acc[PARAMS], 20000).assign(epsilon=f"{eps:g}"))
+    stacked = pd.concat(frames)
+    for param in PARAMS:
+        p = (
+            ggplot(stacked, aes(x=param, color="epsilon"))
+            + geom_density(size=1)
+            + geom_vline(
+                xintercept=truth[param], color=ru.color_palette["truth"], linetype="dashed"
+            )
+            + labs(
+                title=f"Exact ABC posterior by tolerance: {param}",
+                subtitle="Rejection sampling; dashed line is the true value",
+            )
+            + ru.theme_premium
+        )
+        if grid is not None:
+            axis, dens = ru.grid_marginals(grid, param, "rho" if param == "beta1" else "beta1")
+            p += geom_line(
+                pd.DataFrame({param: axis, "density": dens}),
+                aes(x=param, y="density"),
+                inherit_aes=False,
+                color=ru.color_palette["reference"],
+                linetype="dotted",
+                size=1,
+            )
+        display(p)
+    display(Markdown("Dotted black line: the full posterior from Reference 1."))
 ```

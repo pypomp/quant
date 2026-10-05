@@ -1,16 +1,15 @@
-#' SIR: PMCMC posterior over (beta1, rho) using R pomp. The baseline that
-#' run.py is compared against.
+#' SIR: PMCMC posterior over (beta1, rho) using R pomp, the independent
+#' implementation run.py is compared against.
 #'
-#' This is the only leg of the suite sensitive to errors in the SIR model
-#' translation -- the grid reference runs pypomp's own filter on pypomp's own
-#' model and so cannot see them. A disagreement here is ambiguous between a
-#' model error and a sampler error until the pfilter-logLik precondition in
-#' report.qmd separates the two, which is why that section comes first.
+#' The proposal is not identical to pypomp's: pypomp steps on the estimation
+#' scale, pomp on the natural scale (see BAYES_RW_SD in ../model.R). Both are
+#' valid Metropolis-Hastings kernels for the same posterior, so only the
+#' posteriors are compared.
 #'
-#' The proposal is NOT identical to pypomp's and cannot be: pypomp runs its
-#' chain on the estimation scale, pomp perturbs params directly. See the note on
-#' BAYES_RW_SD in ../model.R. Both are valid Metropolis-Hastings kernels for the
-#' same posterior; only the stationary distributions are compared.
+#' Sized by measured cost: one pomp pfilter on this model takes ~0.7 s at
+#' Np=100 and ~3 s at Np=500, so the old 50000 iterations at Np=500 needed ~40 h
+#' per chain and never finished. Np=100 gives a logLik sd of ~0.6, well inside
+#' the efficient range for PMMH.
 
 # --- SLURM CONFIG ---
 # importance: medium
@@ -20,7 +19,7 @@
 #   job-name: "bayesian pmcmc (R)"
 #   partition: standard
 #   nodes: 1
-#   ntasks-per-node: 12
+#   ntasks-per-node: 36
 #   cpus-per-task: 1
 #   mem-per-cpu: 2GB
 #   output: "results/R/logs/slurm-%j.out"
@@ -30,9 +29,9 @@
 #   2:
 #     sbatch_args: { time: "00:20:00" }
 #   3:
-#     sbatch_args: { time: "01:30:00" }
+#     sbatch_args: { time: "01:00:00" }
 #   4:
-#     sbatch_args: { time: "03:30:00" }
+#     sbatch_args: { time: "01:30:00" }
 # setup: |
 #   module load R/4.4.0
 # command: |
@@ -47,9 +46,9 @@ source("../../utils.R")
 source("../model.R")
 
 run_level <- as.numeric(Sys.getenv("RUN_LEVEL", unset = "1"))
-NCHAINS <- c(2, 4, 8, 12)[run_level]
-NMCMC <- c(20, 2000, 20000, 50000)[run_level]
-NP <- c(5, 100, 500, 500)[run_level]
+NCHAINS <- c(2, 4, 36, 36)[run_level]
+NMCMC <- c(20, 200, 1500, 3000)[run_level]
+NP <- c(5, 50, 100, 100)[run_level]
 
 cat("run level", run_level, ": chains", NCHAINS, "Nmcmc", NMCMC, "Np", NP, "\n")
 

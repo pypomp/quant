@@ -1,35 +1,26 @@
-"""SIR: ABC posterior over (beta1, rho), swept over the tolerance epsilon.
+"""SIR: ABC-MCMC posterior over (beta1, rho), down a ladder of tolerances.
 
-Runs NCHAINS independent ABC-MCMC chains for each epsilon in EPS_GRID, writing
-each sweep into results/gpu/eps<epsilon>/.
+Runs NCHAINS chains at each epsilon in model.ABC_EPS_LADDER, writing each arm
+into results/gpu/eps<epsilon>/. report.qmd compares every arm with the exact
+ABC posterior from rejection sampling (reference/) and with R pomp (run.R).
 
-What the epsilon sweep does and does not show. As epsilon shrinks the ABC
-posterior converges to p(theta | s(y_obs)) -- the posterior given the *probes* --
-which equals the full posterior only when the probes are sufficient. Mean, sd
-and lag-1 autocorrelation are not sufficient for this model, so the limit is a
-genuinely different and generally wider distribution than the grid reference.
-"Distance to the reference shrinks to zero" would therefore be a false
-prediction. What must hold instead: successive epsilons converge to each other,
-pypomp and R reach the same limit, and that limit is no tighter than the full
-posterior while still covering the truth.
+Each tighter arm starts from the previous arm: candidate states are drawn from
+its post-burn-in draws, each is simulated once, and the starts are drawn from
+the candidates already within the new tolerance (the selection step of
+ABC-SMC). Started from the prior instead, many chains at a tight tolerance
+never accept a single move (31% of 1024 at eps=2 in an earlier version of this
+test). The starting distribution does not affect what the chains converge to.
 
-The first entry of EPS_GRID is deliberately enormous. At that tolerance every
-proposal is accepted and the ABC posterior must collapse onto the prior -- a
-cheap, sharp check that catches sign and normalization errors in the distance.
-That arm alone starts in stationarity, its target being the prior box the starts
-are drawn from, so it pays no burn-in despite mixing slowly: with the proposal
-stepping +/-8 across a 200-wide box its autocorrelation time is ~430, against
-~25 for the tight arms.
+The first rung accepts every proposal, so its chains are a random walk over
+the prior box; their stationary distribution must be the prior.
 
-Cost model: wall-clock is latency-bound, not FLOP-bound. An iteration is 208
-observations x NSTEP=20 = 4160 sequential scan steps costing ~0.124s almost
-independently of chain count. So M is the only expensive axis; buy ESS with
-NCHAINS and keep M at the burn-in floor.
+Cost is dominated by M: each iteration simulates 4160 sequential steps, so
+extra chains are nearly free while extra iterations are not.
 """
 
 # --- SLURM CONFIG ---
 # importance: high
-# description: "SIR: ABC posterior over (beta1, rho), swept over tolerance epsilon"
+# description: "SIR: ABC-MCMC posterior over (beta1, rho) down a tolerance ladder"
 # tags: [bayesian, sir, abc, gpu]
 # sbatch_args:
 #   job-name: "bayesian abc (pypomp)"
@@ -45,21 +36,14 @@ NCHAINS and keep M at the burn-in floor.
 #   2:
 #     sbatch_args: { time: "00:30:00" }
 #   3:
-#     sbatch_args: { time: "00:45:00" }
+#     sbatch_args: { time: "00:40:00" }
 #   4:
-#     sbatch_args: { time: "00:45:00" }
+#     sbatch_args: { time: "00:40:00" }
 # --- END SLURM CONFIG ---
-#
-# Level 4 samples for ~25 min across the four arms, which run serially here;
-# the rest is headroom for XLA, about 2m30s to build the ABC program on CPU.
-#
-# Level 2 is the calibration run: it carries the full epsilon grid at reduced M
-# so acceptance and autocorrelation can be measured at the tight tolerances,
-# which have never been observed -- the old level-4 job died after its first
-# arm. If a tight arm mixes far worse than eps=1e6, M_ABC should become a
-# per-epsilon tuple sized at ~20x that arm's autocorrelation time.
 
+import glob
 import os
+import shutil
 import sys
 import time
 
@@ -70,7 +54,6 @@ model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if model_dir not in sys.path:
     sys.path.append(model_dir)
 
-# JAX reads these at import time, so they must be set before it is imported.
 os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.95")
 os.environ.setdefault("TF_GPU_ALLOCATOR", "cuda_malloc_async")
 
@@ -96,29 +79,15 @@ print("Using CPU:", USE_CPU)
 RUN_LEVEL = int(os.environ.get("RUN_LEVEL", "1"))
 print(f"Running abc at level {RUN_LEVEL}")
 
-#: At 1024 chains and M=3000 the eps=1e6 arm reaches ESS ~5900, above what the
-#: old M=200000 at 12 chains delivered. ESS comes from NCHAINS, which is free.
 NCHAINS = (2, 8, 256, 1024)[RUN_LEVEL - 1]
-M_ABC = (20, 1500, 3000, 3000)[RUN_LEVEL - 1]
+M_PRIOR = (20, 500, 1000, 1000)[RUN_LEVEL - 1]
+M_ABC = (20, 1000, 2000, 2000)[RUN_LEVEL - 1]
+EPS_LADDER = model.ABC_EPS_LADDER if RUN_LEVEL > 1 else model.ABC_EPS_LADDER[:2]
 
-#: The scaled distance sums three squared standardized probe differences, so
-#: under the true model it sits around chi-square(3) doubled -- typical values
-#: of a few. The leading 1e6 is the accept-everything case.
-#:
-#: Levels 2-4 share one grid: the ladder needs three informative rungs for
-#: "successive epsilons converge" to be distinguishable from coincidence, and
-#: level 2 must exercise every rung to calibrate it. eps=1.0 is dropped for
-#: expected very low acceptance.
-EPS_GRID = (
-    (1e6,),
-    (1e6, 20.0, 5.0, 2.0),
-    (1e6, 20.0, 5.0, 2.0),
-    (1e6, 20.0, 5.0, 2.0),
-)[RUN_LEVEL - 1]
+CAND_FACTOR = 4
+BURN_FRAC = 0.5
 
-#: See the note in pmcmc/run.py: only beta1 and rho are estimated, and the
-#: traces otherwise dominate the record at this chain count.
-TRACE_COLS = list(model.FREE) + ["logLik", "log_prior"]
+TRACE_COLS = list(model.FREE) + ["distance"]
 TRACE_THIN = 10
 
 key = jax.random.key(model.MAIN_SEED)
@@ -129,12 +98,11 @@ print("probe scale:", scale)
 
 out_root = os.path.join("results", "gpu")
 os.makedirs(out_root, exist_ok=True)
+for stale in glob.glob(os.path.join(out_root, "eps*")):
+    shutil.rmtree(stale)
 
-#: The precondition check: the JAX probes evaluated on the observed series.
-#: run.R writes the same three numbers from pomp's own probe functions, and
-#: report.qmd compares them before any ABC output is interpreted. pomp's
-#: probe_acf carries an n/(n-1) correction that stats::acf does not, so this
-#: agreement is measured rather than assumed.
+#: Compared against pomp's values in report.qmd: different probe values would
+#: mean the two languages run different algorithms.
 ys = model.load_data()
 y_obs = {"reports": jnp.asarray(ys["reports"].to_numpy(), dtype=float)}
 probe_values = {name: float(fn(y_obs)) for name, fn in model.PROBES.items()}
@@ -143,17 +111,38 @@ pd.DataFrame(
     {"probe": list(probe_values), "value": list(probe_values.values())}
 ).to_csv(os.path.join(out_root, "probe_values.csv"), index=False)
 
-key, start_key = jax.random.split(key)
-starts = model.sample_starts(NCHAINS, key=start_key)
-print(f"{NCHAINS} chains, M={M_ABC}, EPS_GRID={EPS_GRID}")
+distance_fn = model.abc_distance_fn(model.sir_pomp())
+rng = np.random.default_rng(model.MAIN_SEED)
 
-for eps in EPS_GRID:
-    obj = model.sir_pomp(theta=starts)
+
+def next_starts(obj, M, eps, key):
+    tr = obj.traces()
+    post = tr[tr["iteration"] > M * BURN_FRAC]
+    cand = post.iloc[rng.integers(len(post), size=NCHAINS * CAND_FACTOR)]
+    free = cand[list(model.FREE)].to_numpy(dtype=float)
+    dist = np.asarray(distance_fn(jnp.asarray(free), key))
+    passed = free[dist < eps**2]
+    print(f"  starts for eps={eps:g}: {len(passed)} of {len(free)} candidates pass")
+    if len(passed) == 0:
+        passed = free[np.argsort(dist)[:NCHAINS]]
+    pick = passed[rng.choice(len(passed), size=NCHAINS, replace=len(passed) < NCHAINS)]
+    overrides = {p: pick[:, i] for i, p in enumerate(model.FREE)}
+    return model.params_from_frame(model.theta_frame(NCHAINS, overrides))
+
+
+key, start_key = jax.random.split(key)
+theta = model.sample_starts(NCHAINS, key=start_key)
+print(f"{NCHAINS} chains, M_PRIOR={M_PRIOR}, M_ABC={M_ABC}, EPS_LADDER={EPS_LADDER}")
+
+for rung, eps in enumerate(EPS_LADDER):
+    M = M_PRIOR if rung == 0 else M_ABC
+    obj = model.sir_pomp(theta=theta)
     key, subkey = jax.random.split(key)
 
     start = time.time()
-    obj.abc(
-        M=M_ABC,
+    # Private until these tests pass (pypomp c2fbb62).
+    obj._abc(
+        M=M,
         probes=model.PROBES,
         epsilon=eps,
         proposal=model.proposal(),
@@ -162,15 +151,19 @@ for eps in EPS_GRID:
         key=subkey,
     )
     execution_time = time.time() - start
+    if rung + 1 < len(EPS_LADDER):
+        key, sel_key = jax.random.split(key)
+        theta = next_starts(obj, M, EPS_LADDER[rung + 1], sel_key)
 
     result = obj.results_history[-1]
     acceptance = np.asarray(result.acceptance_rate, dtype=float)
     print(
         f"eps={eps:g}: {execution_time:.1f}s, "
-        f"acceptance {acceptance.min():.3f}-{acceptance.max():.3f}"
+        f"acceptance {acceptance.min():.3f}-{acceptance.max():.3f}, "
+        f"{int((acceptance == 0).sum())} chains never moved"
     )
 
-    out_dir = os.path.join("results", "gpu", f"eps{eps:g}")
+    out_dir = os.path.join(out_root, f"eps{eps:g}")
     save_run(
         obj,
         out_dir=out_dir,
@@ -181,8 +174,9 @@ for eps in EPS_GRID:
             "USE_CPU": USE_CPU,
             "MAIN_SEED": model.MAIN_SEED,
             "NCHAINS": NCHAINS,
-            "M": M_ABC,
+            "M": M,
             "epsilon": eps,
+            "rung": rung,
             "probes": list(model.PROBES.keys()),
             "probe_scale": scale,
             "free_params": list(model.FREE),
@@ -202,7 +196,7 @@ for eps in EPS_GRID:
             "chain": np.arange(len(acceptance)),
             "acceptance_rate": acceptance,
             "epsilon": eps,
-            "M": M_ABC,
+            "M": M,
             "execution_time": execution_time,
         }
     ).to_csv(os.path.join(out_dir, "acceptance.csv"), index=False)

@@ -119,18 +119,35 @@ bayes_starts <- function(n, seed = BAYES_MAIN_SEED) {
 }
 
 
-#' The ABC probe set.
-#'
-#' Kept to statistics that are expressible identically in pure JAX. The JAX
-#' twins live in model.py and are checked against these numerically by the
-#' precondition section of abc/report.qmd -- probe_acf in particular dispatches
-#' to a C routine whose centring and divisor conventions are not safe to assume.
+#' The ABC probe set: mean reports in each quarter of the year, pooled over the
+#' four years and binned by observation index. Twins of PROBES in model.py.
 bayes_probes <- function() {
-  list(
-    mean = probe_mean("reports"),
-    sd = probe_sd("reports"),
-    acf1 = probe_acf("reports", lags = 1, type = "correlation")
-  )
+  qtr <- ((seq_len(208) - 1) %/% 13) %% 4 + 1
+  probes <- lapply(1:4, function(q) {
+    idx <- which(qtr == q)
+    function(y) mean(y["reports", idx])
+  })
+  names(probes) <- paste0("qtr", 1:4)
+  probes
+}
+
+
+#' One fresh simulation per row of `free` (a data frame of BAYES_FREE values),
+#' returning the squared scaled probe distance to the data. Twin of
+#' abc_distance_fn in model.py.
+bayes_abc_distance <- function(obj, free, scale_vec) {
+  p <- coef(obj)
+  parmat <- matrix(p, nrow = length(p), ncol = nrow(free),
+                   dimnames = list(names(p), NULL))
+  for (nm in BAYES_FREE) parmat[nm, ] <- free[[nm]]
+  sims <- simulate(obj, params = parmat, nsim = 1, format = "arrays")$obs
+  probes <- bayes_probes()
+  datval <- vapply(probes, function(f) f(obs(obj)), numeric(1))
+  vapply(seq_len(nrow(free)), function(j) {
+    y <- matrix(sims["reports", j, ], nrow = 1, dimnames = list("reports", NULL))
+    simval <- vapply(probes, function(f) f(y), numeric(1))
+    sum(((datval - simval) / scale_vec[names(probes)])^2)
+  }, numeric(1))
 }
 
 
@@ -145,10 +162,6 @@ bayes_write_probe_scale <- function(out_dir = "data", nsim = 500,
   pb <- probe(obj, probes = bayes_probes(), nsim = nsim)
   sim_vals <- as.data.frame(pb@simvals)
 
-  # pomp mangles probe names on the way out -- probe_acf returns "acf1.acf[1]"
-  # rather than "acf1" -- but pypomp keys `scale` by the names of the `probes`
-  # dict, so the canonical names are reasserted here. The ordering is the
-  # ordering of bayes_probes(), and each probe contributes exactly one column.
   stopifnot(ncol(sim_vals) == length(bayes_probes()))
   scale_df <- data.frame(
     probe = names(bayes_probes()),

@@ -202,36 +202,63 @@ def proposal() -> pp.MVNDiagRW:
 
 
 # --- ABC probes -------------------------------------------------------------
-# Pure-JAX twins of bayes_probes() in model.R. probe_acf in particular
-# dispatches to a C routine in pomp whose centring and divisor conventions are
-# not safe to assume, so abc/report.qmd checks these numerically against the R
-# values before any ABC run is interpreted.
+# Mean reports in each quarter of the year, pooled over years; twins of
+# bayes_probes() in model.R. Binned by observation index so both languages agree
+# exactly. These replaced mean/sd/acf1, which carry almost no information about
+# beta1 (its ABC posterior was the prior).
+
+N_YEARS = 4
+N_QUARTERS = 4
+WEEKS_PER_QUARTER = 13
 
 
-def probe_mean(y: dict[str, jax.Array]) -> jax.Array:
-    return jnp.mean(y["reports"])
+def _quarter_means(y: dict[str, jax.Array]) -> jax.Array:
+    blocks = y["reports"].reshape(N_YEARS, N_QUARTERS, WEEKS_PER_QUARTER)
+    return jnp.mean(blocks, axis=(0, 2))
 
 
-def probe_sd(y: dict[str, jax.Array]) -> jax.Array:
-    return jnp.std(y["reports"], ddof=1)
+PROBES = {
+    f"qtr{q + 1}": (lambda y, q=q: _quarter_means(y)[q]) for q in range(N_QUARTERS)
+}
+
+#: Shared by abc/run.py, abc/run.R and reference/run.py. The first rung accepts
+#: everything, so its ABC posterior is the prior.
+ABC_EPS_LADDER = (1e6, 4.0, 2.5, 1.5)
 
 
-def probe_acf1(y: dict[str, jax.Array]) -> jax.Array:
-    """Lag-1 autocorrelation of the centred series, in pomp's convention.
+def abc_distance_fn(obj: pp.Pomp):
+    """A jitted ``f(free, key)``: one fresh simulation per row of ``free`` (an
+    ``(n, len(FREE))`` array), returning the squared scaled probe distances.
 
-    pomp's ``probe_acf(type="correlation")`` is not ``stats::acf``: it carries an
-    n/(n-1) small-sample correction. Measured on the committed dataset, pomp
-    returns 0.8430387 where ``stats::acf`` and the uncorrected ratio both return
-    0.8389856, and 0.8389856 * 208/207 = 0.8430385. The factor below is that
-    correction, and abc/report.qmd re-checks the agreement numerically rather
-    than trusting this comment.
+    Computed here rather than by pypomp's abc internals, so the rejection
+    reference does not share the distance code it is checking.
     """
-    x = y["reports"] - jnp.mean(y["reports"])
-    n = x.shape[0]
-    return (n / (n - 1)) * jnp.sum(x[1:] * x[:-1]) / jnp.sum(x * x)
+    struct = obj.to_struct()
+    names = list(struct.param_names)
+    truth = true_theta()
+    base = jnp.asarray([truth[n] for n in names])
+    idx = jnp.asarray([names.index(p) for p in FREE])
+    scale = probe_scale()
+    scale_arr = jnp.asarray([scale[p] for p in PROBES])
+    obs = jnp.stack(
+        [
+            fn({"reports": jnp.asarray(load_data()["reports"].to_numpy(), dtype=float)})
+            for fn in PROBES.values()
+        ]
+    )
 
+    def probe_vec(reports):
+        return jnp.stack([fn({"reports": reports}) for fn in PROBES.values()])
 
-PROBES = {"mean": probe_mean, "sd": probe_sd, "acf1": probe_acf1}
+    @jax.jit
+    def f(free, key):
+        n = free.shape[0]
+        thetas = jnp.tile(base, (n, 1)).at[:, idx].set(free)
+        _, Y = pp.functional.simulate(struct, 1, thetas, keys=jax.random.split(key, n))
+        sim = jax.vmap(probe_vec)(Y[:, 0, :, 0])
+        return jnp.sum(((sim - obs) / scale_arr) ** 2, axis=1)
+
+    return f
 
 
 def probe_scale(path: str = SCALE_PATH) -> dict[str, float]:
