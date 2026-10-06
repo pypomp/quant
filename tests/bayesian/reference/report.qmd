@@ -32,45 +32,59 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('reference')}</div>
 
 ### The problem
 
-All three reports share one inference problem. Weekly case reports (208 weeks)
-were simulated from R `pomp`'s seasonal SIR model at known parameters. Two
-parameters are treated as unknown:
+All three reports test pypomp's Bayesian samplers on a single inference
+problem. We simulated 208 weeks of case reports from R `pomp`'s seasonal
+susceptible-infected-recovered (SIR) model at known parameters, and we treat
+two of those parameters as unknown:
 
-- `beta1`, one of three coefficients setting the seasonal shape of transmission
-  (truth 400);
+- `beta1`, one of three coefficients that set the seasonal shape of
+  transmission (truth 400);
 - `rho`, the fraction of infections that get reported (truth 0.6).
 
-The prior is flat on the box `beta1` ∈ (300, 500), `rho` ∈ (0.45, 0.80).
-Everything else is fixed at its true value. The goal of Bayesian inference is
-the **posterior**: the distribution of (`beta1`, `rho`) given the data.
+All other parameters are fixed at their true values, and the prior is flat on
+the box `beta1` ∈ (300, 500), `rho` ∈ (0.45, 0.80). The target of inference is
+the posterior distribution of (`beta1`, `rho`) given the data.
+
+We keep the problem to two parameters on purpose. With only two, we can
+compute the posterior by brute force on a grid, which gives us a reference
+answer that does not depend on any Markov chain. A larger model would be a
+more realistic test, but we would lose that reference.
+
+We begin by describing the two algorithms being tested and the checks we run
+on each. We then present two reference answers: the posterior computed on a
+grid, which the particle Markov chain Monte Carlo (PMCMC) report checks
+against, and the approximate Bayesian computation (ABC) posterior computed by
+rejection sampling, which the ABC report checks against.
 
 ### The two algorithms being tested
 
-**PMCMC** (particle marginal Metropolis–Hastings) is a random walk over
-parameter space. At each step it proposes a nearby parameter value, estimates
-the likelihood there with a particle filter, and accepts or rejects the move by
-comparing the likelihood with the current one. The particle filter only gives a
-noisy *estimate* of the likelihood, but a key result (Andrieu, Doucet and
-Holenstein, 2010) is that the noise does not bias the answer: as long as the
-chain keeps the estimate it accepted rather than recomputing it, it targets the
-exact posterior. More particles `J` only make it mix faster.
+**PMCMC**, specifically particle marginal Metropolis–Hastings, is a random walk
+over parameter space. At each step, it proposes a nearby parameter value,
+estimates the likelihood there with a particle filter, and accepts or rejects
+the move by comparing that estimate with the one at the current value. The
+particle filter only gives a noisy estimate of the likelihood. That said,
+Andrieu, Doucet and Holenstein (2010) show that this noise does not bias the
+result, provided the chain keeps the estimate it accepted rather than
+recomputing it. Using more particles `J` only makes the chain mix faster.
 
-**ABC** (approximate Bayesian computation) avoids the likelihood altogether. It
-reduces each dataset to a few summary statistics ("probes"; here, the mean
-reports in each quarter of the year), proposes a parameter, simulates *one*
-dataset there, and accepts only if the simulated probes land within a tolerance
-ε of the observed ones. Its answer is the **ABC posterior**, which is
-deliberately approximate: it depends on ε and on which probes are used, and is
-wider than the true posterior. As ε → ∞ it is just the prior.
+**ABC** avoids evaluating the likelihood altogether. It reduces each dataset to
+a few summary statistics, which pomp calls "probes" (here, the mean reports in
+each quarter of the year). At each step, it proposes a parameter, simulates one
+dataset there, and accepts the move only if the simulated probes land within a
+tolerance ε of the observed ones. The result is the "ABC posterior," which is
+approximate by design. It depends on ε and on the choice of probes, and it is
+wider than the true posterior. As ε → ∞, it reduces to the prior.
 
-Both are run as many independent chains in parallel. Early iterations depend on
-where a chain started and are discarded as burn-in.
+We run both algorithms as many independent chains in parallel, since extra
+chains cost almost nothing on a GPU while extra iterations do not. Early
+iterations depend on where each chain started, so we discard the first half of
+each chain as burn-in.
 
-### What could be wrong, and which check catches it
+### What could go wrong, and which check catches it
 
-A disagreement can come from two places: pypomp's SIR model could differ from
-pomp's (a translation error), or the sampling algorithm could be wrong. The
-checks are designed so that each one isolates one of these:
+A disagreement can come from two places. Either pypomp's SIR model differs
+from pomp's (a translation error), or the sampling algorithm itself is wrong.
+We designed the checks so that each one isolates one of these causes:
 
 | Check | Catches | Where |
 |---|---|---|
@@ -83,20 +97,23 @@ checks are designed so that each one isolates one of these:
 | ABC at huge ε returns the prior | distance / acceptance logic | ABC §4 |
 | Enough effective draws; no stuck chains | the run is long enough to judge | both |
 
-The references below use pypomp's own simulator and filter, so they test the
-samplers only; a model translation error would shift the references and the
-samplers together. That is what the comparisons with R are for.
+The references below are computed with pypomp's own simulator and particle
+filter, so they test the samplers only. A translation error in the model would
+shift the references and the samplers together and go unnoticed. The
+comparisons with R are there to catch that case.
 
 ### How to read the verdicts
 
-Every number from a sampler has Monte Carlo error. Each comparison reports the
-difference between two estimates divided by its standard error (a z-score).
-Standard errors for MCMC output come from the effective sample size (ESS), the
-number of independent draws the correlated chain is worth.
+Every quantity estimated by a sampler has Monte Carlo error. Consequently, each
+comparison reports the difference between two estimates divided by its
+standard error, i.e., a z-score. For MCMC output, we compute standard errors
+from the effective sample size (ESS), which is the number of independent draws
+the correlated chains are worth.
 
-- **PASS**: |z| < 3, the difference is consistent with Monte Carlo noise.
-- **CHECK**: 3 ≤ |z| < 5, worth a look; can happen by chance across many comparisons.
-- **FAIL**: |z| ≥ 5, a real discrepancy.
+- **PASS**: |z| < 3. The difference is consistent with Monte Carlo noise.
+- **CHECK**: 3 ≤ |z| < 5. This is worth a look, but it can happen by chance
+  when we make many comparisons.
+- **FAIL**: |z| ≥ 5. We treat this as a real discrepancy.
 
 ```{python Setup}
 import numpy as np
@@ -138,10 +155,12 @@ for label, obj, name in (
 
 ## Reference 1: the posterior, by grid
 
-The log-likelihood is estimated by particle filter at every point of a lattice
-over the prior box (replicates combined with `logmeanexp`). With a flat prior,
-the posterior is that likelihood normalized to integrate to one. This needs no
-Markov chain, so it is the answer PMCMC should reproduce.
+We estimate the log-likelihood with a particle filter at every point of a
+lattice over the prior box, combining replicates with `logmeanexp`. Since the
+prior is flat, the posterior is this likelihood normalized to integrate to one.
+This calculation involves no Markov chain, so it is the answer PMCMC should
+reproduce. At run level 4, the lattice is 60 × 60 with three filters of 5000
+particles at each point, which took about 2.5 minutes on one GPU.
 
 ```{python Grid surface}
 if grid is not None:
@@ -206,10 +225,11 @@ if grid is not None:
     display(HTML(ru.table_html(pd.DataFrame(rows))))
 ```
 
-**Is the grid fine and accurate enough?** It needs at least a couple of cells per
-posterior standard deviation (table above), and the particle-filter noise at each
-point must be small next to the log-density differences between neighbouring
-points (below).
+**Is the grid fine and accurate enough?** We need at least a couple of cells per
+posterior standard deviation, which the table above reports. In addition, the
+particle filter noise at each point should be small compared with the
+differences in log density between neighboring points, which the table below
+reports.
 
 ```{python Grid error}
 if grid is not None and grid["logLik_sd"].notna().any():
@@ -223,7 +243,7 @@ if grid is not None and grid["logLik_sd"].notna().any():
                     [
                         {"quantity": "median sd of one logLik replicate (nats)", "value": err.median()},
                         {"quantity": "median sd near the mode (nats)", "value": near["logLik_sd"].median()},
-                        {"quantity": "mean log-density step between neighbours near the mode", "value": step},
+                        {"quantity": "mean log-density step between neighbors near the mode", "value": step},
                     ]
                 ),
                 fmt="%.3f",
@@ -234,14 +254,16 @@ if grid is not None and grid["logLik_sd"].notna().any():
 
 ## Reference 2: the ABC posterior, by rejection sampling
 
-The ABC posterior at tolerance ε is the prior, reweighted by the probability
-that a dataset simulated at that parameter lands within ε of the observed
-probes. Plain rejection sampling draws from it exactly: draw a parameter from
-the prior, simulate one dataset, compute the probe distance, and keep the draw
-if the distance is below ε². One pass over many prior draws gives the exact ABC
-posterior at every ε in the ladder simultaneously (keep the draws below each
-threshold). It is very wasteful at small ε, which is why ABC-MCMC exists, but
-on a GPU it is affordable here, and it is the answer ABC-MCMC should reproduce.
+The ABC posterior at tolerance ε is the prior reweighted by the probability
+that a dataset simulated at each parameter lands within ε of the observed
+probes. Plain rejection sampling draws from it exactly. We draw a parameter
+from the prior, simulate one dataset, compute the probe distance, and keep the
+draw if the distance is below ε². A single pass over many prior draws gives the
+exact ABC posterior at every ε in the ladder at once, since we only need to
+keep the draws below each threshold. Rejection sampling is very wasteful at
+small ε, which is why ABC-MCMC exists. That said, on a GPU it is affordable for
+this problem: at run level 4, 20 million prior draws took 75 seconds. This is
+the answer ABC-MCMC should reproduce.
 
 ```{python Rejection summary}
 if rejection is not None:
@@ -276,12 +298,12 @@ if rejection is not None:
     display(HTML(ru.table_html(table, fmt="%.4g")))
 ```
 
-Reading down the table, the ABC posterior narrows as ε shrinks, but even at the
-smallest ε it stays wider than the full posterior (last row). That is expected:
-four seasonal means discard information that the full likelihood uses, so the
-ABC posterior converges to the posterior *given the probes*, not to the full
-posterior. The ABC report therefore compares pypomp's ABC-MCMC with this table,
-not with the grid.
+Reading down the table, the ABC posterior narrows as ε shrinks. Even at the
+smallest ε, though, it stays wider than the full posterior in the last row.
+This is expected, since four seasonal means discard information that the full
+likelihood uses. As ε → 0, the ABC posterior converges to the posterior given
+the probes rather than to the full posterior. For this reason, the ABC report
+compares pypomp's ABC-MCMC with this table and not with the grid.
 
 ```{python Rejection marginals}
 if rejection is not None:
@@ -315,5 +337,5 @@ if rejection is not None:
                 size=1,
             )
         display(p)
-    display(Markdown("Dotted black line: the full posterior from Reference 1."))
+    display(Markdown("The dotted black line is the full posterior from Reference 1."))
 ```
