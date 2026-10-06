@@ -324,7 +324,7 @@ else:
 At ε = 10⁶ every simulated dataset is close enough, so the data have no
 influence and the chains should simply spread uniformly over the prior box.
 This catches errors in how the distance or the prior enters the acceptance
-step. These chains start from the prior and mix slowly (steps of about 8 in a
+step. These chains start from the prior and mix slowly (steps of about 24 in a
 box 200 wide), so they are not held to the R-hat standard below; with many
 chains their pooled draws are still accurate.
 

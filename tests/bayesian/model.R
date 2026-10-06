@@ -50,6 +50,10 @@ BAYES_PRIOR_UPPER <- c(beta1 = 500, rho = 0.80)
 #' and mixing are expected to differ and are reported separately per language.
 BAYES_RW_SD <- c(beta1 = 8.0, rho = 0.012)
 
+#' Wider steps for ABC, whose posteriors are 2-6x wider than the full one.
+#' Linearization of ABC_RW_SD {beta1: 0.06, rho: 0.15} in model.py.
+BAYES_ABC_RW_SD <- c(beta1 = 24.0, rho = 0.036)
+
 BAYES_DATA_PATH <- "../data/sir_data.csv"
 BAYES_TRUE_PATH <- "../data/true_theta.csv"
 BAYES_SCALE_PATH <- "../data/probe_scale.csv"

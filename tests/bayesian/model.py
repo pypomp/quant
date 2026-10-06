@@ -201,6 +201,16 @@ def proposal() -> pp.MVNDiagRW:
     return pp.MVNDiagRW(RW_SD)
 
 
+#: ABC posteriors are 2-6x wider than the full posterior, so RW_SD left the
+#: ABC chains with autocorrelation times of hundreds of iterations. Matches
+#: BAYES_ABC_RW_SD in model.R by the same linearization.
+ABC_RW_SD: dict[str, float] = {"beta1": 0.06, "rho": 0.15}
+
+
+def abc_proposal() -> pp.MVNDiagRW:
+    return pp.MVNDiagRW(ABC_RW_SD)
+
+
 # --- ABC probes -------------------------------------------------------------
 # Mean reports in each quarter of the year, pooled over years; twins of
 # bayes_probes() in model.R. Binned by observation index so both languages agree

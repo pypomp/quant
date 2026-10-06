@@ -106,7 +106,7 @@ for (eps in EPS_LADDER) {
       scale = scale_vec,
       epsilon = eps,
       params = p,
-      proposal = mvn_diag_rw(BAYES_RW_SD)
+      proposal = mvn_diag_rw(BAYES_ABC_RW_SD)
     )
     tr <- as.data.frame(traces(fit))
     tr$chain <- i
@@ -154,7 +154,7 @@ save_run(
     probes = names(scale_vec),
     probe_scale = as.list(scale_vec),
     free_params = BAYES_FREE,
-    rw_sd_natural_scale = as.list(BAYES_RW_SD),
+    rw_sd_natural_scale = as.list(BAYES_ABC_RW_SD),
     execution_time = elapsed[["elapsed"]]
   )
 )
