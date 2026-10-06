@@ -81,7 +81,8 @@ J_GRID = ((5,), (100,), (25, 2000), (25, 2000))[RUN_LEVEL - 1]
 #: pfilter logLik at the true theta, compared against R in report.qmd: the check
 #: that the two SIR implementations are the same model.
 NP_PRECOND = (10, 500, 2000, 2000)[RUN_LEVEL - 1]
-NREPS_PRECOND = (2, 12, 24, 24)[RUN_LEVEL - 1]
+NREPS_PRECOND = (2, 12, 360, 3600)[RUN_LEVEL - 1]
+NREPS_NOISE = (2, 12, 24, 100)[RUN_LEVEL - 1]
 J_NOISE_GRID = ((5,), (100,), (10, 25, 100, 2000), (10, 25, 100, 2000))[RUN_LEVEL - 1]
 
 TRACE_COLS = list(model.FREE) + ["logLik", "log_prior"]
@@ -111,7 +112,7 @@ print(
 noise_rows = []
 for J in J_NOISE_GRID:
     key, nk = jax.random.split(key)
-    truth_obj.pfilter(J=J, reps=NREPS_PRECOND, key=nk)
+    truth_obj.pfilter(J=J, reps=NREPS_NOISE, key=nk)
     frame = pfilter_logliks_frame(truth_obj)
     frame["J"] = J
     noise_rows.append(frame)

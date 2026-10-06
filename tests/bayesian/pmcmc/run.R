@@ -64,7 +64,7 @@ starts <- bayes_starts(NCHAINS)
 #' else. If they disagree beyond Monte Carlo error the SIR translation is wrong
 #' and no posterior comparison downstream is interpretable.
 NP_PRECOND <- c(10, 500, 2000, 2000)[run_level]
-NREPS_PRECOND <- c(2, 12, 24, 24)[run_level]
+NREPS_PRECOND <- c(2, 12, 360, 3600)[run_level]
 
 precond <- foreach(
   i = seq_len(NREPS_PRECOND),
