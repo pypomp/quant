@@ -1,0 +1,39 @@
+{
+  "timestamp": "2026-10-06T03:57:18",
+  "r_version": "4.4.0",
+  "pomp_version": "6.3",
+  "panelPomp_version": "1.7.0.0",
+  "quant_git_sha": "f4bad0693906f9329d326e046b6c07f340d119ac",
+  "hardware": {
+    "nodelist": "gl3144",
+    "cpu_model": "Intel(R) Xeon(R) Gold 6154 CPU @ 3.00GHz",
+    "cores": 36
+  },
+  "slurm": {
+    "job_id": "63335020",
+    "partition": "standard",
+    "cpus": "1"
+  },
+  "run_config": {
+    "kind": "abc",
+    "model": "sir",
+    "RUN_LEVEL": 4,
+    "NCHAINS": 36,
+    "Nabc": 40000,
+    "epsilon_ladder": [1000000, 4, 2.5, 1.5],
+    "trace_thin": 20,
+    "probes": ["qtr1", "qtr2", "qtr3", "qtr4"],
+    "probe_scale": {
+      "qtr1": 25.4946,
+      "qtr2": 42.539,
+      "qtr3": 42.4113,
+      "qtr4": 24.9737
+    },
+    "free_params": ["beta1", "rho"],
+    "rw_sd_natural_scale": {
+      "beta1": 24,
+      "rho": 0.036
+    },
+    "execution_time": 572.717
+  }
+}

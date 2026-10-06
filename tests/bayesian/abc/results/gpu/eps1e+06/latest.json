@@ -1,0 +1,76 @@
+{
+  "timestamp": "2026-10-06T08:28:54+00:00",
+  "run_config": {
+    "kind": "abc",
+    "model": "sir",
+    "RUN_LEVEL": 4,
+    "USE_CPU": false,
+    "MAIN_SEED": 3141593,
+    "NCHAINS": 1024,
+    "M": 1000,
+    "epsilon": 1000000.0,
+    "rung": 0,
+    "probes": [
+      "qtr1",
+      "qtr2",
+      "qtr3",
+      "qtr4"
+    ],
+    "probe_scale": {
+      "qtr1": 25.4946033314898,
+      "qtr2": 42.5390499244671,
+      "qtr3": 42.4112568674804,
+      "qtr4": 24.9736557636163
+    },
+    "free_params": [
+      "beta1",
+      "rho"
+    ],
+    "rw_sd_estimation_scale": {
+      "beta1": 0.06,
+      "rho": 0.15
+    },
+    "prior_box": {
+      "beta1": [
+        300.0,
+        500.0
+      ],
+      "rho": [
+        0.45,
+        0.8
+      ]
+    },
+    "execution_time": 179.5218722820282,
+    "platform": "gpu",
+    "trace_thin": 10
+  },
+  "results_history": [
+    {
+      "method": "abc",
+      "kind": "trace",
+      "panel": false,
+      "execution_time": 179.52148246765137,
+      "config": {
+        "M": 1000,
+        "epsilon": 1000000.0
+      }
+    }
+  ],
+  "pypomp_version": "1.0.8",
+  "jax_version": "0.11.2",
+  "quant_git_sha": "f4bad0693906f9329d326e046b6c07f340d119ac",
+  "hardware": {
+    "cpu_model": "AMD EPYC 9575F 64-Core Processor",
+    "nodelist": "gl1805",
+    "cores": 128
+  },
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "63335019",
+    "partition": "gpu-rtx6000",
+    "gpus": "rtx_pro_6000_blackwell:1",
+    "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+  }
+}
