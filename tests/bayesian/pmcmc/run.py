@@ -83,6 +83,9 @@ J_GRID = ((5,), (100,), (25, 2000), (25, 2000))[RUN_LEVEL - 1]
 NP_PRECOND = (10, 500, 2000, 2000)[RUN_LEVEL - 1]
 NREPS_PRECOND = (2, 12, 360, 3600)[RUN_LEVEL - 1]
 NREPS_NOISE = (2, 12, 24, 100)[RUN_LEVEL - 1]
+#: All 3600 replicates in one call (7.2M particles in flight) took 651 s on the
+#: RTX PRO 6000, far past the ~1M-particle saturation point.
+REPS_CHUNK = 360
 J_NOISE_GRID = ((5,), (100,), (10, 25, 100, 2000), (10, 25, 100, 2000))[RUN_LEVEL - 1]
 
 TRACE_COLS = list(model.FREE) + ["logLik", "log_prior"]
@@ -99,8 +102,13 @@ for stale in glob.glob(os.path.join(out_root, "J*")):
 truth_obj = model.sir_pomp(theta=model.params_from_frame(model.theta_frame(1)))
 key, pf_key = jax.random.split(key)
 pf_start = time.time()
-truth_obj.pfilter(J=NP_PRECOND, reps=NREPS_PRECOND, key=pf_key)
-precond = pfilter_logliks_frame(truth_obj)
+frames = []
+for chunk_key in jax.random.split(pf_key, -(-NREPS_PRECOND // REPS_CHUNK)):
+    reps = min(REPS_CHUNK, NREPS_PRECOND - REPS_CHUNK * len(frames))
+    truth_obj.pfilter(J=NP_PRECOND, reps=reps, key=chunk_key)
+    frames.append(pfilter_logliks_frame(truth_obj))
+precond = pd.concat(frames, ignore_index=True)
+precond["replicate"] = np.arange(len(precond))
 precond["J"] = NP_PRECOND
 precond.to_csv(os.path.join(out_root, "pfilter_logliks.csv"), index=False)
 print(

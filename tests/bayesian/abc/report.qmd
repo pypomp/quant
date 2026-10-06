@@ -201,17 +201,9 @@ for label, arms in (("pypomp", sweeps), ("R pomp", r_sweeps)):
                               "chains": arr.shape[0], "draws per chain": arr.shape[1],
                               "split R-hat": ru.split_rhat(arr), "bulk ESS": ru.bulk_ess(arr)})
 conv = pd.DataFrame(conv_rows)
-MIN_ESS = 400
-if len(conv) and conv["bulk ESS"].notna().any():
-    low = conv.loc[conv["bulk ESS"].idxmin()]
-    ess = low["bulk ESS"]
-    scorecard.append({
-        "check": "6. Enough draws",
-        "question": f"Does every run have at least {MIN_ESS} effective independent draws?",
-        "verdict": "PASS" if ess >= MIN_ESS else ("CHECK" if ess >= MIN_ESS / 4 else "FAIL"),
-        "detail": f"smallest bulk ESS {ess:,.0f} ({low['source']}, ε={low['epsilon']:g}, {low['parameter']}); "
-                  f"split R-hat up to {conv['split R-hat'].max():.3f}, see §6",
-    })
+row = ru.ess_check(conv, "6. Enough draws")
+if row:
+    scorecard.append(row)
 ```
 
 ## Summary
@@ -227,6 +219,10 @@ for label, ok, path in (
 if scorecard:
     display(HTML(ru.scorecard_html(scorecard)))
 ```
+
+A failed comparison can mean a sampler bug or chains too short to have settled
+into their target. To tell them apart, rerun with more iterations: a gap that
+shrinks was too few iterations; a gap that stays is a bug.
 
 ```{python Provenance, results='asis'}
 if have_py:

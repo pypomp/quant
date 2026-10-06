@@ -81,7 +81,7 @@ checks are designed so that each one isolates one of these:
 | PMCMC with few vs many particles agree | mishandled likelihood noise | PMCMC §3 |
 | pypomp agrees with R `pomp` | either, end to end | PMCMC §4, ABC §3 |
 | ABC at huge ε returns the prior | distance / acceptance logic | ABC §4 |
-| Chains converged (R-hat, stuck chains) | test is long enough to judge | both |
+| Enough effective draws; no stuck chains | the run is long enough to judge | both |
 
 The references below use pypomp's own simulator and filter, so they test the
 samplers only; a model translation error would shift the references and the

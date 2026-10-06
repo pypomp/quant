@@ -87,3 +87,7 @@ tests/**/results/**/logs/
 !tests/**/results/R/*.csv
 !tests/**/results/R/*.csv.gz
 !tests/**/results/R/latest.json
+
+# full MCMC sample dumps, hundreds of MB (reports use traces/acceptance)
+tests/bayesian/abc/results/gpu/*/results.csv
+tests/bayesian/pmcmc/results/gpu/*/results.csv

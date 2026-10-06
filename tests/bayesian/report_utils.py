@@ -410,6 +410,32 @@ def table_html(df, fmt="%.4f"):
     )
 
 
+MIN_ESS = 400
+
+
+def ess_check(conv, check):
+    """Scorecard row: does every run have enough effective draws for its
+    standard errors (and so every z-score) to be trusted?"""
+    if not len(conv) or conv["bulk ESS"].notna().sum() == 0:
+        return None
+    low = conv.loc[conv["bulk ESS"].idxmin()]
+    ess = low["bulk ESS"]
+    where = ", ".join(
+        f"ε={low[c]:g}" if c == "epsilon" else str(low[c])
+        for c in ("source", "epsilon", "parameter")
+        if c in low.index
+    )
+    return {
+        "check": check,
+        "question": f"Does every run have at least {MIN_ESS} effective independent draws?",
+        "verdict": "PASS"
+        if ess >= MIN_ESS
+        else ("CHECK" if ess >= MIN_ESS / 4 else "FAIL"),
+        "detail": f"smallest bulk ESS {ess:,.0f} ({where}); "
+        f"split R-hat up to {conv['split R-hat'].max():.3f}, see diagnostics",
+    }
+
+
 def scorecard_html(rows):
     """Rows of dicts with check, question, verdict and detail."""
     return table_html(pd.DataFrame(rows)[["check", "question", "verdict", "detail"]])
