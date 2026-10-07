@@ -1,10 +1,13 @@
 """
 He10 model without alpha or mu parameters, using standard JAX samplers instead of fast pypomp samplers.
+
+rproc is @vectorized like pypomp's 001b, so the two differ only in their samplers.
 """
 
 import jax
 import jax.numpy as jnp
 import jax.scipy.special as jspecial
+from pypomp.core.model_mechanics import vectorized
 from pypomp.types import (
     CovarDict,
     InitialTimeFloat,
@@ -36,26 +39,17 @@ statenames = ["S", "E", "I", "R", "W", "C"]
 accumvars = ["W", "C"]
 
 
-def jax_multinomial(key, n, p):
-    """
-    Sample multinomial counts sequentially using standard jax.random.binomial.
-    This replaces fast_multinomial.
-    """
-    num_cat = p.shape[-1]
-    keys = jax.random.split(key, num_cat)
-    n_remaining = n
-    p_remain = jnp.ones_like(n)
-    out = []
-    for j in range(num_cat - 1):
-        p_cur = p[..., j] / p_remain
-        p_cur = jnp.clip(p_cur, 0.0, 1.0)
-        # Using standard jax.random.binomial
-        x = jax.random.binomial(keys[j], n_remaining, p_cur)
-        out.append(x)
-        n_remaining = n_remaining - x
-        p_remain = p_remain - p[..., j]
-    out.append(n_remaining)
-    return jnp.stack(out, axis=-1)
+def euler_exits(key, n, r0, r1, dt):
+    """Twin of pypomp's measles `euler_exits`, drawing with jax.random.binomial."""
+    k0, k1 = jax.random.split(key)
+    r_sum = r0 + r1
+    scale = (1.0 - jnp.exp(-r_sum * dt)) / r_sum
+    p0, p1 = r0 * scale, r1 * scale
+    x0 = jax.random.binomial(k0, n, jnp.clip(p0, 0.0, 1.0))
+    p_rem = 1.0 - p0
+    p1_cond = p1 / jnp.where(p_rem > 0.0, p_rem, 1.0)
+    x1 = jax.random.binomial(k1, n - x0, jnp.clip(p1_cond, 0.0, 1.0))
+    return x0, x1
 
 
 def rinit(theta_: ParamDict, key: RNGKey, covars: CovarDict, t0: InitialTimeFloat):
@@ -74,6 +68,7 @@ def rinit(theta_: ParamDict, key: RNGKey, covars: CovarDict, t0: InitialTimeFloa
     return {"S": S, "E": E, "I": I, "R": R, "W": W, "C": C}
 
 
+@vectorized
 def rproc(
     X_: StateDict,
     theta_: ParamDict,
@@ -82,7 +77,8 @@ def rproc(
     t: TimeFloat,
     dt: StepSizeFloat,
 ):
-    S, E, I, R, W, C = X_["S"], X_["E"], X_["I"], X_["R"], X_["W"], X_["C"]
+    S, E, I, W, C = X_["S"], X_["E"], X_["I"], X_["W"], X_["C"]
+    J = jnp.asarray(S).shape[0]
     R0 = theta_["R0"]
     sigma = theta_["sigma"]
     gamma = theta_["gamma"]
@@ -118,44 +114,27 @@ def rproc(
     # expected force of infection
     foi = beta * (I + iota) / pop
 
-    # white noise (extrademographic stochasticity) - replaced with standard JAX gamma
-    keys = jax.random.split(key, 3)
-    dw = jax.random.gamma(keys[0], dt / sigmaSE**2) * sigmaSE**2
+    k_dw, k_births, k_S, k_E, k_I = jax.random.split(key, 5)
 
-    rate = jnp.array([foi * dw / dt, mu, sigma, mu, gamma, mu])
+    # white noise (extrademographic stochasticity)
+    dw_shape = jnp.broadcast_to(dt / sigmaSE**2, (J,))
+    dw = jax.random.gamma(k_dw, dw_shape) * sigmaSE**2
 
-    # Poisson births - replaced with standard JAX poisson
-    births = jax.random.poisson(keys[1], br * dt)
+    # Poisson births
+    births = jax.random.poisson(k_births, jnp.broadcast_to(br * dt, (J,)))
+    births = births.astype(S.dtype)
 
     # transitions between classes
-    rt_final = jnp.zeros((3, 3))
+    trans_S0, trans_S1 = euler_exits(k_S, S, foi * dw / dt, mu, dt)
+    trans_E0, trans_E1 = euler_exits(k_E, E, sigma, mu, dt)
+    trans_I0, trans_I1 = euler_exits(k_I, I, gamma, mu, dt)
 
-    rate_pairs = jnp.array([[rate[0], rate[1]], [rate[2], rate[3]], [rate[4], rate[5]]])
-    populations = jnp.array([S, E, I])
-
-    rate_sums = jnp.sum(rate_pairs, axis=1)
-    p0_values = jnp.exp(-rate_sums * dt)
-
-    rt_final = (
-        rt_final.at[:, 0:2]
-        .set(jnp.einsum("ij,i,i->ij", rate_pairs, 1 / rate_sums, 1 - p0_values))
-        .at[:, 2]
-        .set(p0_values)
-    )
-
-    # transitions replaced with sequential JAX binomials
-    transitions = jax_multinomial(keys[2], populations, rt_final)
-
-    trans_S = transitions[0]
-    trans_E = transitions[1]
-    trans_I = transitions[2]
-
-    S = S + births - trans_S[0] - trans_S[1]
-    E = E + trans_S[0] - trans_E[0] - trans_E[1]
-    I = I + trans_E[0] - trans_I[0] - trans_I[1]
+    S = S + births - trans_S0 - trans_S1
+    E = E + trans_S0 - trans_E0 - trans_E1
+    I = I + trans_E0 - trans_I0 - trans_I1
     R = pop - S - E - I
     W = W + (dw - dt) / sigmaSE
-    C = C + trans_I[0]
+    C = C + trans_I0
     return {"S": S, "E": E, "I": I, "R": R, "W": W, "C": C}
 
 

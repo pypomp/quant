@@ -319,14 +319,14 @@ def iid_moments(values):
 def grid_moments(grid, param, other):
     """Mean and sd of a grid reference marginal, treated as exact.
 
-    Sheppard's correction (variance minus h^2/12) removes the widening that
-    binning onto cells of width h introduces.
+    No Sheppard's correction: the grid holds the density evaluated at cell
+    centres, not binned mass, and the midpoint rule's h^2 error in the
+    variance integrates to zero.
     """
     axis, dens = grid_marginals(grid, param, other)
     w = np.gradient(axis)
     mean = float(np.sum(axis * dens * w))
     var = float(np.sum((axis - mean) ** 2 * dens * w))
-    var -= float(np.mean(np.diff(axis))) ** 2 / 12
     return {"mean": mean, "sd": float(np.sqrt(var)), "se_mean": 0.0, "se_sd": 0.0}
 
 

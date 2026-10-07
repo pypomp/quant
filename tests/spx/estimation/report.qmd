@@ -125,8 +125,10 @@ best_gpu_pfilter = traces_gpu_t[
 traces_cpu_t = ru.process_and_transform_traces(traces_cpu, "python (CPU)")
 del traces_cpu
 
-traces_long_R = pd.read_csv(os.path.join(R_REF, "mif_traces.csv.gz"))
-traces_long_R["iter"] = (traces_long_R["iteration"] + 1).astype(np.int16)
+traces_long_R = ru.align_pomp_mif_loglik(
+    pd.read_csv(os.path.join(R_REF, "mif_traces.csv.gz")), ["replicate"]
+)
+traces_long_R["iter"] = traces_long_R["iteration"].astype(np.int16)
 traces_long_R["rep"] = traces_long_R["replicate"].astype(np.int16)
 traces_long_R = traces_long_R.drop(columns=["iteration", "replicate"])
 

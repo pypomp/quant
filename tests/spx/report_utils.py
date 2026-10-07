@@ -18,6 +18,7 @@ from plotnine import (
     theme_minimal,
 )
 from utils import (
+    align_pomp_mif_loglik,
     build_cold_vs_warm_df,
     build_settings_comparison_html,
     build_timing_comparison_df,
@@ -25,6 +26,7 @@ from utils import (
 )
 
 __all__ = [
+    "align_pomp_mif_loglik",
     "build_cold_vs_warm_df",
     "build_settings_comparison_html",
     "build_timing_comparison_df",

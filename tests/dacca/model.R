@@ -39,11 +39,13 @@ DACCA_NAME_MAP <- c(
 
 #' The perturbation sizes must match RW_SD in model.py. rho, clin, alpha and
 #' delta are not perturbed and so are simply absent here; Y_0 likewise.
+#' pypomp estimates beta_trend on a x100 scale while pomp leaves it untransformed,
+#' so the same perturbation needs a 100x smaller sd here.
 DACCA_RW_SD <- rw_sd(
   gamma = DACCA_DEFAULT_SD,
   deltaI = DACCA_DEFAULT_SD,
   eps = DACCA_DEFAULT_SD,
-  beta_trend = DACCA_DEFAULT_SD,
+  beta_trend = DACCA_DEFAULT_SD / 100,
   sd_beta = DACCA_DEFAULT_SD,
   tau = DACCA_DEFAULT_SD,
   logbeta1 = DACCA_DEFAULT_SD,

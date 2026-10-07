@@ -175,6 +175,22 @@ def _slim_traces(
     return traces
 
 
+def align_pomp_mif_loglik(
+    traces: pd.DataFrame,
+    group_cols: Sequence[str],
+    loglik_col: str = "loglik",
+    iter_col: str = "iteration",
+) -> pd.DataFrame:
+    """Put pomp's mif2 trace log-likelihoods on pypomp's iteration convention.
+
+    Both store the parameters after pass k on row k, but pomp stores pass k+1's
+    log-likelihood there, while pypomp stores pass k's (row 0 is NaN).
+    """
+    traces = traces.sort_values([*group_cols, iter_col]).copy()
+    traces[loglik_col] = traces.groupby(list(group_cols))[loglik_col].shift(1)
+    return traces
+
+
 def save_run(
     pomp_obj: Any,
     out_dir: str,

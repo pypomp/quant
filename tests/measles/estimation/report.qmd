@@ -137,6 +137,8 @@ from plotnine import geom_line
 
 py_traces = ru.read_if_exists(os.path.join(PY_DIR, "traces.csv.gz"))
 r_traces = ru.read_if_exists(os.path.join(R_DIR, "mif_traces.csv.gz"))
+if r_traces is not None:
+    r_traces = ru.align_pomp_mif_loglik(r_traces, ["unit", "replicate"])
 
 trace_frames = []
 
