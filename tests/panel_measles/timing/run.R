@@ -25,7 +25,7 @@
 #   3:
 #     sbatch_args: { time: "02:00:00" }
 #   4:
-#     sbatch_args: { time: "03:30:00" }
+#     sbatch_args: { time: "04:00:00" }
 # setup: |
 #   module load R/4.4.0
 # command: |
@@ -85,14 +85,20 @@ t_mif <- system.time({
 })
 
 cat("Phase 2: timing pfilter...\n")
+# NREPS_EVAL filter evaluations per IF2 estimate, matching reps = NREPS_EVAL in run.py.
 t_pf <- system.time({
-  foreach(
-    i = 1:NREPS_EVAL,
+  pf_logliks <- foreach(
+    idx = 1:(NSTARTS * NREPS_EVAL),
     .packages = c("pomp", "panelPomp"),
+    .combine = rbind,
     .options.multicore = list(set.seed = TRUE)
   ) %dopar%
     {
-      pfilter(mif_out[[1]], Np = NP_EVAL)
+      rep_id <- (idx - 1) %/% NREPS_EVAL + 1
+      data.frame(
+        replicate = rep_id,
+        logLik = logLik(pfilter(mif_out[[rep_id]], Np = NP_EVAL))
+      )
     }
 })
 

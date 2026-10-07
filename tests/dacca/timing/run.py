@@ -120,9 +120,9 @@ timed(
 key, subkey = jax.random.split(key)
 timed(
     "pfilter_cold",
-    lambda: dacca_obj.pfilter(J=NP, reps=NREPS, key=subkey, theta=starts),
+    lambda: dacca_obj.pfilter(J=NP, reps=NREPS, key=subkey),
 )
-timed("pfilter_warm", lambda: dacca_obj.pfilter(J=NP, reps=NREPS, theta=starts))
+timed("pfilter_warm", lambda: dacca_obj.pfilter(J=NP, reps=NREPS))
 
 platform = jax.devices()[0].platform
 out_dir = os.path.join("results", platform)

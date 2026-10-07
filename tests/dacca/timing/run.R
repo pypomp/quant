@@ -78,18 +78,19 @@ t_mif <- system.time({
     }
 })
 
-# Nreps filter evaluations per starting point, matching reps = Nreps in run.py.
+# Nreps filter evaluations per IF2 estimate, matching reps = Nreps in run.py.
 t_pf <- system.time({
   L.box <- foreach(
-    i = 1:Nstarts,
+    idx = 1:(Nstarts * Nreps),
     .packages = "pomp",
-    .combine = c,
+    .combine = rbind,
     .options.multicore = list(set.seed = TRUE)
   ) %dopar%
     {
-      replicate(
-        Nreps,
-        logLik(pfilter(dacca_model, params = unlist(starts[i, ]), Np = Np))
+      rep_id <- (idx - 1) %/% Nreps + 1
+      data.frame(
+        replicate = rep_id,
+        logLik = logLik(pfilter(if.box[[rep_id]], Np = Np))
       )
     }
 })
