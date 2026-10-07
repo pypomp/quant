@@ -60,7 +60,6 @@ def scale_fill_premium():
 
 def nav_bar(current):
     pages = [
-        ("reference", "Overview & References", "../reference/report.html"),
         ("pmcmc", "PMCMC", "../pmcmc/report.html"),
         ("abc", "ABC", "../abc/report.html"),
     ]

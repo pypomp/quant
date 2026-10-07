@@ -28,22 +28,14 @@ from IPython.display import display, HTML, Markdown
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('pmcmc')}</div>"))
 ```
 
-Particle Markov chain Monte Carlo (PMCMC) is a random walk over (`beta1`,
-`rho`) that accepts or rejects each move using a particle filter estimate of
-the likelihood. Given enough iterations, its draws come from the posterior. In
-this report, we check that pypomp's `Pomp._pmcmc` recovers the posterior that
-the [grid reference](../reference/report.html) computes by brute force, and
-that it agrees with R `pomp`'s `pmcmc` on the same problem. The method is
-private for now, and we intend to make it public once these checks pass. The
-[overview](../reference/report.html#start-here) describes the setup and how to
-read the verdicts.
+Tests `Pomp._pmcmc` against a grid posterior (`reference/run.py`) and R
+`pomp::pmcmc`. Data: 208 weeks simulated from `pomp::sir` at known parameters.
+Free parameters `beta1` and `rho` have a flat prior on `model.PRIOR_BOX`, and
+all others are fixed at truth.
 
-We begin with a summary of every check. We then confirm that pypomp and R
-implement the same model (§1), compare pypomp's posterior with the grid
-reference (§2), and test that the particle count does not change the posterior
-(§3). Subsequently, we compare pypomp with R (§4) and check that the chains
-provide enough effective draws for these comparisons to be trusted (§5). We
-end with a coverage sanity check (§6).
+Verdicts use z = difference / Monte Carlo SE, with SEs from bulk ESS: PASS
+|z| < 3, CHECK 3 ≤ |z| < 5, FAIL |z| ≥ 5. Draws are pooled over chains after
+discarding the first half of each chain.
 
 ```{python Setup}
 import glob
@@ -64,7 +56,8 @@ os.environ["JAX_PLATFORMS"] = "cpu"
 
 GPU = os.path.join("results", "gpu")
 R_DIR = os.path.join("results", "R")
-REFERENCE = os.path.join("..", "reference", "results", "gpu", "grid_posterior.csv")
+REF_DIR = os.path.join("..", "reference", "results", "gpu")
+REFERENCE = os.path.join(REF_DIR, "grid_posterior.csv")
 PARAMS = ["beta1", "rho"]
 OTHER = {"beta1": "rho", "rho": "beta1"}
 BURN_FRAC = 0.5
@@ -89,6 +82,7 @@ r_post = ru.drop_burnin(r_traces, BURN_FRAC) if r_traces is not None else None
 r_meta = ru.load_json(os.path.join(R_DIR, "latest.json"))
 r_acc = ru.read_if_exists(os.path.join(R_DIR, "acceptance.csv"))
 grid = ru.read_if_exists(REFERENCE)
+ref_meta = ru.load_json(os.path.join(REF_DIR, "latest.json"))
 py_pf = ru.read_if_exists(os.path.join(GPU, "pfilter_logliks.csv"))
 r_pf = ru.read_if_exists(os.path.join(R_DIR, "pfilter_logliks.csv"))
 pf_vs_J = ru.read_if_exists(os.path.join(GPU, "pfilter_vs_J.csv"))
@@ -180,31 +174,22 @@ if scorecard:
     display(HTML(ru.scorecard_html(scorecard)))
 ```
 
-Checks 1 and 4 involve R, while checks 2 and 3 do not. Consequently, if check 4
-fails while checks 1–3 pass, the likely cause is a difference between the two
-implementations' models that the likelihood check did not detect, rather than
-a problem with pypomp's sampler.
-
-A failed comparison can also mean that the chains were too short to leave
-their starting points, rather than a sampler bug. To tell these apart, we
-would rerun with more iterations. A gap that shrinks points to too few
-iterations, while a gap that stays points to a bug.
+The grid uses pypomp's own simulator and filter, so checks 2 and 3 test the
+sampler only. Model translation is covered by checks 1 and 4.
 
 ```{python Provenance, results='asis'}
 if have_py:
     display(Markdown("**pypomp run**\n\n" + ru.format_metadata(sweeps[J_HI]["meta"])))
 if have_r:
     display(Markdown("**R pomp run**\n\n" + ru.format_r_metadata(r_meta)))
+if ref_meta:
+    display(Markdown("**Grid reference run**\n\n" + ru.format_metadata(ref_meta)))
 ```
 
 ## 1. Same model?
 
-pypomp's SIR model is a translation of `pomp::sir`. A small difference in, for
-example, the seasonal spline or the reporting distribution would make every
-later comparison with R misleading. Our first check is therefore that, at the
-true parameters and on the same data, the two particle filters estimate the
-same log-likelihood. At run level 4, each package runs 3600 filters with 2000
-particles each.
+Particle-filter log-likelihood at the true parameters, pypomp vs R, on the same
+data (3600 filters × 2000 particles each at run level 4).
 
 ```{python Precondition}
 if precond is not None:
@@ -228,10 +213,30 @@ else:
 
 ## 2. Right posterior?
 
-Here we compare pypomp's draws, after discarding the first half of each chain
-as burn-in, with the grid reference. The density curves should lie on top of
-each other, and the means and standard deviations should agree within Monte
-Carlo error.
+pypomp draws vs the grid posterior. The grid is the particle-filter likelihood
+on a lattice over the prior box, normalized (60 × 60 points, 3 filters × 5000
+particles per point at run level 4). For the grid to be adequate, it needs at
+least ~2 cells per posterior sd, and filter noise must be small compared with
+the log-density step between neighbours.
+
+```{python Grid adequacy}
+if have_grid:
+    rows = []
+    for param in PARAMS:
+        m = grid_m[param]
+        spacing = float(np.mean(np.diff(np.sort(grid[param].unique()))))
+        rows.append({"parameter": param, "posterior sd": m["sd"],
+                     "grid spacing": spacing, "cells per sd": m["sd"] / spacing})
+    display(HTML(ru.table_html(pd.DataFrame(rows))))
+    if grid["logLik_sd"].notna().any():
+        near = grid[grid["log_post"] > grid["log_post"].max() - 10]
+        step = np.abs(np.diff(near.sort_values(["beta1", "rho"])["log_post"])).mean()
+        display(HTML(ru.table_html(pd.DataFrame([
+            {"quantity": "median sd of one logLik replicate near the mode (nats)",
+             "value": near["logLik_sd"].median()},
+            {"quantity": "mean log-density step between neighbours near the mode", "value": step},
+        ]), fmt="%.3f")))
+```
 
 ```{python Posterior vs grid}
 if have_py and have_grid:
@@ -257,13 +262,10 @@ if have_py and have_grid:
 
 ## 3. Does the particle count matter?
 
-The particle count should not matter. With few particles, the likelihood
-estimate is noisy, so the chain gets stuck more often and needs more
-iterations to reach the same precision. Regardless, it still targets the same
-posterior. This only holds if the sampler reuses the accepted likelihood
-estimate instead of re-estimating it at every step, since re-estimating would
-make the posterior depend on `J`. We chose the particle count for the low arm
-so that the noise is large, as the table of log-likelihood spread below shows.
+Low-`J` and high-`J` chains must target the same posterior. A `J`-dependent
+posterior indicates that the accepted likelihood estimate is being recomputed
+instead of carried forward. The low-`J` arm is chosen so that the
+log-likelihood estimate is noisy (second table).
 
 ```{python J invariance}
 if vs_J is not None:
@@ -304,11 +306,9 @@ if have_py:
 
 ## 4. Agrees with R?
 
-R `pomp`'s `pmcmc` is an independent implementation of the same algorithm on
-the same model. Its proposal is not identical to pypomp's. pypomp takes random
-walk steps on the log scale for `beta1` and on the logit scale for `rho`, while
-pomp steps on the natural scale. Both proposals are valid, so we expect the
-acceptance rates to differ but the posteriors to agree.
+pypomp at the highest `J` vs R `pomp::pmcmc`. pomp's random walk is on the
+natural scale, and pypomp's is on log (`beta1`) and logit (`rho`) scales, so
+acceptance rates differ, but the posteriors should match.
 
 ```{python R comparison}
 if vs_R is not None:
@@ -334,24 +334,9 @@ else:
 
 ## 5. Are there enough draws?
 
-Every z-score above divides by a Monte Carlo standard error computed from the
-effective sample size (ESS), which is the number of independent draws the
-correlated chains are worth. With fewer than about 400 effective draws, we do
-not trust those standard errors, and so we do not trust the verdicts that
-depend on them. The scorecard checks this threshold here.
-
-Whether the chains have forgotten their random starting points in the prior
-box is tested more directly by §2. Had they not, their pooled draws would be
-too wide or shifted and would not match the grid reference. We show split
-R-hat, the usual convergence diagnostic when no reference exists, for
-information only. It compares chains with each other, and it is poorly suited
-to the way we run chains on a GPU. Since extra chains are nearly free on a GPU
-while extra iterations are not, we run very many short chains (128 chains of
-2000 iterations at run level 4). With chains this short relative to their
-autocorrelation time, R-hat stays above the usual 1.01 threshold even when the
-pooled draws are correct. Roughly, R-hat² ≈ 1 + τ/n for autocorrelation time τ
-and n draws per half-chain. R's 36 chains of 3000 iterations are somewhat
-longer and sit closer to 1.
+Every run must have bulk ESS ≥ 400 for its standard errors to be trusted.
+Split R-hat is for information only. With many short chains (128 × 2000 at run
+level 4), it stays above 1.01 even when the pooled draws match the grid (§2).
 
 ```{python Convergence}
 if len(conv):
@@ -377,9 +362,7 @@ if have_py:
 
 ## 6. Do the credible intervals cover the truth?
 
-This is a sanity check rather than a test. One dataset gives only one draw of
-coverage, and a 90% interval misses the truth one time in ten even when
-everything is correct.
+Sanity check, not scored: one dataset gives a single draw of coverage.
 
 ```{python Coverage}
 if have_py:

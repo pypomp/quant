@@ -28,29 +28,16 @@ from IPython.display import display, HTML, Markdown
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('abc')}</div>"))
 ```
 
-Approximate Bayesian computation (ABC) by Markov chain Monte Carlo, or
-ABC-MCMC, is a random walk over (`beta1`, `rho`) that never evaluates a
-likelihood. At each step, it proposes a parameter, simulates one dataset
-there, and reduces that dataset to four probes, the mean reports in each
-quarter of the year. It accepts the move only if these probes land within a
-tolerance ε of the observed probes. Its draws come from the **ABC posterior**
-for that ε, which is approximate by design and wider than the true posterior.
+Tests `Pomp._abc` at each tolerance in the ladder ε = 10⁶, 4, 2.5, 1.5 against
+the exact ABC posterior from rejection sampling (`reference/run.py`) and
+against R `pomp::abc`. Data: 208 weeks simulated from `pomp::sir` at known
+parameters. Free parameters `beta1` and `rho` have a flat prior on
+`model.PRIOR_BOX`, and all others are fixed at truth. Probes: mean reports in
+each quarter of the year.
 
-In this report, we check that pypomp's `Pomp._abc` samples the same ABC
-posterior that
-[rejection sampling](../reference/report.html#reference-2-the-abc-posterior-by-rejection-sampling)
-gives exactly, and the same one that R `pomp`'s `abc` samples. We do this at
-every tolerance in the ladder ε = 10⁶, 4, 2.5, 1.5, where ε = 10⁶ is large
-enough to be effectively infinite. The method is private for now, and we
-intend to make it public once these checks pass. The
-[overview](../reference/report.html#start-here) describes the setup and how to
-read the verdicts.
-
-We begin with a summary of every check and a description of how we run the
-tolerance ladder. We then confirm that pypomp and R compute the same probes
-(§1), compare pypomp with rejection sampling (§2) and with R (§3), and check
-that a huge tolerance recovers the prior (§4). We end by showing how the ABC
-posterior changes with ε (§5) and whether the chains mixed (§6).
+Verdicts use z = difference / Monte Carlo SE, with SEs from bulk ESS: PASS
+|z| < 3, CHECK 3 ≤ |z| < 5, FAIL |z| ≥ 5. Draws are pooled over chains after
+discarding the first half of each chain.
 
 ```{python Setup}
 import glob
@@ -230,38 +217,26 @@ if scorecard:
     display(HTML(ru.scorecard_html(scorecard)))
 ```
 
-A failed comparison can mean either a sampler bug or chains too short to have
-settled into their target. To tell these apart, we would rerun with more
-iterations. A gap that shrinks points to too few iterations, while a gap that
-stays points to a bug.
-
 ```{python Provenance, results='asis'}
 if have_py:
     display(Markdown("**pypomp run**\n\n" + ru.format_metadata(sweeps[min(sweeps)]["meta"])))
 if have_r:
     display(Markdown("**R pomp run**\n\n" + ru.format_r_metadata(r_meta)))
+if ref_meta:
+    display(Markdown("**Rejection reference run**\n\n" + ru.format_metadata(ref_meta)))
 ```
 
-## How the tolerance ladder is run
+## Tolerance ladder
 
-We run the tolerances in order, loosest first. At ε = 10⁶, the chains start
-from random points in the prior box. Each tighter tolerance then starts from
-the previous one. We draw candidate points from the previous run's draws,
-simulate one dataset at each, and keep as starting points only the candidates
-whose simulation already falls within the new tolerance. This is the selection
-step of ABC sequential Monte Carlo (ABC-SMC). We do this because a chain
-started anywhere in the prior box at a tight tolerance can sit where no
-simulated dataset ever matches, and so never move. An earlier version of this
-test lost 31% of its chains this way. Where a chain starts does not change
-what it converges to, and we discard the first half of each run as burn-in
-regardless.
+The ladder runs loosest first. ε = 10⁶ starts from the prior. Each tighter ε
+starts from points drawn from the previous run whose single simulation already
+falls within the new ε (ABC-SMC selection), so chains do not start where they
+can never move.
 
 ## 1. Same probes?
 
-The probes are written twice, in JAX for pypomp (`model.py`) and in R for pomp
-(`model.R`). Since they are deterministic functions of the same data, they
-should agree to floating-point precision. If they did not, the two packages
-would effectively be running different algorithms.
+Probes from `model.py` and `model.R` on the data must agree to 1e-6 relative
+error.
 
 ```{python Probe precondition}
 if probe_cmp is not None:
@@ -272,9 +247,7 @@ else:
 
 ## 2. Right ABC posterior?
 
-At every finite tolerance, we compare pypomp's ABC-MCMC draws with the exact
-ABC posterior from rejection sampling. The curves should overlap, and the
-means and standard deviations should agree within Monte Carlo error.
+pypomp vs rejection sampling at each finite ε.
 
 ```{python vs rejection}
 if have_py and have_ref:
@@ -301,12 +274,10 @@ if have_py and have_ref:
 
 ## 3. Agrees with R?
 
-R `pomp`'s `abc` uses the same probes, scales, tolerances, prior, and data, but
-its own simulator. As with PMCMC, its random walk steps are on the natural
-scale rather than pypomp's log and logit scales, so we expect the acceptance
-rates to differ but the posteriors to agree. If check 2 passed and this one
-failed, the likely cause would be a difference between the two simulators
-rather than pypomp's sampler.
+pypomp vs R `pomp::abc` with the same probes, scales, tolerances, prior and
+data. pomp's random walk is on the natural scale, and pypomp's is on log and
+logit scales, so acceptance rates differ, but the posteriors should match.
+Failing here while passing check 2 points to the simulator, not the sampler.
 
 ```{python R comparison}
 if vs_R:
@@ -331,11 +302,8 @@ else:
 
 ## 4. Does a huge tolerance give the prior?
 
-At ε = 10⁶, every simulated dataset is close enough, so the data have no
-influence and the chains should spread uniformly over the prior box. This
-check catches errors in how the distance or the prior enters the acceptance
-step. These chains start from the prior itself, so burn-in is not a concern
-here.
+At ε = 10⁶, every move is accepted, so draws must be uniform on the prior box.
+This catches errors in how the distance or prior enters acceptance.
 
 ```{python Prior recovery}
 if prior_cmp is not None:
@@ -344,11 +312,8 @@ if prior_cmp is not None:
 
 ## 5. How the ABC posterior changes with ε
 
-Using both the rejection reference and pypomp's draws, we show how acceptance
-and posterior width change with ε. As ε shrinks, acceptance falls and the
-posterior narrows. That said, the ABC posterior stays wider than the full
-posterior from the grid, since four quarterly means carry less information
-than the whole time series.
+Acceptance and posterior sd by ε. The last row is the full posterior from the
+grid. Not scored.
 
 ```{python Width and acceptance}
 if have_py:
@@ -388,23 +353,10 @@ if have_py:
 
 ## 6. Did the chains mix?
 
-A chain that never accepts a move contributes only its starting point, so the
-first table counts such chains. The second table gives, for each run, the
-effective sample size (ESS), which is the number of independent draws the
-correlated chains are worth, and split R-hat.
-
-**Why the scorecard uses ESS rather than R-hat here.** R-hat compares chains
-with each other and flags disagreement between them. This is the right test
-when chains start far apart. Here, however, each tolerance starts from the
-selection step, close to its target. In addition, since extra chains are
-nearly free on a GPU while extra iterations are not, pypomp runs very many
-short chains (1024 chains of 2000 iterations at run level 4). Each chain is
-then short compared with its autocorrelation time, and R-hat for such chains
-stays above 1 even when the pooled draws are correct. Roughly, R-hat² ≈ 1 +
-τ/n for autocorrelation time τ and n draws per half-chain. Whether the pooled
-draws are correct is what §2 and §3 test directly, against the exact answer
-and against R. This section only asks whether there are enough of them. R's 36
-chains of 40000 iterations each are long enough for R-hat to sit near 1.
+The first table counts chains that never accepted a move. The second requires
+bulk ESS ≥ 400 per run. Split R-hat is for information only. With many short
+chains (1024 × 2000 at run level 4), it stays above 1 even when the pooled
+draws match the references (§2, §3).
 
 ```{python Stuck chains}
 if len(stuck):

@@ -53,8 +53,7 @@ Below is a list of quantitative test reports available in this repository:
 
 ### 8. Bayesian Inference (PMCMC & ABC)
 
-All three share one SIR problem (`tests/bayesian/model.py`, `model.R`): estimate `beta1` and `rho` under a flat box prior.
+Both share one SIR problem (`tests/bayesian/model.py`, `model.R`): estimate `beta1` and `rho` under a flat box prior. `tests/bayesian/reference/run.py` computes the reference answers (grid posterior, rejection-sampled ABC posterior) that both reports read.
 
-* **[Overview & Reference Answers](tests/bayesian/reference/report.html)** (`tests/bayesian/reference`): Plain-language guide to the tests, plus the brute-force answers they are checked against: the posterior by grid quadrature and the exact ABC posterior by rejection sampling.
 * **[PMCMC](tests/bayesian/pmcmc/report.html)** (`tests/bayesian/pmcmc`): Checks that `pypomp`'s particle marginal Metropolis-Hastings matches the grid posterior and R `pomp`'s `pmcmc`, and does not depend on the particle count.
 * **[ABC](tests/bayesian/abc/report.html)** (`tests/bayesian/abc`): Checks that `pypomp`'s ABC-MCMC matches the exact ABC posterior and R `pomp`'s `abc` at each tolerance in a ladder, and returns the prior when the tolerance does not bind.
