@@ -1904,7 +1904,7 @@ wheels = [
 
 [[package]]
 name = "pypomp"
-version = "1.1.0"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cloudpickle" },
@@ -1913,12 +1913,11 @@ dependencies = [
     { name = "pandas" },
     { name = "scipy" },
     { name = "tqdm" },
-    { name = "typing-extensions" },
     { name = "xarray" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/61/af/073945729382144080074ddb8f4325f8a8da01e00581498fd2520952d9b5/pypomp-1.1.0.tar.gz", hash = "sha256:447dc5e01e270756fd6f2d90d4f1278366b3d14f80f62701adfa168fb3acd33a", size = 7399754, upload-time = "2026-10-07T20:55:54.569Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/00/3fe515039cfd8037bf040bc8e08c2368ccb3c7fb255553aca070a4fcd466/pypomp-1.2.0.tar.gz", hash = "sha256:4f95c0eacce381cdcda1877bf016a9ac28b977b9789644d67befcddcc15df814", size = 7405986, upload-time = "2026-10-10T13:29:57.752Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/1b/899d575436234e40c311bf1b478eba56d83a777788a887e6f02c8c2d25c4/pypomp-1.1.0-py3-none-any.whl", hash = "sha256:24f76d9c4506a09697adbe2354b77f74be2b47407fb3300cf7ea80d38e9379aa", size = 6408457, upload-time = "2026-10-07T20:55:52.352Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/1a/4278cdbe4a27790d004f8358e9091160df894d97dc858dddd5cbac3f10bf/pypomp-1.2.0-py3-none-any.whl", hash = "sha256:5aa36d7418d00f4c225018cc5a41d46cf9b406b262f26cb3b1ab748eb3676af6", size = 6402516, upload-time = "2026-10-10T13:29:55.378Z" },
 ]
 
 [[package]]
