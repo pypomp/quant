@@ -15,45 +15,37 @@ The quant tests also provide additional examples of pypomp, focused on technical
 
 ## Quantitative Tests Index
 
-Below is a list of quantitative test reports available in this repository:
+### Model tests
 
-### 1. SPX (S&P 500) Model
-* **[Parameter Estimation & Convergence](tests/spx/estimation/report.html)** (`tests/spx/estimation`): Compares parameter estimation traces and log-likelihood estimates on the SPX index dataset using `pypomp` (CPU/GPU) and R's `pomp`.
-* **[Runtime & Performance Benchmark](tests/spx/timing/report.html)** (`tests/spx/timing`): Benchmarks execution speed, speedup factors, and CPU/GPU throughput relative to R `pomp`.
-* **[Fixed-Parameter Likelihood Validation](tests/spx/loglik/report.html)** (`tests/spx/loglik`): Evaluates particle filter log-likelihood estimates at fixed parameter values (`rep3600`) via two-sample KS test.
-* **[Computational Scaling Benchmark](tests/spx/scaling/report.html)** (`tests/spx/scaling`): Evaluates execution speed and VRAM memory scaling across particle counts ($J$) and parallel search chains on GPU.
+Each model is tested the same four ways. The report for test `X` on model `M` is at `tests/M/X/report.html`.
 
+* **Likelihood**: particle filter log-likelihoods at fixed parameters, `pypomp` vs R `pomp`, compared as distributions (KS test, densities).
+* **Estimation**: IF2 global search from identical starting points, `pypomp` vs `pomp`: traces, final parameter estimates, final log-likelihoods.
+* **Timing**: IF2 and particle filter runtime on identical work, `pypomp` on GPU and CPU vs `pomp`.
+* **Scaling**: GPU runtime and peak VRAM as particles ($J$) and chains grow; where the GPU saturates.
 
-### 2. Dhaka Cholera Model
-* **[IF2 vs IFAD](tests/dacca/algorithms/report.html)** (`tests/dacca/algorithms`): Compares how far iterated filtering alone and iterated filtering with gradient training get on the same likelihood for a comparable wall-clock budget.
-* **[Runtime & Performance Benchmark](tests/dacca/timing/report.html)** (`tests/dacca/timing`): Benchmarks IF2 and particle filter execution speed in `pypomp` (CPU/GPU) against R `pomp`, on identical work.
-* **[Computational Scaling Benchmark](tests/dacca/scaling/report.html)** (`tests/dacca/scaling`): Finds how many concurrent particles (J × chains) saturate the GPU for IF2 and the particle filter, with peak VRAM.
-* **[Fixed-Parameter Likelihood Validation](tests/dacca/loglik/report.html)** (`tests/dacca/loglik`): Checks that the particle filter yields the same distribution of log-likelihoods in `pypomp` and `pomp` at the published MLE.
+| Model | Likelihood | Estimation | Timing | Scaling |
+|---|---|---|---|---|
+| SPX (S&P 500) | [report](tests/spx/loglik/report.html) | [report](tests/spx/estimation/report.html) | [report](tests/spx/timing/report.html) | [report](tests/spx/scaling/report.html) |
+| Dhaka cholera | [report](tests/dacca/loglik/report.html) | — | [report](tests/dacca/timing/report.html) | [report](tests/dacca/scaling/report.html) |
+| Measles | [report](tests/measles/loglik/report.html)¹ | [report](tests/measles/estimation/report.html) | [report](tests/measles/timing/report.html)² | [report](tests/measles/scaling/report.html) |
+| Panel measles | [report](tests/panel_measles/loglik/report.html) | [report](tests/panel_measles/estimation/report.html)³ | [report](tests/panel_measles/timing/report.html) | [report](tests/panel_measles/scaling/report.html) |
 
-### 3. Random Number Generators
-* **[Random Number Generators Benchmark & Comparison](tests/samplers/test.html)** (`tests/samplers`): Benchmarks the execution speed and validates the statistical accuracy of `pypomp`'s fast approximate inverse CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
+¹ Also compares `pypomp` in 32- and 64-bit precision, on London and Halesworth.<br>
+² Also compares the fast samplers in `pypomp.random` with stock JAX samplers.<br>
+³ Block IF2, plus the `pypomp`-only mix-and-match step.
 
-### 4. Measles Model
-* **[Fixed-Parameter Likelihood Validation](tests/measles/loglik/report.html)** (`tests/measles/loglik`): Compares the distribution of particle filter log-likelihoods at the He et al. (2010) estimates in `pypomp` (32- and 64-bit) against R's `pomp`.
-* **[Parameter Estimation](tests/measles/estimation/report.html)** (`tests/measles/estimation`): Compares the distribution of IF2 parameter estimates from a global search in `pypomp` versus `pomp`, from identical starting points.
-* **[Runtime & Throughput Benchmark](tests/measles/timing/report.html)** (`tests/measles/timing`): Benchmarks IF2 and particle filter execution speed on the discrete measles model. Contrasts `pypomp` on GPU and CPU with R `pomp`, and the fast samplers in `pypomp.random` with stock JAX samplers.
-* **[Computational Scaling Benchmark](tests/measles/scaling/report.html)** (`tests/measles/scaling`): Finds how many concurrent particles (J × chains) saturate the GPU for IF2 and the particle filter on London, with peak VRAM.
+### Method comparisons
 
-### 5. Panel Measles Model
-* **[Fixed-Parameter Likelihood Validation](tests/panel_measles/loglik/report.html)** (`tests/panel_measles/loglik`): Compares the distribution of panel particle filter log-likelihoods at the He et al. (2010) estimates in `pypomp` against R's `panelPomp`.
-* **[Parameter Estimation](tests/panel_measles/estimation/report.html)** (`tests/panel_measles/estimation`): Compares the distribution of block-IF2 parameter estimates from a global search in `pypomp` versus `panelPomp`, from identical starting points, and reports the `pypomp`-only mix-and-match step.
-* **[Runtime & Throughput Benchmark](tests/panel_measles/timing/report.html)** (`tests/panel_measles/timing`): Benchmarks block-IF2 and particle filter execution speed on the 4-unit mixed panel model, contrasting `pypomp` on GPU and CPU with R `panelPomp`.
-* **[Computational Scaling Benchmark](tests/panel_measles/scaling/report.html)** (`tests/panel_measles/scaling`): Finds how many concurrent particles (J × chains) saturate the GPU for block-IF2 and the panel particle filter, with peak VRAM.
+* **[IF2 vs IFAD](tests/dacca/algorithms/report.html)** (Dhaka cholera): how far iterated filtering alone and iterated filtering with gradient training get on the same likelihood for a comparable wall-clock budget.
 
-### 6. Blowflies Model
-* **[Fixed-Parameter Likelihood Validation](tests/blowflies/loglik/report.html)** (`tests/blowflies/loglik`): Compares particle filter log-likelihood estimates at the default parameters of `blowflies1()` in `pypomp` and R `pomp`.
-
-### 7. FitzHugh–Nagumo Model
-* **[Simulator Reference Validation](tests/fitzhugh_nagumo/reference/report.html)** (`tests/fitzhugh_nagumo/reference`): Compares JAX and the authors' R/C++ Strang simulators using shared innovations and independent endpoint samples.
-
-### 8. Bayesian Inference (PMCMC & ABC)
+### Bayesian inference
 
 Both share one SIR problem (`tests/bayesian/model.py`, `model.R`): estimate `beta1` and `rho` under a flat box prior. `tests/bayesian/reference/run.py` computes the reference answers (grid posterior, rejection-sampled ABC posterior) that both reports read.
 
-* **[PMCMC](tests/bayesian/pmcmc/report.html)** (`tests/bayesian/pmcmc`): Checks that `pypomp`'s particle marginal Metropolis-Hastings matches the grid posterior and R `pomp`'s `pmcmc`, and does not depend on the particle count.
-* **[ABC](tests/bayesian/abc/report.html)** (`tests/bayesian/abc`): Checks that `pypomp`'s ABC-MCMC matches the exact ABC posterior and R `pomp`'s `abc` at each tolerance in a ladder, and returns the prior when the tolerance does not bind.
+* **[PMCMC](tests/bayesian/pmcmc/report.html)**: checks that `pypomp`'s particle marginal Metropolis-Hastings matches the grid posterior and R `pomp`'s `pmcmc`, and does not depend on the particle count.
+* **[ABC](tests/bayesian/abc/report.html)**: checks that `pypomp`'s ABC-MCMC matches the exact ABC posterior and R `pomp`'s `abc` at each tolerance in a ladder, and returns the prior when the tolerance does not bind.
+
+### Random number generators
+
+* **[Fast samplers](tests/samplers/test.html)**: speed and statistical accuracy of `pypomp`'s fast approximate inverse-CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
