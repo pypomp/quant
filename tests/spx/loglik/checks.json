@@ -1,0 +1,19 @@
+{
+  "verdict": "PASS",
+  "run_level": 4,
+  "pypomp_version": "1.0.0rc1",
+  "checks": [
+    {
+      "check": "Mean log-likelihood",
+      "compared": "pypomp (GPU) vs R pomp",
+      "result": "difference +0.050 nats (SE 0.049), z = +1.04",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Distribution (KS)",
+      "compared": "pypomp (GPU) vs R pomp",
+      "result": "D = 0.0275, p = 0.131",
+      "verdict": "PASS"
+    }
+  ]
+}

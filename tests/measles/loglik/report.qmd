@@ -29,48 +29,32 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
 
 ## Introduction
 
-This report evaluates the particle filter's likelihood calculation itself, by
-running it many times at the He et al. (2010) maximum likelihood estimates for each town. 
-Nothing varies across replicates except the random seed, so any systematic difference between `pypomp` and
-`pomp` is a difference between the implementations.
+This report checks the particle filter's likelihood estimate by running it many
+times at the He et al. (2010) maximum likelihood estimates for two towns: London,
+the largest unit, and Halesworth, one of the smallest. Only the random seed
+varies across replicates, so any systematic difference between `pypomp` and
+`pomp` would be a difference between the implementations.
 
-`pypomp` is run twice, in single and in double precision. 
-We have seen some indication that single precision slightly shifts the estimated log-likelihood for the measles model so we check that here. 
-`pomp` computes in double precision throughout, so the 64-bit arm is the like-for-like comparison and the 32-bit arm measures what the default costs.
+We run `pypomp` twice, once in single precision and once in double precision. We
+have seen some indication that single precision slightly shifts the estimated
+log-likelihood for the measles model, so we check that here. Since `pomp` uses
+double precision throughout, the 64-bit run is the direct comparison with
+`pomp`, while the 32-bit run shows the effect of `pypomp`'s default precision.
 
-Two towns are used: London, the largest unit, and Halesworth, among the
-smallest.
+```{python Load results}
+import numpy as np
+import pandas as pd
+import checks
+from plotnine import ggplot, aes, geom_density, facet_wrap, labs
 
----
+os.environ["JAX_PLATFORMS"] = "cpu"
 
-## Benchmark Settings & Environment
-
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
-
-```{python Settings Table, results='asis'}
 PLATFORMS = {
     "R pomp": os.path.join("results", "R"),
     "pypomp (32-bit)": os.path.join("results", "f32"),
     "pypomp (64-bit)": os.path.join("results", "f64"),
 }
-
 runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
-```
-
-```{python Missing sources, results='asis'}
-missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
-for label, path in missing:
-    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
-```
-
-```{python Environment Setup}
-import numpy as np
-import pandas as pd
-from scipy.stats import ks_2samp
-from plotnine import ggplot, aes, geom_density, facet_wrap, labs
-
-os.environ["JAX_PLATFORMS"] = "cpu"
 
 frames = []
 for label, d in PLATFORMS.items():
@@ -80,16 +64,53 @@ for label, d in PLATFORMS.items():
         df["source"] = label
         frames.append(df)
 
-combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(
+    columns=["unit", "replicate", "logLik", "source"]
+)
+units = sorted(combined["unit"].unique())
+
+
+def ll(unit, source):
+    return combined[(combined["unit"] == unit) & (combined["source"] == source)]["logLik"].values
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
 ---
 
-## Summary Statistics
+## Automated checks
 
-`logmeanexp` is the log of the mean likelihood and sits above the mean
-log-likelihood by roughly `sd^2/2`. It is the quantity `pomp` reports as the
-likelihood estimate, so it is listed alongside the raw mean.
+Only the 64-bit comparisons receive a verdict. The 32-bit rows report the shift
+due to single precision for reference.
+
+```{python Automated checks, results='asis'}
+M_TESTS = 2 * len(units)
+level = checks.run_level(runs)
+rows = []
+for arm, verdict in [("pypomp (64-bit)", True), ("pypomp (32-bit)", False)]:
+    for unit in units:
+        rows += checks.loglik_checks(
+            ll(unit, arm), ll(unit, "R pomp"), f"{unit}: {arm} vs R pomp", M_TESTS, verdict=verdict
+        )
+rows = checks.gate_smoke(rows, level)
+checks.save(rows, level, pypomp_version=runs["pypomp (64-bit)"]["meta"].get("pypomp_version"))
+display(HTML(checks.table_html(rows, M_TESTS)))
+```
+
+## Visual review
+
+- [Density comparison](#density-comparison): within each town, the 64-bit and `pomp` densities should overlap heavily. Since the 32-bit and 64-bit runs differ only in precision, any shift of the 32-bit density away from the other two should be due to precision rather than the filter.
+
+---
+
+## Summary statistics
+
+We include `logmeanexp`, the log of the mean likelihood, since it is the
+likelihood estimate that `pomp` reports.
 
 ```{python Summary table}
 summary = (
@@ -109,33 +130,9 @@ summary = (
 display(HTML(summary.round(3).to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-### Kolmogorov-Smirnov tests against the R baseline
-
-```{python KS tests}
-rows = []
-if not combined.empty and "R" in set(combined["source"]):
-    for unit in sorted(combined["unit"].unique()):
-        r_ll = combined[(combined["unit"] == unit) & (combined["source"] == "R")]["logLik"]
-        for label in ["pypomp (32-bit)", "pypomp (64-bit)"]:
-            py_ll = combined[(combined["unit"] == unit) & (combined["source"] == label)]["logLik"]
-            if len(py_ll) == 0 or len(r_ll) == 0:
-                continue
-            d, p = ks_2samp(py_ll, r_ll)
-            rows.append({
-                "Unit": unit,
-                "Comparison": f"{label} vs R",
-                "Mean difference (nats)": py_ll.mean() - r_ll.mean(),
-                "KS D": d,
-                "KS p": p,
-            })
-
-ks_table = pd.DataFrame(rows)
-display(HTML(ks_table.round(4).to_html(classes="table table-striped table-hover", index=False)))
-```
-
 ---
 
-## Density Comparison
+## Density comparison
 
 ```{python Density plot, fig.width = 10, fig.height = 6}
 (
@@ -156,9 +153,10 @@ display(HTML(ks_table.round(4).to_html(classes="table table-striped table-hover"
 )
 ```
 
-::: {.callout-note}
-### Expectation
-The three densities should overlap heavily within each town. A shift in the
-32-bit curve relative to the other two localises the difference to floating
-point precision rather than to the filter.
-:::
+---
+
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```

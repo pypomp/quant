@@ -1,0 +1,55 @@
+{
+  "verdict": "PASS",
+  "run_level": 4,
+  "pypomp_version": "1.0.6",
+  "checks": [
+    {
+      "check": "Mean log-likelihood",
+      "compared": "Cardiff: pypomp vs R panelPomp",
+      "result": "difference +0.084 nats (SE 0.053), z = +1.58",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Distribution (KS)",
+      "compared": "Cardiff: pypomp vs R panelPomp",
+      "result": "D = 0.0253, p = 0.2",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Mean log-likelihood",
+      "compared": "Halesworth: pypomp vs R panelPomp",
+      "result": "difference +0.026 nats (SE 0.032), z = +0.83",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Distribution (KS)",
+      "compared": "Halesworth: pypomp vs R panelPomp",
+      "result": "D = 0.0192, p = 0.523",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Mean log-likelihood",
+      "compared": "Hastings: pypomp vs R panelPomp",
+      "result": "difference +0.025 nats (SE 0.043), z = +0.57",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Distribution (KS)",
+      "compared": "Hastings: pypomp vs R panelPomp",
+      "result": "D = 0.0203, p = 0.45",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Mean log-likelihood",
+      "compared": "London: pypomp vs R panelPomp",
+      "result": "difference -0.097 nats (SE 0.069), z = -1.40",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Distribution (KS)",
+      "compared": "London: pypomp vs R panelPomp",
+      "result": "D = 0.0186, p = 0.561",
+      "verdict": "PASS"
+    }
+  ]
+}

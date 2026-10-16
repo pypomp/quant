@@ -29,59 +29,43 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
 
 ## Introduction
 
-This report evaluates the panel particle filter's likelihood calculation itself,
-by running it many times at the He et al. (2010) maximum likelihood estimates.
-Nothing varies across replicates except the random seed, so any systematic
-difference between `pypomp` and `panelPomp` is a difference between the
+This report checks the panel particle filter's likelihood estimate by running it
+many times in `pypomp` and in R `panelPomp` at the He et al. (2010) maximum
+likelihood estimates. Only the random seed varies across replicates, so any
+systematic difference between the two would be a difference between the
 implementations.
 
-The panel has **4 units** — London, Halesworth, Hastings and Cardiff — with a
-mixed parameter structure: `R0`, `sigma`, `gamma`, `sigmaSE`, `cohort` and
-`amplitude` are shared across units, while `iota`, `rho`, `psi`, `S_0`, `E_0`,
-`I_0` and `R_0` are estimated separately per unit. The panel log-likelihood is
-the sum over units, so the per-unit likelihoods below are the components that
-have to agree.
+The panel has four units: London, Halesworth, Hastings and Cardiff. The
+parameters `R0`, `sigma`, `gamma`, `sigmaSE`, `cohort` and `amplitude` are
+shared across units and set to the average of the four towns' estimates, while
+`iota`, `rho`, `psi`, `S_0`, `E_0`, `I_0` and `R_0` are unit-specific. Since the
+panel log-likelihood is the sum of the unit log-likelihoods, we compare each
+unit separately.
 
 ::: {.callout-note collapse="true"}
 ### Why the covariates are imported from `pomp`
-The `python` and `R` smoothing spline implementations interpolate the birthrate
-and population covariates differently — noticeably so for Cardiff — which on its
-own shifts the log-likelihood. Since the point here is to compare the two
-*filter* implementations rather than two slightly different models, the final
-interpolated covariate grid is exported from `pomp` into
-`../R_covariates.csv` and injected into the `pypomp` objects
-(`model.align_covariates`). Both packages therefore filter the identical model.
+The Python and R smoothing splines interpolate the birth rate and population
+covariates differently, most noticeably for Cardiff, and this alone shifts the
+log-likelihood. Since we want to compare the filters rather than two slightly
+different models, we export the interpolated covariates from `pomp` to
+`../R_covariates.csv` and load them into the `pypomp` objects
+(`model.align_covariates`). As such, both packages filter the same model.
 :::
 
----
-
-## Benchmark Settings & Environment
-
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
-
-```{python Settings Table, results='asis'}
-PLATFORMS = {
-    "R panelPomp": os.path.join("results", "R"),
-    "pypomp (GPU)": ru.platform_dir(),
-}
-
-runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
-```
-
-```{python Missing sources, results='asis'}
-missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
-for label, path in missing:
-    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
-```
-
-```{python Environment Setup}
+```{python Load results}
 import numpy as np
 import pandas as pd
-from scipy.stats import ks_2samp
+import checks
 from plotnine import ggplot, aes, geom_density, facet_wrap, labs
 
 os.environ["JAX_PLATFORMS"] = "cpu"
+
+PY_LABEL = "pypomp (GPU)"
+PLATFORMS = {
+    "R panelPomp": os.path.join("results", "R"),
+    PY_LABEL: ru.platform_dir(),
+}
+runs = ru.load_timing_data(PLATFORMS)
 
 frames = []
 for label, d in PLATFORMS.items():
@@ -95,15 +79,46 @@ for label, d in PLATFORMS.items():
 combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(
     columns=["unit", "replicate", "logLik", "source"]
 )
+units = sorted(combined["unit"].unique())
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
 ---
 
-## Summary Statistics
+## Automated checks
 
-`logmeanexp` is the log of the mean likelihood and sits above the mean
-log-likelihood by roughly `sd^2/2`. It is the quantity `panelPomp` reports as
-the likelihood estimate, so it is listed alongside the raw mean.
+```{python Automated checks, results='asis'}
+M_TESTS = 2 * len(units)
+level = checks.run_level(runs)
+rows = []
+for unit in units:
+    sel = combined["unit"] == unit
+    rows += checks.loglik_checks(
+        combined[sel & (combined["source"] == PY_LABEL)]["logLik"],
+        combined[sel & (combined["source"] == "R panelPomp")]["logLik"],
+        f"{unit}: pypomp vs R panelPomp",
+        M_TESTS,
+    )
+rows = checks.gate_smoke(rows, level)
+checks.save(rows, level, pypomp_version=runs[PY_LABEL]["meta"].get("pypomp_version"))
+display(HTML(checks.table_html(rows, M_TESTS)))
+```
+
+## Visual review
+
+- [Density comparison](#density-comparison): within each unit, the two densities should overlap heavily.
+
+---
+
+## Summary statistics
+
+We include `logmeanexp`, the log of the mean likelihood, since it is the
+likelihood estimate that `panelPomp` reports.
 
 ```{python Summary table}
 if combined.empty:
@@ -120,9 +135,8 @@ else:
 
 ### Panel log-likelihood
 
-The panel likelihood is the sum of the per-unit likelihoods. Summing the
-`logmeanexp` of each unit gives the estimate each package would report for the
-whole panel.
+The sum of the unit `logmeanexp` values is the panel log-likelihood estimate
+that each package would report.
 
 ```{python Panel total}
 if combined.empty:
@@ -140,35 +154,9 @@ else:
     display(HTML(panel.round(3).to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-### Kolmogorov-Smirnov tests against the R baseline
-
-```{python KS tests}
-rows = []
-if not combined.empty and "R panelPomp" in set(combined["source"]):
-    for unit in sorted(combined["unit"].unique()):
-        r_ll = combined[(combined["unit"] == unit) & (combined["source"] == "R panelPomp")]["logLik"]
-        py_ll = combined[(combined["unit"] == unit) & (combined["source"].str.startswith("pypomp"))]["logLik"]
-        if len(py_ll) == 0 or len(r_ll) == 0:
-            continue
-        d, p = ks_2samp(py_ll, r_ll)
-        rows.append({
-            "Unit": unit,
-            "Comparison": "pypomp vs R panelPomp",
-            "Mean difference (nats)": py_ll.mean() - r_ll.mean(),
-            "KS D": d,
-            "KS p": p,
-        })
-
-ks_table = pd.DataFrame(rows)
-if ks_table.empty:
-    display(HTML("<p><em>Both sources are needed for a KS comparison.</em></p>"))
-else:
-    display(HTML(ks_table.round(4).to_html(classes="table table-striped table-hover", index=False)))
-```
-
 ---
 
-## Density Comparison
+## Density comparison
 
 ```{python Density plot, fig.width = 10, fig.height = 7}
 if combined.empty:
@@ -192,41 +180,10 @@ else:
     )
 ```
 
-::: {.callout-note}
-### Expectation
-The two densities should overlap heavily within each unit. A shift confined to
-one unit points at that unit's model or covariates; a shift present in all four
-points at the filter.
-:::
-
 ---
 
-## Evaluation Cost
+## Appendix: settings and environment
 
-Wall clock for the full block of likelihood evaluations. The two arms run on
-different hardware, so this is context for the distributions above rather than
-the timing benchmark — see the [timing report](../timing/report.html) for a
-controlled comparison.
-
-```{python Timing}
-rows = []
-for label, d in PLATFORMS.items():
-    tm = ru.normalize_timings(ru.read_if_exists(os.path.join(d, "timings.csv")))
-    if tm is None:
-        continue
-    cfg = ru.load_json(os.path.join(d, "latest.json")).get("run_config", {}) or {}
-    for _, r in tm.iterrows():
-        rows.append({
-            "Source": label,
-            "Phase": r["phase"],
-            "Time (s)": r["time_seconds"],
-            "Particles": cfg.get("NP_EVAL", "?"),
-            "Replicates": cfg.get("NREPS_EVAL", "?"),
-        })
-
-timing_df = pd.DataFrame(rows)
-if timing_df.empty:
-    display(HTML("<p><em>No timings recorded.</em></p>"))
-else:
-    display(HTML(timing_df.round(2).to_html(classes="table table-striped table-hover", index=False)))
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
 ```

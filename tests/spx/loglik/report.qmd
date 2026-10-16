@@ -30,22 +30,27 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('loglik')}</div>"))
 
 ## Introduction
 
-This section evaluates the particle filter's likelihood calculation itself by running it multiple times on a single, fixed parameter vector [@sun2024 estimates].
+This report checks the particle filter's likelihood estimate by running it many times at a single fixed parameter vector, the estimates from @sun2024. Only the random seed varies across replicates, so any systematic difference between `pypomp` and `pomp` would be a difference between the implementations.
 
----
+```{python Load results}
+import numpy as np
+import pandas as pd
+import checks
+from plotnine import ggplot, aes, geom_density, labs
 
-## Benchmark Settings & Environment
+os.environ["JAX_PLATFORMS"] = "cpu"
 
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
-
-```{python Settings Table, results='asis'}
 PLATFORMS = {
     "R pomp": os.path.join("results", "R"),
     "pypomp (GPU)": os.path.join("results", "gpu"),
 }
-
 runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+
+EVAL_CSV_PATH = os.path.join("results", "gpu", "pfilter_logliks.csv")
+LL_rep3600 = pd.read_csv(EVAL_CSV_PATH)["logLik"].values if os.path.exists(EVAL_CSV_PATH) else np.array([])
+
+R_REF_PATH = os.path.join("results", "R", "pfilter_logliks.csv")
+LL_rep3600_R = pd.read_csv(R_REF_PATH)["logLik"].values if os.path.exists(R_REF_PATH) else np.array([])
 ```
 
 ```{python Missing sources, results='asis'}
@@ -54,32 +59,31 @@ for label, path in missing:
     display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
-```{python Environment Setup}
-import os
-import numpy as np
-import pandas as pd
-from scipy.stats import ks_2samp
-from plotnine import ggplot, aes, geom_density, labs
+---
 
-os.environ["JAX_PLATFORMS"] = "cpu"
+## Automated checks
 
-EVAL_CSV_PATH = os.path.join("results", "gpu", "pfilter_logliks.csv")
-LL_rep3600 = pd.read_csv(EVAL_CSV_PATH)["logLik"].values.tolist() if os.path.exists(EVAL_CSV_PATH) else []
-
-R_REF_PATH = os.path.join("results", "R", "pfilter_logliks.csv")
-LL_rep3600_R = pd.read_csv(R_REF_PATH)["logLik"].values if os.path.exists(R_REF_PATH) else np.array([])
+```{python Automated checks, results='asis'}
+M_TESTS = 2
+level = checks.run_level(runs)
+rows = checks.gate_smoke(
+    checks.loglik_checks(LL_rep3600, LL_rep3600_R, "pypomp (GPU) vs R pomp", M_TESTS),
+    level,
+)
+checks.save(rows, level, pypomp_version=runs["pypomp (GPU)"]["meta"].get("pypomp_version"))
+display(HTML(checks.table_html(rows, M_TESTS)))
 ```
+
+## Visual review
+
+- [Density comparison](#density-comparison): the two densities should overlap heavily.
 
 ---
 
-## Likelihood Evaluation at Fixed Parameter (rep3600 Check)
+## Summary statistics
 
-### Kolmogorov-Smirnov (KS) Test
-
-```{python KS test against the R baseline}
-ks_stat, ks_p = ks_2samp(LL_rep3600, LL_rep3600_R)
-
-ks_table = pd.DataFrame({
+```{python Summary table}
+summary = pd.DataFrame({
     "Source": ["pypomp (GPU)", "R pomp"],
     "Replicates": [len(LL_rep3600), len(LL_rep3600_R)],
     "Mean": [np.mean(LL_rep3600), np.mean(LL_rep3600_R)],
@@ -88,16 +92,12 @@ ks_table = pd.DataFrame({
     "Max": [np.max(LL_rep3600), np.max(LL_rep3600_R)],
 })
 
-display(HTML(ks_table.round(3).to_html(classes="table table-striped table-hover", index=False)))
-print(
-    f"Mean difference: {np.mean(LL_rep3600) - np.mean(LL_rep3600_R):+.4f} nats\n"
-    f"Two-sample KS:   D = {ks_stat:.4f}, p = {ks_p:.4g}"
-)
+display(HTML(summary.round(3).to_html(classes="table table-striped table-hover", index=False)))
 ```
 
 ---
 
-### Density Comparison
+## Density comparison
 
 ```{python Plot rep3600 combined density, fig.width = 8, fig.height = 5}
 rep3600_df = pd.concat([
@@ -122,10 +122,13 @@ rep3600_df = pd.concat([
 )
 ```
 
-::: {.callout-note}
-### Expectation
-We expect the two log-likelihood density curves (`pypomp` vs `pomp`) to overlap heavily, confirming statistical consistency of particle filter evaluations across implementations.
-:::
+---
+
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```
 
 ---
 

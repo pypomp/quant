@@ -1,4 +1,4 @@
-.PHONY: sync sync-gpu lock upgrade-pypomp install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports render-reports-slurm lint format pre-commit
+.PHONY: sync sync-gpu lock upgrade-pypomp install_requirements install_pypi install_git install_git_latest list test-interactive test-high test-all render-reports readme-checks render-reports-slurm lint format pre-commit
 
 sync:
 	uv sync
@@ -44,6 +44,9 @@ DIR ?= tests
 
 render-reports:
 	find $(DIR) -name "*.qmd" -exec quarto render {} \;
+
+readme-checks:
+	uv run scripts/update_readme_checks.py
 
 render-reports-slurm:
 	find $(DIR) -name "*.qmd" -exec sbatch scripts/render_report.sh {} \;

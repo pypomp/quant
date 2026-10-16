@@ -255,7 +255,6 @@ def nav_bar(current):
         ("estimation", "Parameter Estimation", "../estimation/report.html"),
         ("timing", "Timing & Throughput", "../timing/report.html"),
         ("scaling", "Scaling", "../scaling/report.html"),
-        ("algorithms", "IF2 vs IFAD", "../algorithms/report.html"),
     ]
     parts = []
     for key, title, url in pages:
