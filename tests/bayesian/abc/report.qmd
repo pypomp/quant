@@ -22,6 +22,8 @@ import os
 import sys
 
 sys.path.append("..")
+sys.path.append("../..")
+import checks
 import report_utils as ru
 from IPython.display import display, HTML, Markdown
 
@@ -215,16 +217,20 @@ for label, ok, path in (
         display(HTML(ru.missing_note(label, path)))
 if scorecard:
     display(HTML(ru.scorecard_html(scorecard)))
+py_meta = sweeps[min(sweeps)]["meta"] if have_py else {}
+checks.save(
+    [{"check": r["check"], "compared": r["question"], "result": r["detail"], "verdict": r["verdict"]}
+     for r in scorecard],
+    (py_meta.get("run_config") or {}).get("RUN_LEVEL"),
+    pypomp_version=py_meta.get("pypomp_version"),
+)
 ```
 
-```{python Provenance, results='asis'}
-if have_py:
-    display(Markdown("**pypomp run**\n\n" + ru.format_metadata(sweeps[min(sweeps)]["meta"])))
-if have_r:
-    display(Markdown("**R pomp run**\n\n" + ru.format_r_metadata(r_meta)))
-if ref_meta:
-    display(Markdown("**Rejection reference run**\n\n" + ru.format_metadata(ref_meta)))
-```
+## Visual review
+
+- [2. Right ABC posterior?](#right-abc-posterior): at each ε, the pypomp and exact (rejection) curves of the same color should coincide.
+- [3. Agrees with R?](#agrees-with-r): at each ε, the pypomp and R `pomp` curves of the same color should coincide.
+- [6. Did the chains mix?](#did-the-chains-mix): right of the dotted line, the chains should overlap and show no trend.
 
 ## Tolerance ladder
 
@@ -276,8 +282,8 @@ if have_py and have_ref:
 
 pypomp vs R `pomp::abc` with the same probes, scales, tolerances, prior and
 data. pomp's random walk is on the natural scale, and pypomp's is on log and
-logit scales, so acceptance rates differ, but the posteriors should match.
-Failing here while passing check 2 points to the simulator, not the sampler.
+logit scales, so acceptance rates are not comparable. The posteriors should
+match.
 
 ```{python R comparison}
 if vs_R:
@@ -303,7 +309,6 @@ else:
 ## 4. Does a huge tolerance give the prior?
 
 At ε = 10⁶, every move is accepted, so draws must be uniform on the prior box.
-This catches errors in how the distance or prior enters acceptance.
 
 ```{python Prior recovery}
 if prior_cmp is not None:
@@ -354,9 +359,7 @@ if have_py:
 ## 6. Did the chains mix?
 
 The first table counts chains that never accepted a move. The second requires
-bulk ESS ≥ 400 per run. Split R-hat is for information only. With many short
-chains (1024 × 2000 at run level 4), it stays above 1 even when the pooled
-draws match the references (§2, §3).
+bulk ESS ≥ 400 per run. Split R-hat is for information only.
 
 ```{python Stuck chains}
 if len(stuck):
@@ -383,4 +386,15 @@ if have_py:
                    x="iteration", color="chain")
             + ru.theme_premium
         )
+```
+
+## Appendix: run provenance
+
+```{python Provenance, results='asis'}
+if have_py:
+    display(Markdown("**pypomp run**\n\n" + ru.format_metadata(py_meta)))
+if have_r:
+    display(Markdown("**R pomp run**\n\n" + ru.format_r_metadata(r_meta)))
+if ref_meta:
+    display(Markdown("**Rejection reference run**\n\n" + ru.format_metadata(ref_meta)))
 ```

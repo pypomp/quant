@@ -1,0 +1,31 @@
+{
+  "verdict": "PASS",
+  "run_level": 4,
+  "pypomp_version": "1.0.6",
+  "checks": [
+    {
+      "check": "Final estimates: means",
+      "compared": "Halesworth: pypomp vs R pomp",
+      "result": "largest |z| = 1.19 (logit(amplitude)) of 13",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: distributions (KS)",
+      "compared": "Halesworth: pypomp vs R pomp",
+      "result": "smallest p = 0.0665 (log(sigmaSE)) of 13",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: means",
+      "compared": "London: pypomp vs R pomp",
+      "result": "largest |z| = 1.34 (log(gamma)) of 13",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: distributions (KS)",
+      "compared": "London: pypomp vs R pomp",
+      "result": "smallest p = 0.226 (log(sigma)) of 13",
+      "verdict": "PASS"
+    }
+  ]
+}

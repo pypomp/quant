@@ -37,13 +37,10 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('scaling')}</div>")
 
 This benchmark finds how many concurrent particles it takes to saturate the GPU on the S&P 500 (SPX) stochastic volatility model [@sun2024]. The number of particles in flight during IF2 is $J \times \text{chains}$. We grow it two ways: by raising $J$ at a fixed number of chains, and by adding chains at a fixed $J$.
 
-Iteration counts are kept small on purpose. Each grid point runs `mif` twice with the same $M$. The first call pays for JIT compilation, and the second is timed to give the steady-state cost per iteration. The key column is **IF2 ns / particle / iter**. It falls while the GPU is underused, levels off once the GPU is saturated, and rises if larger batches start to lose efficiency. Each grid point runs in its own subprocess so that peak VRAM is measured per configuration.
+Iteration counts are kept small on purpose. Each grid point runs `mif` twice with the same $M$. The first call pays for JIT compilation, and the second is timed to give the steady-state cost per iteration. The key column is **IF2 ns / particle / iter**. Each grid point runs in its own subprocess so that peak VRAM is measured per configuration.
 
-## Benchmark Settings & Environment
-
-```{python Settings}
+```{python Load results}
 runs = ru.load_timing_data({"pypomp (GPU)": os.path.join("results", "gpu")})
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
 
 csv_path = os.path.join("results", "gpu", "scaling.csv")
 has_data = os.path.exists(csv_path)
@@ -70,6 +67,11 @@ else:
         "<code>python scripts/run_tests.py run tests/spx/scaling/run.py --run-level 4</code></div>"
     ))
 ```
+
+## Visual review
+
+- [Where the GPU saturates](#where-the-gpu-saturates): IF2 ns / particle / iter should fall as the number of particles in flight grows, then level off.
+- No grid point should be listed as failed above.
 
 ## 1. Particle Scaling ($J$)
 
@@ -163,7 +165,6 @@ if has_data:
         + scale_x_log10()
         + labs(
             title="IF2 cost per particle per iteration",
-            subtitle="Flat region = GPU saturated",
             x="Particles in flight (J × chains)",
             y="ns / particle / iteration",
         )
@@ -199,6 +200,12 @@ if has_data and df["peak_vram_mb"].notna().any():
         )
         + ru.theme_premium
     )
+```
+
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
 ```
 
 ## References

@@ -1,0 +1,79 @@
+{
+  "verdict": "PASS",
+  "run_level": 4,
+  "pypomp_version": "1.0.6",
+  "checks": [
+    {
+      "check": "Final estimates: means",
+      "compared": "shared: pypomp vs R panelPomp",
+      "result": "largest |z| = 1.66 (logit(cohort)) of 6",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: distributions (KS)",
+      "compared": "shared: pypomp vs R panelPomp",
+      "result": "smallest p = 0.193 (logit(amplitude)) of 6",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: means",
+      "compared": "Cardiff: pypomp vs R panelPomp",
+      "result": "largest |z| = 0.76 (log(iota)) of 7",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: distributions (KS)",
+      "compared": "Cardiff: pypomp vs R panelPomp",
+      "result": "smallest p = 0.193 (log(iota)) of 7",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: means",
+      "compared": "Halesworth: pypomp vs R panelPomp",
+      "result": "largest |z| = 2.02 (log(psi)) of 7",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: distributions (KS)",
+      "compared": "Halesworth: pypomp vs R panelPomp",
+      "result": "smallest p = 0.0187 (log(psi)) of 7",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: means",
+      "compared": "Hastings: pypomp vs R panelPomp",
+      "result": "largest |z| = 1.61 (logit(I_0)) of 7",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: distributions (KS)",
+      "compared": "Hastings: pypomp vs R panelPomp",
+      "result": "smallest p = 0.0806 (logit(E_0)) of 7",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: means",
+      "compared": "London: pypomp vs R panelPomp",
+      "result": "largest |z| = 2.11 (logit(rho)) of 7",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: distributions (KS)",
+      "compared": "London: pypomp vs R panelPomp",
+      "result": "smallest p = 0.0546 (log(iota)) of 7",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Endpoint log-likelihood: means",
+      "compared": "pypomp vs R panelPomp",
+      "result": "largest |z| = 3.41 (Cardiff) of 4",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Endpoint log-likelihood: distributions (KS)",
+      "compared": "pypomp vs R panelPomp",
+      "result": "smallest p = 0.00429 (Cardiff) of 4",
+      "verdict": "PASS"
+    }
+  ]
+}

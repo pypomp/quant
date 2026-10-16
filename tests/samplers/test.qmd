@@ -73,6 +73,10 @@ This file contains performance benchmarks and statistical validation tests for t
 
 We compare `pypomp`'s fast approximate inverse CDF samplers against their counterpart samplers in standard libraries (`jax.random` and `scipy.stats`).
 
+## Visual review
+
+- [Distribution comparisons](#distribution-comparisons): the histograms and density plots should overlap as much as possible, and the Q-Q plots should fall along the line $y = x$ as much as possible.
+
 ## Environment Setup & Imports
 
 <details>
@@ -873,10 +877,9 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Distribution Comparisons & Visualizations
+## Distribution Comparisons & Visualizations {#distribution-comparisons}
 
 We validate the statistical accuracy of the fast approximate samplers using histograms/density plots and Quantile-Quantile (Q-Q) plots.
-We want the histograms/density plots to overlap as much as possible and the Q-Q plots to fall along the line $y = x$ as much as possible.
 
 For discrete distributions (Poisson, Binomial, and Negative Binomial), the Q-Q plots use a small amount of random jitter. 
 Because discrete variables only take integer values, their quantiles lie on a grid, packing all of the points onto a few spots and making it difficult to tell if a point off of the $y = x$ line is a handful of points or thousands of them.

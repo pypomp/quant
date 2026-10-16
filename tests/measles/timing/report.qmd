@@ -34,7 +34,7 @@ The London measles benchmark is on the computationally intensive end of the benc
 This benchmark gives us a sense of how `pypomp` performs when `rproc` is computationally intensive.
 Furthermore, it lets us examine how fast `pypomp.random` custom samplers are relative to stock `jax.random` in a realistic modeling scenario, instead of in a vacuum.
 
-We benchmark 4 configurations to measure relative execution speeds and isolate the contribution of custom random variate algorithms:
+We benchmark 4 configurations:
 
 | Configuration | What it isolates |
 |---|---|
@@ -43,22 +43,14 @@ We benchmark 4 configurations to measure relative execution speeds and isolate t
 | `pypomp` GPU (stock JAX samplers) | Acceleration under stock `jax.random` samplers |
 | `pypomp` CPU (36 cores) | Multi-core host parallelization without a GPU |
 
----
-
-## Benchmark Settings & Environment
-
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
-
-```{python Settings Table, results='asis'}
+```{python Load results}
 PLATFORMS = {
     "R pomp (36 cores)": os.path.join("results", "R"),
     "pypomp (GPU)": os.path.join("results", "gpu"),
     "pypomp (GPU, JAX samplers)": os.path.join("results", "gpu_jax"),
     "pypomp (CPU, 36 cores)": os.path.join("results", "cpu"),
 }
-
 runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
 ```
 
 ```{python Missing sources, results='asis'}
@@ -67,31 +59,34 @@ for label, path in missing:
     display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
+## Visual review
+
+- [Runtime and throughput](#runtime-and-throughput): `pypomp`'s throughput on GPU with the fast samplers should be thousands of times that of R `pomp` on one core, and the fast-sampler GPU run should be substantially faster than the stock JAX sampler GPU run. We set no expectation for the CPU run, which we include for completeness.
+
 ---
 
-## Runtime & Throughput Comparison
+## Runtime and throughput
 
-The table below compares execution speed across platforms. Speedup and throughput calculations privilege the cold-start particle filter (`pfilter_cold`) to account for initial execution and JIT compilation overhead incurred in practice. 
-Throughput evaluates parallel acceleration relative to a single R CPU core ($Speedup \times N_{cores}$).
+Speedup and throughput use the cold-start particle filter (`pfilter_cold`), which includes JIT compilation, since that cost is paid in practice. Throughput is relative to a single R CPU core ($\text{speedup} \times N_{\text{cores}}$).
 
 ```{python Performance Table}
 timing_df = ru.build_timing_comparison_df(runs, is_panel=False)
 display(HTML(timing_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-### JIT Compilation & Overhead Breakdown
+### JIT compilation overhead
 
-The first `pfilter` call in JAX incurs one-time JIT compilation overhead. 
-Subsequent warm evaluations run without recompilation.
+The first `pfilter` call in JAX includes one-time JIT compilation. Later calls run without recompiling.
 
 ```{python Cold vs Warm Breakdown}
 cold_warm_df = ru.build_cold_vs_warm_df(runs)
 display(HTML(cold_warm_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-::: {.callout-note}
-### Performance Expectations & Takeaways
-- **GPU (Fast Samplers)**: `pypomp`'s throughput on GPU should be thousands of times larger than R `pomp` with 1 core. The fast-sampler GPU run should also substantially outperform the stock JAX sampler GPU run.
-- **CPU**: As it turns out, it's difficult to quickly generate Poisson, gamma, and binomial random variates in JAX on a CPU. As such, the `pypomp` run using 36 CPU cores is substantially slower than the R `pomp` run using 36 CPU cores. This should be fine given that GPUs are far more preferable regardless. We leave this comparison here for completeness and to motivate a solution if anyone feels inclined.
-:::
+---
 
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```

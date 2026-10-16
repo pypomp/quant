@@ -1,0 +1,43 @@
+{
+  "verdict": "PASS",
+  "run_level": 4,
+  "pypomp_version": "1.0.8",
+  "checks": [
+    {
+      "check": "1. Same probes",
+      "compared": "Do pypomp and R compute the same summary statistics on the data?",
+      "result": "largest relative difference 3.6e-08",
+      "verdict": "PASS"
+    },
+    {
+      "check": "2. Right ABC posterior",
+      "compared": "At each finite \u03b5, does pypomp match rejection sampling?",
+      "result": "largest gap: mean beta1 at \u03b5=4, +1.2 SE",
+      "verdict": "PASS"
+    },
+    {
+      "check": "3. Agrees with R",
+      "compared": "At each \u03b5, does pypomp match R pomp's abc?",
+      "result": "largest gap: mean rho at \u03b5=2.5, -2.2 SE",
+      "verdict": "PASS"
+    },
+    {
+      "check": "4. Huge \u03b5 gives the prior",
+      "compared": "At \u03b5=1e+06, where every move is accepted, is the answer the flat prior?",
+      "result": "largest gap: sd beta1 at \u03b5=1e+06, +0.6 SE",
+      "verdict": "PASS"
+    },
+    {
+      "check": "5. No stuck chains",
+      "compared": "Did every chain accept at least one move at every \u03b5?",
+      "result": "0 of 4240 chain-runs never moved",
+      "verdict": "PASS"
+    },
+    {
+      "check": "6. Enough draws",
+      "compared": "Does every run have at least 400 effective independent draws?",
+      "result": "smallest bulk ESS 4,870 (R pomp, \u03b5=1.5, beta1); split R-hat up to 1.136, see diagnostics",
+      "verdict": "PASS"
+    }
+  ]
+}

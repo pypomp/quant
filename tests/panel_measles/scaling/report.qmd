@@ -38,13 +38,10 @@ This benchmark finds how many concurrent particles it takes to saturate the GPU 
 
 Units are filtered one after another inside each iteration, so $J$ is particles *per unit* and one iteration does roughly four single-unit filter passes. $M$ and reps are smaller here than in the single-unit tests to keep the run near 20 minutes.
 
-Iteration counts are kept small on purpose. Each grid point runs `mif` twice with the same $M$. The first call pays for JIT compilation, and the second is timed to give the steady-state cost per iteration. The key column is **IF2 ns / particle / iter**. It falls while the GPU is underused, levels off once the GPU is saturated, and rises if larger batches start to lose efficiency. Each grid point runs in its own subprocess so that peak VRAM is measured per configuration.
+Iteration counts are kept small on purpose. Each grid point runs `mif` twice with the same $M$. The first call pays for JIT compilation, and the second is timed to give the steady-state cost per iteration. The key column is **IF2 ns / particle / iter**. Each grid point runs in its own subprocess so that peak VRAM is measured per configuration.
 
-## Benchmark Settings & Environment
-
-```{python Settings}
+```{python Load results}
 runs = ru.load_timing_data({"pypomp (GPU)": os.path.join("results", "gpu")})
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
 
 csv_path = os.path.join("results", "gpu", "scaling.csv")
 has_data = os.path.exists(csv_path)
@@ -71,6 +68,11 @@ else:
         "<code>python scripts/run_tests.py run tests/panel_measles/scaling/run.py --run-level 4</code></div>"
     ))
 ```
+
+## Visual review
+
+- [Where the GPU saturates](#where-the-gpu-saturates): block-IF2 ns / particle / iter should fall as the number of particles in flight grows, then level off.
+- No grid point should be listed as failed above.
 
 ## 1. Particle Scaling ($J$)
 
@@ -164,7 +166,6 @@ if has_data:
         + scale_x_log10()
         + labs(
             title="IF2 cost per particle per iteration",
-            subtitle="Flat region = GPU saturated",
             x="Particles in flight (J × chains)",
             y="ns / particle / iteration",
         )
@@ -200,4 +201,10 @@ if has_data and df["peak_vram_mb"].notna().any():
         )
         + ru.theme_premium
     )
+```
+
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
 ```

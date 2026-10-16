@@ -31,25 +31,15 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
 
 ## Introduction
 
-This benchmark evaluates execution speed and throughput of the S&P 500 (SPX) stochastic volatility model [@sun2024] using `pypomp` on CPU and GPU relative to R `pomp` on CPU.
+This report compares the runtime of IF2 and the particle filter (`pfilter`) on the S&P 500 (SPX) stochastic volatility model of @sun2024 in `pypomp` (GPU and CPU) and R `pomp` (CPU). The model draws few random variates and takes a single `rproc` step per observation.
 
-The SPX model features lightweight random number generation and a single `rproc` transition step per observation, making it sensitive to framework dispatch overhead during IF2 parameter optimization and particle filtering (`pfilter`).
-
----
-
-## Benchmark Settings & Environment
-
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
-
-```{python Settings Table, results='asis'}
+```{python Load results}
 PLATFORMS = {
     "R pomp (36 cores)": os.path.join("results", "R"),
     "pypomp (GPU)": os.path.join("results", "gpu"),
     "pypomp (CPU, 36 cores)": os.path.join("results", "cpu"),
 }
-
 runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
 ```
 
 ```{python Missing sources, results='asis'}
@@ -58,33 +48,37 @@ for label, path in missing:
     display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
+## Visual review
+
+- [Runtime and throughput](#runtime-and-throughput): `pypomp`'s throughput on GPU should be hundreds of times that of R `pomp` on one core, and `pypomp` on CPU should run at least twice as fast as R `pomp` on CPU.
+
 ---
 
-## Runtime & Throughput Comparison
+## Runtime and throughput
 
-The table below compares execution speed across platforms. Speedup and throughput calculations privilege the cold-start particle filter (`pfilter_cold`) to account for initial execution and JIT compilation overhead incurred in practice. 
-Throughput evaluates parallel acceleration relative to a single R CPU core ($Speedup \times N_{cores}$).
+Speedup and throughput use the cold-start particle filter (`pfilter_cold`), which includes JIT compilation, since that cost is paid in practice. Throughput is relative to a single R CPU core ($\text{speedup} \times N_{\text{cores}}$).
 
 ```{python Performance Table}
 timing_df = ru.build_timing_comparison_df(runs, is_panel=False)
 display(HTML(timing_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-### JIT Compilation & Overhead Breakdown
+### JIT compilation overhead
 
-The first `pfilter` call in JAX incurs one-time JIT compilation overhead. 
-Subsequent warm evaluations run without recompilation.
+The first `pfilter` call in JAX includes one-time JIT compilation. Later calls run without recompiling.
 
 ```{python Cold vs Warm Breakdown}
 cold_warm_df = ru.build_cold_vs_warm_df(runs)
 display(HTML(cold_warm_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-::: {.callout-note}
-### Performance Expectations & Takeaways
-- **GPU**: `pypomp`'s throughput on GPU should be hundreds of times larger than R `pomp` with 1 core.
-- **CPU**: `pypomp` on CPU should run at least twice as fast as R `pomp` on CPU.
-:::
+---
+
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```
 
 ---
 

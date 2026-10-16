@@ -29,24 +29,41 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('estimation')}</div
 
 ## Introduction
 
-This report compares IF2 parameter estimates.
-Both implementations run the same number of iterations from the same committed starting points (`../starting_parameters.csv`) with the same perturbation sizes, so the distribution of final parameter estimates should agree.
-Traces should also look similar.
+This report compares IF2 parameter estimates in `pypomp` and R `pomp`. Both implementations run the same number of iterations from the same committed starting points (`../starting_parameters.csv`) with the same perturbation sizes, so the distributions of final estimates should agree.
 
----
+Parameters are compared on the estimation scale (log for rates, logit for probabilities and initial-state fractions), which is the scale IF2 perturbs on.
 
-## Benchmark Settings & Environment
+```{python Load results}
+import numpy as np
+import pandas as pd
+import checks
+from plotnine import ggplot, aes, geom_density, geom_line, facet_wrap, labs
 
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
+os.environ["JAX_PLATFORMS"] = "cpu"
 
-```{python Settings Table, results='asis'}
 PLATFORMS = {
     "R pomp": os.path.join("results", "R"),
     "pypomp (GPU)": os.path.join("results", "gpu"),
 }
-
 runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+
+PY_DIR = os.path.join("results", "gpu")
+R_DIR = os.path.join("results", "R")
+
+py_results = ru.read_if_exists(os.path.join(PY_DIR, "results.csv"))
+r_coefs = ru.read_if_exists(os.path.join(R_DIR, "mif_coefs.csv"))
+
+long_frames = []
+if py_results is not None:
+    long_frames.append(ru.wide_results_to_long(py_results, "pypomp"))
+if r_coefs is not None:
+    long_frames.append(ru.r_coefs_to_long(r_coefs))
+
+combined = pd.concat(long_frames, ignore_index=True) if long_frames else pd.DataFrame(
+    columns=["unit", "param", "value", "source"]
+)
+combined = combined[combined["param"].isin(ru.LOG_PARAMS + ru.LOGIT_PARAMS)]
+transformed = ru.to_estimation_scale(combined)
 ```
 
 ```{python Missing sources, results='asis'}
@@ -55,37 +72,45 @@ for label, path in missing:
     display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
-```{python Environment Setup}
-import numpy as np
-import pandas as pd
-from plotnine import ggplot, aes, geom_density, facet_wrap, labs
+---
 
-os.environ["JAX_PLATFORMS"] = "cpu"
+## Automated checks
 
-PY_DIR = os.path.join("results", "gpu")
-R_DIR = os.path.join("results", "R")
+```{python Automated checks, results='asis'}
+units = sorted(transformed["unit"].dropna().unique())
+by_unit = {
+    unit: [
+        (param, g[g["source"] == "pypomp"]["value"], g[g["source"] == "R pomp"]["value"])
+        for param, g in transformed[transformed["unit"] == unit].groupby("param")
+    ]
+    for unit in units
+}
+M_TESTS = 2 * sum(len(s) for s in by_unit.values())
 
-py_results = ru.read_if_exists(os.path.join(PY_DIR, "results.csv"))
-r_coefs = ru.read_if_exists(os.path.join(R_DIR, "mif_coefs.csv"))
+rows, details = [], []
+for unit, samples in by_unit.items():
+    r, det = checks.group_checks(samples, "Final estimates", f"{unit}: pypomp vs R pomp", M_TESTS)
+    rows += r
+    details.append(det)
+if not rows:
+    rows = checks.missing_rows(["Final estimates"], "pypomp vs R pomp")
+
+level = checks.run_level(runs)
+rows = checks.gate_smoke(rows, level)
+checks.save(rows, level, pypomp_version=runs["pypomp (GPU)"]["meta"].get("pypomp_version"))
+display(HTML(checks.table_html(rows, M_TESTS)))
+if details:
+    display(HTML(checks.details_html(pd.concat(details, ignore_index=True))))
 ```
 
-```{python Build the long frame}
-long_frames = []
-if py_results is not None:
-    long_frames.append(ru.wide_results_to_long(py_results, "pypomp"))
-if r_coefs is not None:
-    long_frames.append(ru.r_coefs_to_long(r_coefs))
+## Visual review
 
-combined = pd.concat(long_frames, ignore_index=True) if long_frames else pd.DataFrame()
-combined = combined[combined["param"].isin(ru.LOG_PARAMS + ru.LOGIT_PARAMS)]
-transformed = ru.to_estimation_scale(combined)
-```
+- [Parameter distributions](#parameter-distributions): the `pypomp` and `pomp` densities should overlap heavily for each parameter.
+- [Convergence traces](#convergence-traces): the `pypomp` and `pomp` traces should overlap heavily for each parameter.
 
 ---
 
-## Summary Statistics
-
-Reported on the estimation scale (log for rates, logit for probabilities and initial-state fractions), which is the scale IF2 perturbs on.
+## Summary statistics
 
 ```{python Summary table}
 summary = (
@@ -100,10 +125,10 @@ display(HTML(summary.round(4).to_html(classes="table table-striped table-hover",
 
 ---
 
-## Parameter Distributions
+## Parameter distributions
 
 ```{python Density plots, fig.width = 11, fig.height = 8}
-for unit in sorted(transformed["unit"].dropna().unique()):
+for unit in units:
     unit_data = transformed[transformed["unit"] == unit]
     display(
         ggplot(unit_data, aes(x="value", fill="source", color="source"))
@@ -123,18 +148,11 @@ for unit in sorted(transformed["unit"].dropna().unique()):
     )
 ```
 
-::: {.callout-note}
-### Expectation
-The `pypomp` and `pomp` densities should overlap heavily for each parameter. 
-:::
-
 ---
 
-## Convergence Traces
+## Convergence traces
 
 ```{python Traces, fig.width = 11, fig.height = 8}
-from plotnine import geom_line
-
 py_traces = ru.read_if_exists(os.path.join(PY_DIR, "traces.csv.gz"))
 r_traces = ru.read_if_exists(os.path.join(R_DIR, "mif_traces.csv.gz"))
 if r_traces is not None:
@@ -203,7 +221,10 @@ if trace_frames:
         )
 ```
 
-::: {.callout-note}
-### Expectation
-The `pypomp` and `pomp` traces should overlap heavily for each parameter. 
-:::
+---
+
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```

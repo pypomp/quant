@@ -31,11 +31,11 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('algorithms')}</div
 
 This report compares two `pypomp` fitting pipelines on the Dhaka cholera model:
 
-1. **IF2** — iterated filtering alone.
-2. **IFAD** — iterated filtering followed by gradient-based training.
+1. **IF2**: iterated filtering alone.
+2. **IFAD**: iterated filtering followed by gradient-based training.
 
-Both arms start from the same points drawn from the same box, and IF2 is given enough extra iterations that the two arms cost roughly the same wall clock. 
-We would like to see which maximizes the likelihood more in the (roughly) same amount of time.
+Both pipelines start from the same points drawn from the same box, and IF2 is given enough extra iterations that the two cost roughly the same wall-clock time.
+We would like to see which maximizes the likelihood more in roughly the same amount of time.
 
 A more thorough version of this analysis is available [here](https://github.com/pypomp/dmop).
 
@@ -59,29 +59,7 @@ A more thorough version of this analysis is available [here](https://github.com/
 `rho`, `c`, `alpha`, `delta` and `Y_0` are held fixed by both searches.
 :::
 
----
-
-## Benchmark Settings & Environment
-
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
-
-```{python Settings Table, results='asis'}
-PLATFORMS = {
-    "IF2": os.path.join("results", "if2"),
-    "IFAD": os.path.join("results", "ifad"),
-}
-
-runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
-```
-
-```{python Missing sources, results='asis'}
-missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
-for label, path in missing:
-    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
-```
-
-```{python Environment setup}
+```{python Load results}
 import numpy as np
 import pandas as pd
 from plotnine import (
@@ -90,6 +68,12 @@ from plotnine import (
 )
 
 os.environ["JAX_PLATFORMS"] = "cpu"
+
+PLATFORMS = {
+    "IF2": os.path.join("results", "if2"),
+    "IFAD": os.path.join("results", "ifad"),
+}
+runs = ru.load_timing_data(PLATFORMS)
 
 ARMS = {"if2": "IF2", "ifad": "IFAD"}
 
@@ -111,17 +95,22 @@ traces = {
 }
 ```
 
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
+```
+
+## Visual review
+
+- [Runtimes](#runtimes): IF2 alone should take a little longer than IFAD overall, and a `train` iteration should cost no more than about three times a `mif` iteration.
+- [Final log-likelihoods](#final-log-likelihoods): the maximum IFAD log-likelihood should be around -3744.0, and the maximum IF2 log-likelihood around -3748.5.
+- [Final parameter estimates](#final-parameter-estimates): the IFAD densities should be narrower than the IF2 densities.
+- [Search traces](#search-traces): under IFAD, most parameters should tighten once the search switches from `mif` to `train`.
+
 ---
 
 ## Runtimes
-
-::: {.callout-note}
-### Validation expectation
-IF2 alone should take a little longer than IFAD overall — the point of the
-comparison is that IFAD reaches a better likelihood in the same or less time.
-`train` should also cost no more than about three times what a `mif` iteration
-costs.
-:::
 
 ```{python Runtime tables, output='asis'}
 rows = []
@@ -150,12 +139,6 @@ display(HTML(pd.DataFrame(rows).to_html(classes="table table-striped table-hover
 
 ## Final log-likelihoods
 
-::: {.callout-note}
-### Validation expectation
-We expect a maximum IFAD log-likelihood around -3744.0 and a maximum IF2
-log-likelihood around -3748.5.
-:::
-
 ```{python Loglik summary, output='asis'}
 summary = pd.DataFrame([
     {
@@ -173,6 +156,8 @@ summary = pd.DataFrame([
 display(HTML(summary.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
+Starts with a final log-likelihood below -3800 are left out of the plot.
+
 ```{python Loglik density, fig.width=8, fig.height=5}
 ll_df = pd.concat(
     [
@@ -181,7 +166,6 @@ ll_df = pd.concat(
     ],
     ignore_index=True,
 )
-# A handful of starts stall far below the mode; clipping keeps the KDE readable.
 ll_df = ll_df[ll_df["logLik"] >= -3800]
 
 (
@@ -201,12 +185,6 @@ ll_df = ll_df[ll_df["logLik"] >= -3800]
 ---
 
 ## Final parameter estimates
-
-::: {.callout-note}
-### Validation expectation
-IFAD tends to yield parameter estimates with lower Monte Carlo variance than
-IF2 alone, so its density curves should be the narrower ones.
-:::
 
 ```{python Parameter density, fig.width=10, fig.height=15}
 param_cols = [
@@ -245,14 +223,6 @@ have_traces = all(t is not None for t in traces.values())
 if have_traces:
     long = {arm: ru.to_long(traces[arm]) for arm in ARMS}
 ```
-
-::: {.callout-note}
-### Validation expectation
-The IF2 traces should not look terrible, but several parameters in this model
-are weakly identified, so tight convergence is not expected everywhere. Under
-IFAD, most parameters should tighten once the search switches from `mif` to
-`train`.
-:::
 
 ```{python IF2 parameter traces, fig.width=10, fig.height=15}
 if have_traces:
@@ -317,4 +287,12 @@ if have_traces:
     display(p)
 else:
     display(Markdown("_No traces on disk._"))
+```
+
+---
+
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
 ```

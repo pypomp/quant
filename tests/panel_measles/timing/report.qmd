@@ -30,23 +30,14 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('timing')}</div>"))
 
 ## Introduction
 
-The panel measles benchmark evaluates `pypomp`'s performance on a panel model with 4 UK cities (London, Halesworth, Hastings, and Cardiff) under a parameter structure including both shared and unit-specific parameters. 
-Parameter estimation is performed via marginalized panel iterated filtering (MPIF).
+This report compares the runtime of parameter estimation and the particle filter (`pfilter`) on a panel measles model with 4 UK cities (London, Halesworth, Hastings and Cardiff) in `pypomp` (GPU) and R `panelPomp` (CPU). The model has both shared and unit-specific parameters, and parameter estimation uses marginalized panel iterated filtering (MPIF).
 
----
-
-## Benchmark Settings & Environment
-
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
-
-```{python Settings Table, results='asis'}
+```{python Load results}
 PLATFORMS = {
     "R panelPomp (36 cores)": os.path.join("results", "R"),
     "pypomp (GPU)": os.path.join("results", "gpu"),
 }
-
 runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
 ```
 
 ```{python Missing sources, results='asis'}
@@ -55,31 +46,34 @@ for label, path in missing:
     display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
+## Visual review
+
+- [Runtime and throughput](#runtime-and-throughput): `pypomp`'s throughput on GPU should be thousands of times that of R `panelPomp` on one core.
+
 ---
 
-## Runtime & Throughput Comparison
+## Runtime and throughput
 
-The table below compares execution speed across platforms. 
-Speedup and throughput calculations privilege the cold-start particle filter (`pfilter_cold`) to account for initial execution and JIT compilation overhead incurred in practice. 
-Throughput evaluates parallel acceleration relative to a single R CPU core ($Speedup \times N_{cores}$).
+Speedup and throughput use the cold-start particle filter (`pfilter_cold`), which includes JIT compilation, since that cost is paid in practice. Throughput is relative to a single R CPU core ($\text{speedup} \times N_{\text{cores}}$).
 
 ```{python Performance Table}
 timing_df = ru.build_timing_comparison_df(runs, is_panel=True)
 display(HTML(timing_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-### JIT Compilation & Overhead Breakdown
+### JIT compilation overhead
 
-The first `pfilter` call in JAX incurs one-time JIT compilation overhead. 
-Subsequent warm evaluations run without recompilation.
+The first `pfilter` call in JAX includes one-time JIT compilation. Later calls run without recompiling.
 
 ```{python Cold vs Warm Breakdown}
 cold_warm_df = ru.build_cold_vs_warm_df(runs)
 display(HTML(cold_warm_df.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-::: {.callout-note}
-### Performance Expectations & Takeaways
-- **GPU**: `pypomp`'s throughput on GPU should be thousands of times larger than R `pomp` with 1 core.
-:::
+---
 
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
+```

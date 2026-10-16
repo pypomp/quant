@@ -74,6 +74,98 @@ def loglik_checks(py, r, compared, m, verdict=True):
     ]
 
 
+def _finite(x):
+    x = np.asarray(x, dtype=float)
+    return x[np.isfinite(x)]
+
+
+def missing_rows(checks, compared):
+    return [
+        {
+            "check": c,
+            "compared": compared,
+            "result": "missing results",
+            "verdict": "n/a",
+        }
+        for c in checks
+    ]
+
+
+def ks_check(a, b, check, compared, m):
+    """Two-sample KS test alone, for samples whose mean is dominated by a few
+    extreme values (e.g. log-likelihoods of failed searches)."""
+    a, b = _finite(a), _finite(b)
+    if len(a) < 2 or len(b) < 2:
+        return missing_rows([check], compared)
+    d, p = ks_2samp(a, b)
+    return [
+        {
+            "check": check,
+            "compared": compared,
+            "result": f"D = {d:.4f}, p = {p:.3g}",
+            "verdict": p_verdict(p, m),
+        }
+    ]
+
+
+def group_checks(samples, check, compared, m):
+    """Mean-difference z test and KS test for each (name, a, b) in samples,
+    summarized by the largest |z| and the smallest KS p-value. Returns the two
+    summary rows and a table with one row per name."""
+    detail = []
+    for name, a, b in samples:
+        a, b = _finite(a), _finite(b)
+        if len(a) < 2 or len(b) < 2:
+            continue
+        diff = a.mean() - b.mean()
+        se = float(np.sqrt(a.var(ddof=1) / len(a) + b.var(ddof=1) / len(b)))
+        d, p = ks_2samp(a, b)
+        detail.append(
+            {
+                "compared": compared,
+                "name": name,
+                "difference": diff,
+                "SE": se,
+                "z": diff / se,
+                "KS D": d,
+                "KS p": p,
+            }
+        )
+    labels = [f"{check}: means", f"{check}: distributions (KS)"]
+    if not detail:
+        return missing_rows(labels, compared), pd.DataFrame()
+    det = pd.DataFrame(detail)
+    zmax = det.loc[det["z"].abs().idxmax()]
+    pmin = det.loc[det["KS p"].idxmin()]
+    n = len(det)
+    rows = [
+        {
+            "check": labels[0],
+            "compared": compared,
+            "result": f"largest |z| = {abs(zmax['z']):.2f} ({zmax['name']}) of {n}",
+            "verdict": p_verdict(2 * norm.sf(abs(zmax["z"])), m),
+        },
+        {
+            "check": labels[1],
+            "compared": compared,
+            "result": f"smallest p = {pmin['KS p']:.3g} ({pmin['name']}) of {n}",
+            "verdict": p_verdict(pmin["KS p"], m),
+        },
+    ]
+    return rows, det
+
+
+def details_html(det, summary="Results for each parameter"):
+    if det.empty:
+        return ""
+    table = det.to_html(
+        classes="table table-striped table-hover",
+        index=False,
+        float_format=lambda x: f"{x:.4g}",
+    )
+    return f"<details><summary>{summary}</summary>{table}</details>"
+
+
 def run_level(runs):
     """Lowest RUN_LEVEL among the runs from ru.load_timing_data, or None."""
     levels = [r["cfg"].get("RUN_LEVEL") for r in runs.values() if r["available"]]
@@ -91,10 +183,10 @@ def gate_smoke(rows, level):
 
 def worst(rows):
     verdicts = [r["verdict"] for r in rows]
-    for v in ("FAIL", "CHECK", "PASS"):
+    for v in ("FAIL", "CHECK", "PASS", "n/a"):
         if v in verdicts:
             return v
-    return "n/a"
+    return "info"
 
 
 def badge(v):

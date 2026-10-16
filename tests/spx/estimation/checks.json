@@ -1,0 +1,67 @@
+{
+  "verdict": "PASS",
+  "run_level": 4,
+  "pypomp_version": "1.0.0rc1",
+  "checks": [
+    {
+      "check": "Final log-likelihood (KS)",
+      "compared": "pypomp (GPU) vs R pomp",
+      "result": "D = 0.0528, p = 0.698",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: means",
+      "compared": "pypomp (GPU) vs R pomp",
+      "result": "largest |z| = 1.85 (xi) of 6",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: distributions (KS)",
+      "compared": "pypomp (GPU) vs R pomp",
+      "result": "smallest p = 0.0234 (kappa) of 6",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Starting values: means",
+      "compared": "pypomp (GPU) vs R pomp",
+      "result": "largest |z| = 1.44 (kappa) of 6",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Starting values: distributions (KS)",
+      "compared": "pypomp (GPU) vs R pomp",
+      "result": "smallest p = 0.226 (kappa) of 6",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final log-likelihood (KS)",
+      "compared": "pypomp (CPU) vs R pomp",
+      "result": "D = 0.0694, p = 0.351",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: means",
+      "compared": "pypomp (CPU) vs R pomp",
+      "result": "largest |z| = 0.69 (theta) of 6",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Final estimates: distributions (KS)",
+      "compared": "pypomp (CPU) vs R pomp",
+      "result": "smallest p = 0.401 (kappa) of 6",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Starting values: means",
+      "compared": "pypomp (CPU) vs R pomp",
+      "result": "largest |z| = 1.44 (kappa) of 6",
+      "verdict": "PASS"
+    },
+    {
+      "check": "Starting values: distributions (KS)",
+      "compared": "pypomp (CPU) vs R pomp",
+      "result": "smallest p = 0.226 (kappa) of 6",
+      "verdict": "PASS"
+    }
+  ]
+}

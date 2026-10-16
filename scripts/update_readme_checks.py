@@ -1,5 +1,6 @@
 """Append each report's worst automated verdict (from its checks.json) to its
-README link, e.g. `[report](tests/spx/loglik/report.html) · PASS`."""
+README link, e.g. `[report](tests/spx/loglik/report.html) · PASS`. Reports
+whose checks are all info get no verdict."""
 
 import json
 import os
@@ -7,7 +8,7 @@ import re
 
 README = "README.md"
 LINK = re.compile(
-    r"(\[report\]\((tests/[^)]+)/report\.html\))(?: · (?:PASS|CHECK|FAIL|n/a))?"
+    r"(\[[^\]]+\]\((tests/[^)]+)/[\w-]+\.html\))(?: · (?:PASS|CHECK|FAIL|n/a))?"
 )
 
 
@@ -16,7 +17,8 @@ def annotate(match):
     if not os.path.exists(path):
         return match.group(1)
     with open(path) as f:
-        return f"{match.group(1)} · {json.load(f)['verdict']}"
+        verdict = json.load(f)["verdict"]
+    return match.group(1) if verdict == "info" else f"{match.group(1)} · {verdict}"
 
 
 def main():

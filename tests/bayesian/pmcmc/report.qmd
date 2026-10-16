@@ -22,6 +22,8 @@ import os
 import sys
 
 sys.path.append("..")
+sys.path.append("../..")
+import checks
 import report_utils as ru
 from IPython.display import display, HTML, Markdown
 
@@ -172,19 +174,24 @@ for label, ok, path in (
         display(HTML(ru.missing_note(label, path)))
 if scorecard:
     display(HTML(ru.scorecard_html(scorecard)))
+py_meta = sweeps[J_HI]["meta"] if have_py else {}
+checks.save(
+    [{"check": r["check"], "compared": r["question"], "result": r["detail"], "verdict": r["verdict"]}
+     for r in scorecard],
+    (py_meta.get("run_config") or {}).get("RUN_LEVEL"),
+    pypomp_version=py_meta.get("pypomp_version"),
+)
 ```
 
 The grid uses pypomp's own simulator and filter, so checks 2 and 3 test the
 sampler only. Model translation is covered by checks 1 and 4.
 
-```{python Provenance, results='asis'}
-if have_py:
-    display(Markdown("**pypomp run**\n\n" + ru.format_metadata(sweeps[J_HI]["meta"])))
-if have_r:
-    display(Markdown("**R pomp run**\n\n" + ru.format_r_metadata(r_meta)))
-if ref_meta:
-    display(Markdown("**Grid reference run**\n\n" + ru.format_metadata(ref_meta)))
-```
+## Visual review
+
+- [1. Same model?](#same-model): the pypomp and R `pomp` log-likelihood densities should overlap heavily.
+- [2. Right posterior?](#right-posterior): for each `J`, the pypomp density should follow the dashed grid reference.
+- [4. Agrees with R?](#agrees-with-r): the pypomp and R `pomp` posterior densities should overlap heavily.
+- [5. Are there enough draws?](#are-there-enough-draws): right of the dotted line, the chains should overlap and show no trend.
 
 ## 1. Same model?
 
@@ -262,10 +269,8 @@ if have_py and have_grid:
 
 ## 3. Does the particle count matter?
 
-Low-`J` and high-`J` chains must target the same posterior. A `J`-dependent
-posterior indicates that the accepted likelihood estimate is being recomputed
-instead of carried forward. The low-`J` arm is chosen so that the
-log-likelihood estimate is noisy (second table).
+Low-`J` and high-`J` chains must target the same posterior. The low-`J` arm is
+chosen so that the log-likelihood estimate is noisy (second table).
 
 ```{python J invariance}
 if vs_J is not None:
@@ -308,7 +313,7 @@ if have_py:
 
 pypomp at the highest `J` vs R `pomp::pmcmc`. pomp's random walk is on the
 natural scale, and pypomp's is on log (`beta1`) and logit (`rho`) scales, so
-acceptance rates differ, but the posteriors should match.
+acceptance rates are not comparable. The posteriors should match.
 
 ```{python R comparison}
 if vs_R is not None:
@@ -335,8 +340,7 @@ else:
 ## 5. Are there enough draws?
 
 Every run must have bulk ESS ≥ 400 for its standard errors to be trusted.
-Split R-hat is for information only. With many short chains (128 × 2000 at run
-level 4), it stays above 1.01 even when the pooled draws match the grid (§2).
+Split R-hat is for information only.
 
 ```{python Convergence}
 if len(conv):
@@ -374,4 +378,15 @@ if have_py:
             rows.append({"source": label, "parameter": param, "truth": truth[param],
                          "5%": lo, "95%": hi, "covers truth": bool(lo <= truth[param] <= hi)})
     display(HTML(ru.table_html(pd.DataFrame(rows))))
+```
+
+## Appendix: run provenance
+
+```{python Provenance, results='asis'}
+if have_py:
+    display(Markdown("**pypomp run**\n\n" + ru.format_metadata(py_meta)))
+if have_r:
+    display(Markdown("**R pomp run**\n\n" + ru.format_r_metadata(r_meta)))
+if ref_meta:
+    display(Markdown("**Grid reference run**\n\n" + ru.format_metadata(ref_meta)))
 ```

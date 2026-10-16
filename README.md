@@ -28,10 +28,10 @@ PASS, CHECK or FAIL after a link is the worst result among the automated checks 
 
 | Model | Likelihood | Estimation | Timing | Scaling |
 |---|---|---|---|---|
-| SPX (S&P 500) | [report](tests/spx/loglik/report.html) · PASS | [report](tests/spx/estimation/report.html) | [report](tests/spx/timing/report.html) | [report](tests/spx/scaling/report.html) |
+| SPX (S&P 500) | [report](tests/spx/loglik/report.html) · PASS | [report](tests/spx/estimation/report.html) · PASS | [report](tests/spx/timing/report.html) | [report](tests/spx/scaling/report.html) |
 | Dhaka cholera | [report](tests/dacca/loglik/report.html) · PASS | — | [report](tests/dacca/timing/report.html) | [report](tests/dacca/scaling/report.html) |
-| Measles | [report](tests/measles/loglik/report.html) · PASS¹ | [report](tests/measles/estimation/report.html) | [report](tests/measles/timing/report.html)² | [report](tests/measles/scaling/report.html) |
-| Panel measles | [report](tests/panel_measles/loglik/report.html) · PASS | [report](tests/panel_measles/estimation/report.html)³ | [report](tests/panel_measles/timing/report.html) | [report](tests/panel_measles/scaling/report.html) |
+| Measles | [report](tests/measles/loglik/report.html) · PASS¹ | [report](tests/measles/estimation/report.html) · PASS | [report](tests/measles/timing/report.html)² | [report](tests/measles/scaling/report.html) |
+| Panel measles | [report](tests/panel_measles/loglik/report.html) · PASS | [report](tests/panel_measles/estimation/report.html) · PASS³ | [report](tests/panel_measles/timing/report.html) | [report](tests/panel_measles/scaling/report.html) |
 
 ¹ Also compares `pypomp` in 32- and 64-bit precision, on London and Halesworth.<br>
 ² Also compares the fast samplers in `pypomp.random` with stock JAX samplers.<br>
@@ -45,8 +45,8 @@ PASS, CHECK or FAIL after a link is the worst result among the automated checks 
 
 Both share one SIR problem (`tests/bayesian/model.py`, `model.R`): estimate `beta1` and `rho` under a flat box prior. `tests/bayesian/reference/run.py` computes the reference answers (grid posterior, rejection-sampled ABC posterior) that both reports read.
 
-* **[PMCMC](tests/bayesian/pmcmc/report.html)**: checks that `pypomp`'s particle marginal Metropolis-Hastings matches the grid posterior and R `pomp`'s `pmcmc`, and does not depend on the particle count.
-* **[ABC](tests/bayesian/abc/report.html)**: checks that `pypomp`'s ABC-MCMC matches the exact ABC posterior and R `pomp`'s `abc` at each tolerance in a ladder, and returns the prior when the tolerance does not bind.
+* **[PMCMC](tests/bayesian/pmcmc/report.html) · PASS**: checks that `pypomp`'s particle marginal Metropolis-Hastings matches the grid posterior and R `pomp`'s `pmcmc`, and does not depend on the particle count.
+* **[ABC](tests/bayesian/abc/report.html) · PASS**: checks that `pypomp`'s ABC-MCMC matches the exact ABC posterior and R `pomp`'s `abc` at each tolerance in a ladder, and returns the prior when the tolerance does not bind.
 
 ### Random number generators
 

@@ -1,6 +1,6 @@
 ---
 title: "SPX Parameter Estimation & Convergence"
-subtitle: "Performance, Convergence, and Likelihood Validation: R pomp vs. pypomp"
+subtitle: "IF2 global search: R pomp vs. pypomp"
 date: now
 format:
   html:
@@ -30,34 +30,70 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('estimation')}</div
 
 ## Introduction
 
-This report compares parameter convergence and likelihood evaluation of the S&P 500 (SPX) stochastic volatility model used in @sun2024 using the `pypomp` package (on CPU and GPU) and the R `pomp` package (on CPU).
+This report compares IF2 global searches on the S&P 500 (SPX) stochastic volatility model of @sun2024 in `pypomp` (GPU and CPU) and R `pomp`. Each implementation starts from points drawn from the same box and uses the same number of iterations and perturbation sizes. We compare the starting values, the final parameter estimates and the final log-likelihoods across starts.
 
-The SPX model is a stochastic volatility model with the following parameter set:
+The model has six parameters:
 
-- $\mu$: Expected rate of return of the asset.
-- $\kappa$: Mean rate of reversion in variance.
-- $\theta$: Long term average variance.
-- $\xi$: Volatility coefficient of volatility.
-- $\rho$: Leverage effect parameter (correlation between return and volatility shocks).
-- $V_0$: Initial variance.
+- $\mu$: expected rate of return of the asset.
+- $\kappa$: mean rate of reversion in variance.
+- $\theta$: long-term average variance.
+- $\xi$: volatility of volatility.
+- $\rho$: leverage effect, the correlation between return and volatility shocks.
+- $V_0$: initial variance.
 
-This benchmark compares runtimes, convergence trajectories, and likelihood distributions to verify the mathematical correctness and efficiency of `pypomp`.
+Parameters are compared on the transformed scale (log for $\mu$, $\kappa$, $\theta$, $\xi$ and $V_0$, and $\log\frac{1+\rho}{1-\rho}$ for $\rho$).
 
----
+```{python Load results}
+import gc
+import numpy as np
+import pandas as pd
+import checks
+from plotnine import (
+    ggplot, aes, geom_line, geom_ribbon, geom_density, facet_wrap,
+    labs, guides, guide_legend
+)
 
-## Benchmark Settings & Environment
+os.environ["JAX_PLATFORMS"] = "cpu"
 
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
-
-```{python Settings Table, results='asis'}
 PLATFORMS = {
     "R pomp (36 cores)": os.path.join("results", "R"),
     "pypomp (GPU)": os.path.join("results", "gpu"),
     "pypomp (CPU, 36 cores)": os.path.join("results", "cpu"),
 }
-
 runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+
+LL_frame_gpu, traces_gpu = ru.load_results_and_traces(
+    os.path.join("results", "gpu", "results.csv"), os.path.join("results", "gpu", "traces.csv.gz")
+)
+LL_frame_cpu, traces_cpu = ru.load_results_and_traces(
+    os.path.join("results", "cpu", "results.csv"), os.path.join("results", "cpu", "traces.csv.gz")
+)
+
+R_REF = os.path.join("results", "R")
+LL_df_R = pd.read_csv(os.path.join(R_REF, "pfilter_logliks.csv"))[["logLik", "se"]].rename(columns={"logLik": "est"})
+
+traces_gpu_t = ru.process_and_transform_traces(traces_gpu, "python (GPU)")
+traces_cpu_t = ru.process_and_transform_traces(traces_cpu, "python (CPU)")
+del traces_gpu, traces_cpu
+
+traces_long_R = ru.align_pomp_mif_loglik(
+    pd.read_csv(os.path.join(R_REF, "mif_traces.csv.gz")), ["replicate"]
+)
+traces_long_R["iter"] = traces_long_R["iteration"].astype(np.int16)
+traces_long_R["rep"] = traces_long_R["replicate"].astype(np.int16)
+traces_long_R = traces_long_R.drop(columns=["iteration", "replicate"])
+traces_R_t = ru.process_and_transform_traces(traces_long_R, "R")
+del traces_long_R
+
+traces_pyr = pd.concat([traces_gpu_t, traces_cpu_t, traces_R_t], ignore_index=True)
+del traces_gpu_t, traces_cpu_t, traces_R_t
+_ = gc.collect()
+
+is_param = ~traces_pyr["quantity"].isin(["logLik", "loglik"])
+max_iters = traces_pyr.groupby(["language", "quantity"], observed=True)["iter"].transform("max")
+min_iters = traces_pyr.groupby(["language", "quantity"], observed=True)["iter"].transform("min")
+final_traces = traces_pyr[traces_pyr["iter"] == max_iters].copy()
+init_traces = traces_pyr[is_param & (traces_pyr["iter"] == min_iters)]
 ```
 
 ```{python Missing sources, results='asis'}
@@ -66,81 +102,96 @@ for label, path in missing:
     display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
 ```
 
-```{python Environment Setup}
-import json
-import gc
-import numpy as np
-import pandas as pd
-from plotnine import (
-    ggplot, aes, geom_line, geom_ribbon, geom_density, facet_wrap,
-    labs, theme, guides, guide_legend
-)
+---
 
-os.environ["JAX_PLATFORMS"] = "cpu"
+## Automated checks
 
-import pypomp as pp
-import jax
+```{python Automated checks, results='asis'}
+PY_LANGS = {"python (GPU)": "pypomp (GPU)", "python (CPU)": "pypomp (CPU)"}
+PARAMS = ["mu", "kappa", "theta", "xi", "rho", "V_0"]
+PY_LL = {"python (GPU)": LL_frame_gpu["LL"], "python (CPU)": LL_frame_cpu["LL"]}
+
+# One row per start and parameter; at the last iteration pypomp also records a pfilter row.
+by_start = {
+    "Final estimates": final_traces[final_traces["quantity"].isin(PARAMS)].drop_duplicates(["language", "quantity", "rep"]),
+    "Starting values": init_traces.drop_duplicates(["language", "quantity", "rep"]),
+}
+
+
+def samples(df, lang):
+    return [
+        (q, df[(df["language"] == lang) & (df["quantity"] == q)]["value_T"],
+         df[(df["language"] == "R") & (df["quantity"] == q)]["value_T"])
+        for q in PARAMS
+    ]
+
+
+M_TESTS = len(PY_LANGS) * (1 + 2 * len(by_start) * len(PARAMS))
+rows, details = [], []
+for lang, label in PY_LANGS.items():
+    compared = f"{label} vs R pomp"
+    rows += checks.ks_check(PY_LL[lang], LL_df_R["est"], "Final log-likelihood (KS)", compared, M_TESTS)
+    for check, df in by_start.items():
+        r, det = checks.group_checks(samples(df, lang), check, compared, M_TESTS)
+        rows += r
+        details.append(det.assign(check=check))
+
+level = checks.run_level(runs)
+rows = checks.gate_smoke(rows, level)
+checks.save(rows, level, pypomp_version=runs["pypomp (GPU)"]["meta"].get("pypomp_version"))
+display(HTML(checks.table_html(rows, M_TESTS)))
+display(HTML(checks.details_html(pd.concat(details, ignore_index=True))))
 ```
 
-```{python Load estimation data}
-GPU_JSON_PATH = os.path.join("results", "gpu", "latest.json")
-CPU_JSON_PATH = os.path.join("results", "cpu", "latest.json")
+The mean test is not applied to the final log-likelihoods, since a few starts in each implementation end far below the rest and dominate the mean.
 
-GPU_CSV_PATH = os.path.join("results", "gpu", "results.csv")
-CPU_CSV_PATH = os.path.join("results", "cpu", "results.csv")
+## Visual review
 
-GPU_TRACES_PATH = os.path.join("results", "gpu", "traces.csv.gz")
-CPU_TRACES_PATH = os.path.join("results", "cpu", "traces.csv.gz")
-
-gpu_json = json.load(open(GPU_JSON_PATH)) if os.path.exists(GPU_JSON_PATH) else {}
-cpu_json = json.load(open(CPU_JSON_PATH)) if os.path.exists(CPU_JSON_PATH) else {}
-
-LL_frame_gpu, traces_gpu = ru.load_results_and_traces(GPU_CSV_PATH, GPU_TRACES_PATH)
-LL_frame_cpu, traces_cpu = ru.load_results_and_traces(CPU_CSV_PATH, CPU_TRACES_PATH)
-```
+- [Parameter traces](#parameter-traces): the trajectories from `pypomp` (GPU and CPU) and `pomp` should overlap substantially.
+- [Trace quantiles](#trace-quantiles): the 10th to 90th percentile ribbons should overlap closely throughout the iterations.
+- [Final parameter estimates](#final-parameter-estimates): the densities should overlap heavily for each parameter.
+- [Starting values](#starting-values): the densities should be very similar across configurations.
+- [Final log-likelihoods](#final-log-likelihoods): the densities should overlap heavily.
 
 ---
 
-## Parameter Convergence & Traces (IF2)
+## Summary statistics
 
-### Comparison of Python and R Parameter Traces
+```{python LL summary statistics}
+ll_summary_table = pd.DataFrame({
+    "Configuration": ["pypomp (GPU)", "pypomp (CPU)", "R pomp"],
+    "Min": [LL_frame_gpu["LL"].min(), LL_frame_cpu["LL"].min(), LL_df_R["est"].min()],
+    "Median": [LL_frame_gpu["LL"].median(), LL_frame_cpu["LL"].median(), LL_df_R["est"].median()],
+    "Mean": [LL_frame_gpu["LL"].mean(), LL_frame_cpu["LL"].mean(), LL_df_R["est"].mean()],
+    "Max": [LL_frame_gpu["LL"].max(), LL_frame_cpu["LL"].max(), LL_df_R["est"].max()],
+    "SD": [LL_frame_gpu["LL"].std(), LL_frame_cpu["LL"].std(), LL_df_R["est"].std()]
+})
 
-```{python Set best_rep and load baseline estimates}
-last_iter = traces_gpu["iteration"].max() if "iteration" in traces_gpu.columns else traces_gpu["iter"].max()
-gpu_pfilter_last = traces_gpu[(traces_gpu["iteration" if "iteration" in traces_gpu.columns else "iter"] == last_iter) & (traces_gpu["method"] == "pfilter")]
-best_rep = gpu_pfilter_last.groupby("theta_idx" if "theta_idx" in gpu_pfilter_last.columns else "rep")["logLik"].first().idxmax()
-
-R_REF = os.path.join("results", "R")
-LL_df_R = pd.read_csv(os.path.join(R_REF, "pfilter_logliks.csv"))[["logLik", "se"]].rename(columns={"logLik": "est"})
-
-traces_gpu_t = ru.process_and_transform_traces(traces_gpu, "python (GPU)")
-del traces_gpu
-
-best_gpu_pfilter = traces_gpu_t[
-    (traces_gpu_t["iter"] == last_iter) & 
-    (traces_gpu_t["rep"] == best_rep) & 
-    (traces_gpu_t["method"] == "pfilter")
-].copy()
-
-traces_cpu_t = ru.process_and_transform_traces(traces_cpu, "python (CPU)")
-del traces_cpu
-
-traces_long_R = ru.align_pomp_mif_loglik(
-    pd.read_csv(os.path.join(R_REF, "mif_traces.csv.gz")), ["replicate"]
-)
-traces_long_R["iter"] = traces_long_R["iteration"].astype(np.int16)
-traces_long_R["rep"] = traces_long_R["replicate"].astype(np.int16)
-traces_long_R = traces_long_R.drop(columns=["iteration", "replicate"])
-
-traces_R_t = ru.process_and_transform_traces(traces_long_R, "R")
-del traces_long_R
-
-traces_pyr = pd.concat([traces_gpu_t, traces_cpu_t, traces_R_t], ignore_index=True)
-del traces_gpu_t, traces_cpu_t, traces_R_t
-_ = gc.collect()
+display(HTML(ll_summary_table.round(2).to_html(classes="table table-striped table-hover", index=False)))
 ```
 
-Here, we overlay the trajectories from R, Python (CPU), and Python (GPU) to compare the search paths directly.
+::: {.callout-tip collapse="true"}
+### Top 10 starts for each configuration
+**pypomp (GPU):**
+```{python}
+display(HTML(LL_frame_gpu.sort_values(by="LL", ascending=False).head(10).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+**pypomp (CPU):**
+```{python}
+display(HTML(LL_frame_cpu.sort_values(by="LL", ascending=False).head(10).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+**R pomp:**
+```{python}
+display(HTML(LL_df_R.sort_values(by="est", ascending=False).head(10).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+:::
+
+---
+
+## Parameter traces
 
 ```{python Plot traces comparison, fig.width = 11, fig.height = 8}
 traces_plot_df = traces_pyr[(traces_pyr["quantity"] != "logLik") & (traces_pyr["value_T"].between(-12, 12))].copy()
@@ -163,16 +214,9 @@ traces_plot_df["group_id"] = (traces_plot_df["rep"].astype(str) + "_" + traces_p
 )
 ```
 
-::: {.callout-note}
-### Expectation
-Since `pypomp` is designed to be a direct Python/JAX implementation of R's `pomp` package, the paths taken by the individual replicates in Python (both CPU and GPU) should be similar to those in R, overlapping substantially.
-:::
-
 ---
 
-### Comparison of Python and R Parameter Trace Quantiles
-
-To abstract away the noise of individual runs, this plot compares the 10th and 90th percentile bounds of the parameters across all runs.
+## Trace quantiles
 
 ```{python Plot traces quantiles, fig.width = 11, fig.height = 8}
 quant_df = (
@@ -203,22 +247,11 @@ quant_df["ymid"] = (quant_df["ymin"] + quant_df["ymax"]) / 2
 )
 ```
 
-::: {.callout-note}
-### Expectation
-The 10th and 90th percentile ribbons provide a robust view of convergence. The ribbons for Python (GPU), Python (CPU), and R should overlap closely throughout the iterations.
-:::
-
 ---
 
-## Parameter Estimates Distribution
-
-### Comparison of Final Parameter Estimates
-
-This plot compares the distribution of final estimated parameters across replicates.
+## Final parameter estimates
 
 ```{python Plot final estimates density, fig.width = 10, fig.height = 7}
-max_iters = traces_pyr.groupby(["language", "quantity"], observed=True)["iter"].transform("max")
-final_traces = traces_pyr[traces_pyr["iter"] == max_iters].copy()
 final_traces_zoom = final_traces[final_traces["value_T"].between(-10, 10)]
 
 (
@@ -239,21 +272,11 @@ final_traces_zoom = final_traces[final_traces["value_T"].between(-10, 10)]
 )
 ```
 
-::: {.callout-note}
-### Expectation
-The density of the final parameter values across replicates should overlap heavily for each configuration.
-:::
-
 ---
 
-### Comparison of Starting Parameter Values (Sanity Check)
+## Starting values
 
 ```{python Plot initial estimates density, fig.width = 10, fig.height = 7}
-init_traces = traces_pyr[
-    (~traces_pyr["quantity"].isin(["logLik", "loglik"])) & 
-    (traces_pyr["iter"] == traces_pyr.groupby(["language", "quantity"], observed=True)["iter"].transform("min"))
-]
-
 (
     ggplot(init_traces, aes(x="value_T", fill="language", color="language"))
     + geom_density(alpha=0.3)
@@ -272,52 +295,11 @@ init_traces = traces_pyr[
 )
 ```
 
-::: {.callout-note}
-### Expectation
-Because CPU, GPU, and R runs are initialized using the same random starting box, the starting densities should be very similar across configurations.
-:::
-
 ---
 
-## Log-Likelihood Comparisons
+## Final log-likelihoods
 
-### Summary of Final Log-Likelihood Estimates
-
-```{python LL summary statistics}
-ll_summary_table = pd.DataFrame({
-    "Configuration": ["pypomp (GPU)", "pypomp (CPU)", "R pomp"],
-    "Min": [LL_frame_gpu["LL"].min(), LL_frame_cpu["LL"].min(), LL_df_R["est"].min()],
-    "Median": [LL_frame_gpu["LL"].median(), LL_frame_cpu["LL"].median(), LL_df_R["est"].median()],
-    "Mean": [LL_frame_gpu["LL"].mean(), LL_frame_cpu["LL"].mean(), LL_df_R["est"].mean()],
-    "Max": [LL_frame_gpu["LL"].max(), LL_frame_cpu["LL"].max(), LL_df_R["est"].max()],
-    "SD": [LL_frame_gpu["LL"].std(), LL_frame_cpu["LL"].std(), LL_df_R["est"].std()]
-})
-
-display(HTML(ll_summary_table.round(2).to_html(classes="table table-striped table-hover", index=False)))
-```
-
-::: {.callout-tip collapse="true"}
-### View Top 10 Best Replicates for Each Configuration
-**Python (GPU) Top 10:**
-```{python}
-display(HTML(LL_frame_gpu.sort_values(by="LL", ascending=False).head(10).to_html(classes="table table-striped table-hover", index=False)))
-```
-
-**Python (CPU) Top 10:**
-```{python}
-display(HTML(LL_frame_cpu.sort_values(by="LL", ascending=False).head(10).to_html(classes="table table-striped table-hover", index=False)))
-```
-
-**R Top 10:**
-```{python}
-display(HTML(LL_df_R.sort_values(by="est", ascending=False).head(10).to_html(classes="table table-striped table-hover", index=False)))
-```
-
-:::
-
----
-
-### Density Plot Comparison (LL > 11,800)
+Starts with a final log-likelihood at or below 11,800 are left out of the plot.
 
 ```{python Plot LL density comparison, fig.width = 8, fig.height = 5}
 ll_density_df = pd.concat([
@@ -345,10 +327,13 @@ ll_density_filtered = ll_density_df[ll_density_df["LL"] > 11800]
 )
 ```
 
-::: {.callout-note}
-### Expectation
-Final log-likelihood estimates from each configuration should overlap heavily.
-:::
+---
+
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=False)))
+```
 
 ---
 

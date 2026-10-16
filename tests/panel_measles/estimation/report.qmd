@@ -30,71 +30,57 @@ display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('estimation')}</div
 ## Introduction
 
 This report compares block-IF2 parameter estimates for the mixed panel measles
-model. Both implementations run the same number of iterations from the same
-committed starting points (`../starting_parameters.csv`) with the same
-perturbation sizes, so the distribution of final estimates should agree.
+model in `pypomp` and R `panelPomp`. Both implementations run the same number
+of iterations from the same committed starting points
+(`../starting_parameters.csv`) with the same perturbation sizes, so the
+distributions of final estimates should agree.
 
-The parameter structure is mixed across the panel's 4 units — London,
-Halesworth, Hastings and Cardiff:
+The panel has 4 units (London, Halesworth, Hastings and Cardiff), and the
+parameters are mixed:
 
 - **Shared** across units: `R0`, `sigma`, `gamma`, `sigmaSE`, `cohort`, `amplitude`.
 - **Unit-specific**: `iota`, `rho`, `psi`, `S_0`, `E_0`, `I_0`, `R_0`.
 
-`pypomp` reports the shared parameters on every unit's row; they are collapsed
-here to a single `shared` entry so a shared density is not drawn four times over.
+`pypomp` reports the shared parameters on every unit's row. We collapse them
+to a single `shared` entry so that each start counts once. Parameters are
+compared on the estimation scale (log for rates, logit for probabilities and
+initial-state fractions), which is the scale block-IF2 perturbs on.
 
 ::: {.callout-note collapse="true"}
 ### Why the covariates are imported from `pomp`
-The `python` and `R` smoothing spline implementations interpolate the birthrate
-and population covariates differently — noticeably so for Cardiff — which on its
-own shifts the estimates. The final interpolated covariate grid is therefore
-exported from `pomp` into `../R_covariates.csv` and injected into the `pypomp`
-objects, so both packages search over the identical model.
+The Python and R smoothing spline implementations interpolate the birth rate
+and population covariates differently, most noticeably for Cardiff. We
+therefore export the interpolated covariate grid from `pomp` into
+`../R_covariates.csv` and use it in the `pypomp` objects, so that both packages
+search over the same model.
 :::
 
-The `pypomp` run continues past the search into the panel-specific part of the
-workflow: mix-and-match across units, then pruning to the single best
-combination. R `panelPomp` has no equivalent, so the like-for-like comparison
-below uses `results_final.csv`, captured before that step. The mix-and-match
-outcome is reported separately as a `pypomp`-only result.
+The `pypomp` run continues past the search into a panel-specific step:
+mix-and-match across units, then pruning to the single best combination.
+`panelPomp` has no equivalent, so the comparison with R uses
+`results_final.csv`, which is saved before that step. The mix-and-match result
+is reported separately.
 
----
+```{python Load results}
+import numpy as np
+import pandas as pd
+import checks
+from plotnine import ggplot, aes, geom_density, geom_line, facet_wrap, labs
 
-## Benchmark Settings & Environment
+os.environ["JAX_PLATFORMS"] = "cpu"
 
-The table below summarizes algorithmic parameters, software environments, and compute hardware recorded in `latest.json` for each configuration.
-
-```{python Settings Table, results='asis'}
 PLATFORMS = {
     "R panelPomp": os.path.join("results", "R"),
     "pypomp (GPU)": ru.platform_dir(),
 }
-
 runs = ru.load_timing_data(PLATFORMS)
-display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
-```
-
-```{python Missing sources, results='asis'}
-missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
-for label, path in missing:
-    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
-```
-
-```{python Environment Setup}
-import numpy as np
-import pandas as pd
-from plotnine import ggplot, aes, geom_density, facet_wrap, labs
-
-os.environ["JAX_PLATFORMS"] = "cpu"
 
 PY_DIR = ru.platform_dir()
 R_DIR = os.path.join("results", "R")
 
 py_results = ru.read_if_exists(os.path.join(PY_DIR, "results_final.csv"))
 r_coefs = ru.read_if_exists(os.path.join(R_DIR, "mif_coefs.csv"))
-```
 
-```{python Build the long frame}
 long_frames = []
 if py_results is not None:
     long_frames.append(
@@ -108,14 +94,81 @@ combined = pd.concat(long_frames, ignore_index=True) if long_frames else pd.Data
 )
 combined = combined[combined["param"].isin(ru.LOG_PARAMS + ru.LOGIT_PARAMS)]
 transformed = ru.to_estimation_scale(combined)
+
+py_ll = ru.read_if_exists(os.path.join(PY_DIR, "pfilter_logliks.csv"))
+r_ll = ru.read_if_exists(os.path.join(R_DIR, "pfilter_logliks.csv"))
+ll_frames = []
+if py_ll is not None:
+    ll_frames.append(py_ll.assign(source="pypomp"))
+if r_ll is not None:
+    ll_frames.append(r_ll.assign(source="R panelPomp"))
+per_unit = (
+    pd.concat(ll_frames, ignore_index=True)
+    .groupby(["source", "unit", "theta_idx"])["logLik"]
+    .agg(logmeanexp=ru.logmeanexp)
+    .reset_index()
+    if ll_frames
+    else pd.DataFrame(columns=["source", "unit", "theta_idx", "logmeanexp"])
+)
+```
+
+```{python Missing sources, results='asis'}
+missing = [(label, r["dir"]) for label, r in runs.items() if not r["available"]]
+for label, path in missing:
+    display(HTML(f"<div class='alert alert-warning'><strong>Missing results for {label}:</strong> Expected at <code>{path}</code>.</div>"))
+for label, df, path in (
+    ("pypomp endpoint log-likelihoods", py_ll, os.path.join(PY_DIR, "pfilter_logliks.csv")),
+    ("R panelPomp endpoint log-likelihoods", r_ll, os.path.join(R_DIR, "pfilter_logliks.csv")),
+):
+    if df is None:
+        display(HTML(ru.missing_note(label, path)))
 ```
 
 ---
 
-## Summary Statistics
+## Automated checks
 
-Reported on the estimation scale (log for rates, logit for probabilities and
-initial-state fractions), which is the scale block-IF2 perturbs on.
+```{python Automated checks, results='asis'}
+COMPARED = "pypomp vs R panelPomp"
+blocks = ["shared"] + sorted(u for u in transformed["unit"].dropna().unique() if u != "shared")
+estimates = {
+    block: [
+        (param, g[g["source"] == "pypomp"]["value"], g[g["source"] == "R panelPomp"]["value"])
+        for param, g in transformed[transformed["unit"] == block].groupby("param")
+    ]
+    for block in blocks
+}
+endpoint = [
+    (unit, g[g["source"] == "pypomp"]["logmeanexp"], g[g["source"] == "R panelPomp"]["logmeanexp"])
+    for unit, g in per_unit.groupby("unit")
+]
+M_TESTS = 2 * (sum(len(s) for s in estimates.values()) + len(endpoint))
+
+rows, details = [], []
+for block, samples in estimates.items():
+    r, det = checks.group_checks(samples, "Final estimates", f"{block}: {COMPARED}", M_TESTS)
+    rows += r
+    details.append(det)
+r, det = checks.group_checks(endpoint, "Endpoint log-likelihood", COMPARED, M_TESTS)
+rows += r
+details.append(det)
+
+level = checks.run_level(runs)
+rows = checks.gate_smoke(rows, level)
+checks.save(rows, level, pypomp_version=runs["pypomp (GPU)"]["meta"].get("pypomp_version"))
+display(HTML(checks.table_html(rows, M_TESTS)))
+display(HTML(checks.details_html(pd.concat(details, ignore_index=True), "Results for each parameter and unit")))
+```
+
+## Visual review
+
+- [Shared parameter distributions](#shared-parameter-distributions) and [unit-specific parameter distributions](#unit-specific-parameter-distributions): the `pypomp` and `panelPomp` densities should overlap heavily for each parameter.
+- [Endpoint log-likelihoods](#endpoint-log-likelihoods): the densities should overlap heavily for each unit.
+- [Convergence traces](#convergence-traces): traces from independent starts should converge toward a common region.
+
+---
+
+## Summary statistics
 
 ```{python Summary table}
 if transformed.empty:
@@ -132,9 +185,7 @@ else:
 
 ---
 
-## Shared Parameter Distributions
-
-The parameters estimated jointly across all four units.
+## Shared parameter distributions
 
 ```{python Shared densities, fig.width = 11, fig.height = 7}
 shared = transformed[transformed["unit"] == "shared"]
@@ -161,7 +212,7 @@ else:
 
 ---
 
-## Unit-Specific Parameter Distributions
+## Unit-specific parameter distributions
 
 ```{python Specific densities, fig.width = 11, fig.height = 8}
 specific = transformed[transformed["unit"] != "shared"]
@@ -188,50 +239,16 @@ else:
         )
 ```
 
-::: {.callout-note}
-### Expectation
-The `pypomp` and `panelPomp` densities should overlap heavily for each
-parameter, both shared and unit-specific.
-:::
-
 ---
 
-## Log-Likelihood at the Search Endpoints
+## Endpoint log-likelihoods
 
-Each start's final parameter vector is re-evaluated by particle filter. The
-distribution over starts shows how consistently the search reaches the same
-region.
+We re-evaluate each start's final parameter vector with the particle filter and
+take the `logmeanexp` over replicate filters, giving one value per start and
+unit.
 
 ```{python Endpoint logliks, fig.width = 10, fig.height = 6}
-py_ll = ru.read_if_exists(os.path.join(PY_DIR, "pfilter_logliks.csv"))
-r_ll = ru.read_if_exists(os.path.join(R_DIR, "pfilter_logliks.csv"))
-
-ll_frames = []
-if py_ll is not None:
-    py_ll = py_ll.copy()
-    py_ll["source"] = "pypomp"
-    ll_frames.append(py_ll)
-if r_ll is not None:
-    r_ll = r_ll.copy()
-    r_ll["source"] = "R panelPomp"
-    ll_frames.append(r_ll)
-
-missing_ll = []
-if py_ll is None:
-    missing_ll.append(("pypomp endpoint log-likelihoods", os.path.join(PY_DIR, "pfilter_logliks.csv")))
-if r_ll is None:
-    missing_ll.append(("R panelPomp endpoint log-likelihoods", os.path.join(R_DIR, "pfilter_logliks.csv")))
-
-for label, path in missing_ll:
-    display(HTML(ru.missing_note(label, path)))
-
-if ll_frames:
-    combined_ll = pd.concat(ll_frames, ignore_index=True)
-    per_unit = (
-        combined_ll.groupby(["source", "unit", "theta_idx"])["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
-        if "theta_idx" in combined_ll.columns
-        else combined_ll.groupby(["source", "unit"])["logLik"].agg(logmeanexp=ru.logmeanexp).reset_index()
-    )
+if not per_unit.empty:
     display(
         ggplot(per_unit, aes(x="logmeanexp", fill="source", color="source"))
         + geom_density(alpha=0.35)
@@ -252,12 +269,12 @@ if ll_frames:
 
 ---
 
-## Mix-and-Match
+## Mix-and-match
 
-`panelPomp` fits each start as one coherent parameter vector. `pypomp` can
-additionally recombine the best unit-specific blocks across starts and re-fit,
-which has no counterpart in the R baseline. The table below is the pruned best
-combination after that step.
+`panelPomp` fits each start as one parameter vector. `pypomp` can also
+recombine the best unit-specific blocks across starts and refit, which has no
+counterpart in `panelPomp`. The table below is the pruned best combination
+after that step.
 
 ```{python Mix and match}
 pruned = ru.read_if_exists(os.path.join(PY_DIR, "results.csv"))
@@ -270,11 +287,9 @@ else:
 
 ---
 
-## Convergence Traces
+## Convergence traces
 
 ```{python Traces, fig.width = 11, fig.height = 8}
-from plotnine import geom_line
-
 target_cols = ["unit", "theta_idx", "replicate", "iteration", "method", "logLik", "loglik"] + ru.LOG_PARAMS + ru.LOGIT_PARAMS
 
 py_traces = ru.load_traces(os.path.join(PY_DIR, "traces.csv.gz"), "pypomp", usecols=target_cols, max_iters=20)
@@ -337,8 +352,10 @@ if trace_frames:
         )
 ```
 
-::: {.callout-note}
-### Expectation
-Traces from independent starts should converge toward a common region rather
-than each settling at its own starting neighbourhood.
-:::
+---
+
+## Appendix: settings and environment
+
+```{python Settings Table, results='asis'}
+display(HTML(ru.build_settings_comparison_html(runs, is_panel=True)))
+```

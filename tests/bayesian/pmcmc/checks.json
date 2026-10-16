@@ -1,0 +1,37 @@
+{
+  "verdict": "PASS",
+  "run_level": 4,
+  "pypomp_version": "1.0.8",
+  "checks": [
+    {
+      "check": "1. Same model",
+      "compared": "Do pypomp and R give the same likelihood at the true parameters?",
+      "result": "logLik differs by -0.01 (-2.2 SE)",
+      "verdict": "PASS"
+    },
+    {
+      "check": "2. Right posterior",
+      "compared": "Does pypomp (J=2000) match the grid reference?",
+      "result": "largest gap: sd rho, -1.4 SE",
+      "verdict": "PASS"
+    },
+    {
+      "check": "3. Particle count irrelevant",
+      "compared": "Do J=25 and J=2000 give the same posterior?",
+      "result": "largest gap: mean rho, +1.7 SE",
+      "verdict": "PASS"
+    },
+    {
+      "check": "4. Agrees with R",
+      "compared": "Does pypomp match R pomp's pmcmc?",
+      "result": "largest gap: sd beta1, -0.9 SE",
+      "verdict": "PASS"
+    },
+    {
+      "check": "5. Enough draws",
+      "compared": "Does every run have at least 400 effective independent draws?",
+      "result": "smallest bulk ESS 2,239 (R pomp, rho); split R-hat up to 1.033, see diagnostics",
+      "verdict": "PASS"
+    }
+  ]
+}
