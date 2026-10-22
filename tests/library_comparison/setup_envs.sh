@@ -12,3 +12,4 @@ VIRTUAL_ENV=$PWD/.venv-torch uv pip install -q torch torchvision torchaudio --in
 VIRTUAL_ENV=$PWD/.venv-torch uv pip install -q pydpf particles
 # Optional: the bench-only substep-unroll toggle used by run_exp.sh.
 git -C pypomp apply --check ../pypomp_substep_unroll_toggle.patch 2>/dev/null && git -C pypomp apply ../pypomp_substep_unroll_toggle.patch || true
+git -C pfjax apply --check ../pfjax_keysplit_fix.patch 2>/dev/null && git -C pfjax apply ../pfjax_keysplit_fix.patch || true

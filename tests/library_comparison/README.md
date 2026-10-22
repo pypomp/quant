@@ -55,4 +55,7 @@ command buffers for while loops, against both together, and against the `unsafe_
   other timings.
 - JAX and PyTorch run in float32; particles and pypfilt run in float64.
 - pfjax splits one PRNG key per particle with Python unpacking (`key, *subkeys = split(...)`),
-  so its compile time grows with J. Runs that exceed the timeout are recorded as failed.
+  which traces about two ops per particle (2,300 at J = 1,000; 64,000 at J = 30,000), so its
+  compile time grows with J (18 minutes at J = 10^6 on the 3090 box). `pfjax_keysplit_fix.patch`
+  adds an env switch, `PFJAX_FIX_KEYSPLIT=1`, that slices the key array instead; pfjax is
+  reported both as shipped and with that fix (`multinomial/keyfix`).

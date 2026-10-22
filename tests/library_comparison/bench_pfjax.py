@@ -2,9 +2,13 @@
 
 pfjax ships only multinomial (and continuous-relaxation) resamplers, so it is
 run with resample_multinomial, every step (its only mode).
+PFJAX_FIX_KEYSPLIT=1 (with pfjax_keysplit_fix.patch applied) replaces pfjax's
+`key, *subkeys = random.split(key, J + 1)`, which traces one slice per particle,
+with array slicing; the variant is then recorded as multinomial/keyfix.
 usage: python bench_pfjax.py MODEL J [J ...]
 """
 
+import os
 import sys
 import jax
 import jax.numpy as jnp
@@ -75,4 +79,5 @@ for J in Js:
         return float(pf(jax.random.split(jax.random.key(seed), C.REPS)).mean())
 
     first, med, lls = C.timeit(run)
-    C.record("pfjax", "multinomial", model_name, device, J, first, med, lls)
+    variant = "multinomial/keyfix" if os.environ.get("PFJAX_FIX_KEYSPLIT") else "multinomial"
+    C.record("pfjax", variant, model_name, device, J, first, med, lls)
