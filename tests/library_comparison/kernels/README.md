@@ -58,5 +58,61 @@ primitive at a time, with the Pallas Triton backend.
   (`jnp.polyval` in `pypomp.random`), `optimization_barrier` and an integer-predicate
   `select_n` have no lowering rules.
 
-Run from this folder's parent: `python kernels/pallas_sde_bench.py [--interpret] [--check]`
-and `python kernels/pallas_probe.py` (needs a visible GPU; `--run` also executes).
+## CuTe: the user's rproc, unmodified, in one kernel per interval
+
+`cute_translate.py` walks the jaxpr of a single-particle rproc step inside a CuTe DSL
+kernel: one thread per particle, and small per-particle arrays (He10's 11 uniforms, the
+gamma sampler's 3 rows) become registers, so none of Triton's shape rules apply.
+`cute_rproc.cute_struct(model)` swaps the model's `rprocess_interp` for that kernel, so
+pypomp's own `pfilter` (dmeasure, weights, resampling, key schedule) runs around it, and
+all filters of a vmapped call go into one launch. Random numbers are pypomp's threefry
+stream, computed per thread: `split(key, J)[j]` and element `(s, j)` of a `(k, J)` draw.
+Unsupported primitives raise with their name so a caller can fall back to XLA. The
+substep loop is a runtime loop, which on He10 compiles in about 12 s instead of 74 s.
+
+Same keys, one observation interval from the same particles
+(`results/cute_vs_stock_one_interval.txt`): the toy SDE matches stock pypomp to 9e-7
+relative; He10 matches to 1e-7 except for 1 particle in 2,048 at the first interval (a
+binomial draw that rounds to the other side of a CDF step). pypomp's He10 rproc and its
+`binominv`, `poissoninv`, `gammainv` and `ndtri` run as written.
+
+Full pfilter with the same keys, warm (`results/cute_vs_stock_gpu.jsonl`):
+
+| Model | R filters x J | stock pypomp | CuTe kernel | speedup | compile (stock / CuTe) |
+|---|---|---|---|---|---|
+| He10 London | 1 x 5,120 | 221 ms | 97 ms | 2.3x | 16 s / 11 s |
+| He10 London | 36 x 5,120 | 1.56 s | 0.46 s | 3.4x | 31 s / 17 s |
+| He10 London | 1,296 x 5,120 | 46.8 s | 14.8 s | 3.2x | 74 s / 30 s |
+| toy SDE | 1 x 1,024 | 22 ms | 18 ms | 1.2x | |
+| toy SDE | 1 x 16,384 | 20 ms | 12 ms | 1.7x | |
+| toy SDE | 100 x 1,024 | 26 ms | 17 ms | 1.5x | |
+| toy SDE | 1 x 1,048,576 | 49 ms | 45 ms | 1.1x | |
+
+The CPU was saturated during these runs (load average 72-88 on 32 threads).
+
+## He10 Pallas prototype (`he10_fused.py`)
+
+The He10 step with its uniforms drawn as 11 hashed streams, the gamma product written
+out, and `ndtri`, `polyval` and `lax.cond` in `pypomp.random` replaced, so Pallas Triton
+can compile it; Pallas Triton also needed its scalar-constant lowering patched. Not a
+drop-in (different RNG), but the same model: warm times (`results/he10_pallas_gpu.jsonl`)
+were 64 ms (1 x 5,120), 0.29 s (36 x 5,120) and 9.6 s (1,296 x 5,120), against stock's
+218 ms, 1.56 s and 46.7 s. It is faster than the CuTe drop-in mainly because a hash is
+much cheaper than threefry; the CuTe kernel keeps pypomp's exact random numbers.
+
+## Replicate layout (pypomp branch `pfilter-vmap-reps`, `layout_bench.py`)
+
+`Pomp.pfilter(reps=...)` runs the replicates of each parameter set one after another.
+The branch runs them in parallel by default (`reps_batch_size=None`; 1 restores the old
+behaviour). On the paper's PF workloads, warm (`results/pfilter_layout_gpu.jsonl`):
+
+| Model | old (sequential reps) | new (parallel reps) |
+|---|---|---|
+| S&P 500 (36 x 24 x 1,000) | 4.0 s | 0.75 s |
+| Cholera (36 x 36 x 5,000) | 9.9 s | 7.8 s |
+| London measles (36 x 36 x 5,000) | 46.0 s | 39.8 s |
+
+Run from this folder's parent: `python kernels/pallas_sde_bench.py [--interpret] [--check]`,
+`python kernels/pallas_probe.py` (needs a visible GPU; `--run` also executes),
+`python kernels/cute_check.py {sde,he10} R:J ...` (needs `nvidia-cutlass-dsl`), and
+`PYTHONPATH=<pypomp checkout on pfilter-vmap-reps> python kernels/layout_bench.py`.

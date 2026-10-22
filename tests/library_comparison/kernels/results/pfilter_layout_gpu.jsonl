@@ -1,0 +1,6 @@
+{"model": "spx", "layout": "replicates sequential (old)", "J": 1000, "nthetas": 36, "reps": 24, "cold_s": 8.69, "warm_s": 4.007, "loglik_mean": -2209924352.0, "load": 66.52001953125, "device": "gpu"}
+{"model": "spx", "layout": "replicates parallel (new)", "J": 1000, "nthetas": 36, "reps": 24, "cold_s": 4.33, "warm_s": 0.747, "loglik_mean": -2220841216.0, "load": 67.359375, "device": "gpu"}
+{"model": "dacca", "layout": "replicates sequential (old)", "J": 5000, "nthetas": 36, "reps": 36, "cold_s": 14.62, "warm_s": 9.86, "loglik_mean": -9549.779296875, "load": 66.85498046875, "device": "gpu"}
+{"model": "dacca", "layout": "replicates parallel (new)", "J": 5000, "nthetas": 36, "reps": 36, "cold_s": 13.102, "warm_s": 7.812, "loglik_mean": -9549.779296875, "load": 68.638671875, "device": "gpu"}
+{"model": "measles", "layout": "replicates sequential (old)", "J": 5000, "nthetas": 36, "reps": 36, "cold_s": 78.856, "warm_s": 46.003, "loglik_mean": -5331.107421875, "load": 74.453125, "device": "gpu"}
+{"model": "measles", "layout": "replicates parallel (new)", "J": 5000, "nthetas": 36, "reps": 36, "cold_s": 68.041, "warm_s": 39.756, "loglik_mean": -5333.298828125, "load": 76.96826171875, "device": "gpu"}
