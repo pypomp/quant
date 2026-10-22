@@ -1,0 +1,236 @@
+---
+title: "Fixed-Parameter Likelihood Validation"
+subtitle: "Particle filter log-likelihood distribution: R pomp vs. pypomp, all models"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+bibliography: ../tests/spx/references.bib
+engine: jupyter
+---
+
+```{python Navigation header}
+import os
+
+import numpy as np
+import pandas as pd
+import report_utils as ru  # puts tests/ on sys.path
+import checks
+from IPython.display import HTML, display
+from plotnine import aes, facet_wrap, geom_density, geom_vline, ggplot, labs
+
+ru.nav_bar("loglik")
+```
+
+## Introduction
+
+This report checks the particle filter's likelihood estimate by running it many
+times at a single fixed parameter vector for each model. Only the random seed
+varies across replicates, so any systematic difference between `pypomp` and R
+(`pomp`, or `panelPomp` for the panel) would be a difference between the
+implementations.
+
+- **SPX**: the estimates from @sun2024.
+- **Dhaka cholera**: the published maximum likelihood estimate (MLE) that `pomp`
+  uses as the default for `dacca()`.
+- **Measles**: the He et al. (2010) MLEs for London, the largest unit, and
+  Halesworth, one of the smallest. `pypomp` runs once in single and once in
+  double precision. Since `pomp` uses double precision throughout, the 64-bit
+  run is the direct comparison, while the 32-bit run shows the effect of
+  `pypomp`'s default precision.
+- **Panel measles**: the He et al. (2010) MLEs for London, Halesworth, Hastings
+  and Cardiff. The parameters `R0`, `sigma`, `gamma`, `sigmaSE`, `cohort` and
+  `amplitude` are shared across units and set to the average of the four towns'
+  estimates, while `iota`, `rho`, `psi`, `S_0`, `E_0`, `I_0` and `R_0` are
+  unit-specific. Since the panel log-likelihood is the sum of the unit
+  log-likelihoods, we compare each unit separately.
+
+::: {.callout-note collapse="true"}
+### Why the panel covariates are imported from `pomp`
+The Python and R smoothing splines interpolate the birth rate and population
+covariates differently, most noticeably for Cardiff, and this alone shifts the
+log-likelihood. Since we want to compare the filters rather than two slightly
+different models, we export the interpolated covariates from `pomp` to
+`tests/panel_measles/R_covariates.csv` and load them into the `pypomp` objects
+(`model.align_covariates`). As such, both packages filter the same model.
+:::
+
+```{python Load results}
+MODELS = ru.models("loglik")
+runs = {m: ru.load_runs(m, "loglik") for m in MODELS}
+
+
+def load_logliks(model):
+    spec = ru.MODELS[model]["loglik"]
+    frames = []
+    for arm, sub in spec["arms"].items():
+        path = os.path.join(ru.results_dir(spec["dir"], sub), "pfilter_logliks.csv")
+        if not os.path.exists(path):
+            continue
+        df = pd.read_csv(path).dropna(subset=["logLik"])
+        if "unit" not in df.columns:
+            df["unit"] = ""
+        if arm == spec["reference"]:
+            role = "R"
+        elif arm in spec.get("info", []):
+            role = arm
+        else:
+            role = "pypomp"
+        frames.append(df[["unit", "logLik"]].assign(model=model, source=arm, role=role))
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(
+        columns=["unit", "logLik", "model", "source", "role"]
+    )
+
+
+combined = pd.concat([load_logliks(m) for m in MODELS], ignore_index=True)
+combined["label"] = combined["model"].map(lambda m: ru.MODELS[m]["label"])
+combined["panel"] = np.where(
+    combined["unit"] == "", combined["label"], combined["label"] + "\n" + combined["unit"]
+)
+combined["panel"] = pd.Categorical(combined["panel"], categories=combined["panel"].unique())
+```
+
+```{python Missing sources}
+ru.show_missing(runs)
+```
+
+---
+
+## Automated checks
+
+```{python Automated checks}
+#| output: asis
+records = {}
+print(f"*{checks.CAVEAT}*\n")
+for model in MODELS:
+    spec = ru.MODELS[model]["loglik"]
+    ref, info = spec["reference"], spec.get("info", [])
+    df = combined[combined["model"] == model]
+    units = sorted(df["unit"].unique()) or [""]
+    arms = [a for a in spec["arms"] if a != ref]
+    m = 2 * len(units) * sum(a not in info for a in arms)
+    rows = []
+    for arm in arms:
+        for unit in units:
+            sel = df["unit"] == unit
+            compared = f"{arm} vs {ref}" if unit == "" else f"{unit}: {arm} vs {ref}"
+            rows += checks.loglik_checks(
+                df[sel & (df["source"] == arm)]["logLik"],
+                df[sel & (df["source"] == ref)]["logLik"],
+                compared,
+                m,
+                verdict=arm not in info,
+            )
+    level = checks.run_level(runs[model])
+    rows = checks.gate_smoke(rows, level)
+    version = runs[model][arms[0]]["meta"].get("pypomp_version")
+    records[model] = checks.record(rows, level, pypomp_version=version)
+
+    print(ru.heading(model))
+    print(f"Verdict: {checks.badge(records[model]['verdict'])}\n")
+    if info:
+        print(f"Rows for {', '.join(info)} are for reference and receive no verdict.\n")
+    print(ru.raw_html(checks.rows_html(rows)))
+
+print(f"\n<small>{checks.rule_text()}</small>\n")
+checks.save_models(records, "loglik_checks.json")
+```
+
+## Visual review
+
+- [Density comparison](#density-comparison): in every panel, the `pypomp` and R
+  densities should overlap heavily. For measles, the 32-bit and 64-bit runs
+  differ only in precision, so any shift of the 32-bit density away from the
+  other two should be due to precision rather than the filter.
+
+---
+
+## Density comparison
+
+Each panel is centered on the mean of the R replicates, so the horizontal axis
+is in nats from that mean.
+
+```{python Density plot}
+#| fig-width: 12
+#| fig-height: 7
+r_mean = (
+    combined[combined["role"] == "R"]
+    .groupby("panel", observed=True)["logLik"]
+    .mean()
+    .rename("r_mean")
+)
+plot_df = combined.join(r_mean, on="panel")
+plot_df["centered"] = plot_df["logLik"] - plot_df["r_mean"]
+
+(
+    ggplot(plot_df, aes(x="centered", fill="role", color="role"))
+    + geom_density(alpha=0.3)
+    + geom_vline(xintercept=0, linetype="dashed", color="#7f8c8d")
+    + facet_wrap("~panel", scales="free", ncol=4)
+    + labs(
+        title="Particle filter log-likelihood at fixed parameters",
+        subtitle="One density per implementation, per model and unit",
+        x="Log-likelihood minus the R mean (nats)",
+        y="Density",
+        fill="Source",
+        color="Source",
+    )
+    + ru.scale_fill_premium()
+    + ru.scale_color_premium()
+    + ru.theme_premium
+)
+```
+
+---
+
+## Summary statistics
+
+We include `logmeanexp`, the log of the mean likelihood, since it is the
+likelihood estimate that `pomp` reports.
+
+```{python Summary table}
+summary = (
+    combined.groupby(["model", "label", "unit", "source"], sort=False)["logLik"]
+    .agg(n="count", mean="mean", sd="std", min="min", max="max", logmeanexp=ru.logmeanexp)
+    .reset_index()
+    .drop(columns="model")
+    .rename(columns={"label": "model"})
+)
+display(HTML(summary.round(3).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+### Panel log-likelihood
+
+The sum of the unit `logmeanexp` values is the panel log-likelihood estimate
+that each package would report.
+
+```{python Panel total}
+panel = (
+    summary[summary["model"] == ru.MODELS["panel_measles"]["label"]]
+    .groupby("source")["logmeanexp"]
+    .sum()
+    .reset_index()
+    .rename(columns={"logmeanexp": "panel logLik"})
+)
+display(HTML(panel.round(3).to_html(classes="table table-striped table-hover", index=False)))
+```
+
+---
+
+## Appendix: settings and environment
+
+```{python Settings}
+#| output: asis
+print(ru.settings_sections(runs))
+```
+
+## References

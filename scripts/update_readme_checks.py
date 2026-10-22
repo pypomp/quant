@@ -1,6 +1,7 @@
-"""Append each report's worst automated verdict (from its checks.json) to its
-README link, e.g. `[report](tests/spx/loglik/report.html) · PASS`. Reports
-whose checks are all info get no verdict."""
+"""Append each report's worst automated verdict to its README link, e.g.
+`[report](tests/spx/estimation/report.html) · PASS`. A link into a cross-model
+report, `[report](reports/loglik.html#spx)`, gets that model's verdict from
+reports/loglik_checks.json. Reports whose checks are all info get no verdict."""
 
 import json
 import os
@@ -8,17 +9,28 @@ import re
 
 README = "README.md"
 LINK = re.compile(
-    r"(\[[^\]]+\]\((tests/[^)]+)/[\w-]+\.html\))(?: · (?:PASS|CHECK|FAIL|n/a))?"
+    r"(\[[^\]]+\]\(((?:tests|reports)/[^)#]+)\.html(?:#([\w-]+))?\))"
+    r"(?: · (?:PASS|CHECK|FAIL|n/a))?"
 )
 
 
-def annotate(match):
-    path = os.path.join(match.group(2), "checks.json")
+def verdict(page, model):
+    if page.startswith("reports/"):
+        path = f"{page}_checks.json"
+    else:
+        path = os.path.join(os.path.dirname(page), "checks.json")
     if not os.path.exists(path):
-        return match.group(1)
+        return None
     with open(path) as f:
-        verdict = json.load(f)["verdict"]
-    return match.group(1) if verdict == "info" else f"{match.group(1)} · {verdict}"
+        checks = json.load(f)
+    if "models" in checks:
+        checks = checks["models"].get(model, {})
+    return checks.get("verdict")
+
+
+def annotate(match):
+    v = verdict(match.group(2), match.group(3))
+    return match.group(1) if v in (None, "info") else f"{match.group(1)} · {v}"
 
 
 def main():

@@ -196,27 +196,53 @@ def badge(v):
     )
 
 
-def table_html(rows, m):
+def rule_text(m=None):
+    """The verdict thresholds. m is the number of tests adjusted over, or None
+    when a cross-model report adjusts within each model."""
+    over = (
+        "within each model over the tests that receive a verdict"
+        if m is None
+        else f"over the {m} tests that receive a verdict"
+    )
+    return (
+        f"PASS when |z| < {PASS_Z:g}, CHECK when {PASS_Z:g} ≤ |z| < {FAIL_Z:g}, "
+        f"and FAIL when |z| ≥ {FAIL_Z:g}. KS p-values use the equivalent "
+        f"thresholds. Both are Bonferroni-adjusted {over}."
+    )
+
+
+def rows_html(rows):
     df = pd.DataFrame(rows)[["check", "compared", "result", "verdict"]]
     df["verdict"] = df["verdict"].map(badge)
     df.columns = ["Check", "Compared", "Result", "Verdict"]
-    rule = (
-        f"PASS when |z| < {PASS_Z:g}, CHECK when {PASS_Z:g} ≤ |z| < {FAIL_Z:g}, "
-        f"and FAIL when |z| ≥ {FAIL_Z:g}. KS p-values use the equivalent "
-        f"thresholds. Both are Bonferroni-adjusted over the {m} tests that "
-        "receive a verdict."
+    return df.to_html(
+        classes="table table-striped table-hover", index=False, escape=False
     )
+
+
+def table_html(rows, m):
     return (
         f"<p><em>{CAVEAT}</em></p>"
-        + df.to_html(
-            classes="table table-striped table-hover", index=False, escape=False
-        )
-        + f"<p><small>{rule}</small></p>"
+        + rows_html(rows)
+        + f"<p><small>{rule_text(m)}</small></p>"
     )
 
 
-def save(rows, level, path="checks.json", **meta):
-    out = {"verdict": worst(rows), "run_level": level, **meta, "checks": rows}
+def record(rows, level, **meta):
+    return {"verdict": worst(rows), "run_level": level, **meta, "checks": rows}
+
+
+def _write(out, path):
     with open(path, "w") as f:
         json.dump(out, f, indent=2)
         f.write("\n")
+
+
+def save(rows, level, path="checks.json", **meta):
+    _write(record(rows, level, **meta), path)
+
+
+def save_models(records, path):
+    """A cross-model report's checks: {model: record(...)} and the worst
+    verdict over all models."""
+    _write({"verdict": worst(list(records.values())), "models": records}, path)

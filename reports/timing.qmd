@@ -1,0 +1,160 @@
+---
+title: "Runtime & Performance Benchmark"
+subtitle: "Execution speed and throughput: R pomp vs. pypomp, all models"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+bibliography: ../tests/spx/references.bib
+engine: jupyter
+---
+
+```{python Navigation header}
+import pandas as pd
+import report_utils as ru
+from plotnine import (
+    aes,
+    coord_flip,
+    geom_point,
+    ggplot,
+    guide_legend,
+    guides,
+    labs,
+    position_dodge,
+    scale_y_log10,
+)
+
+ru.nav_bar("timing")
+```
+
+## Introduction
+
+This report compares the runtime of IF2 and the particle filter (`pfilter`) in
+`pypomp` (GPU, and CPU where run) and R `pomp` (CPU) on identical work. For
+panel measles, R uses `panelPomp`, and parameter estimation uses marginalized
+panel iterated filtering (MPIF) in place of IF2.
+
+| Model | Workload |
+|---|---|
+| SPX | The stochastic volatility model of @sun2024. Draws few random variates and takes a single `rproc` step per observation. |
+| Dhaka cholera | A lightweight state transition run for 20 Euler steps per observation. Both implementations start from the same parameter vectors (`tests/dacca/starting_parameters.csv`). |
+| Measles | London: 365 Euler steps per year across 14 years of weekly data, drawing 8 random variates per step (1 Poisson, 1 gamma, 6 binomial). Also compares the fast samplers in `pypomp.random` with stock `jax.random` samplers on the GPU. |
+| Panel measles | London, Halesworth, Hastings and Cardiff, with shared and unit-specific parameters. |
+
+Speedup and throughput use the cold-start particle filter (`pfilter_cold`),
+which includes JIT compilation, since that cost is paid in practice. Throughput
+is relative to a single R CPU core ($\text{speedup} \times N_{\text{cores}}$).
+
+```{python Load results}
+MODELS = ru.models("timing")
+runs = {m: ru.load_runs(m, "timing") for m in MODELS}
+tables = {
+    m: ru.build_timing_comparison_df(runs[m], is_panel=ru.MODELS[m]["panel"]) for m in MODELS
+}
+```
+
+```{python Missing sources}
+ru.show_missing(runs)
+```
+
+## Visual review
+
+- [Throughput](#throughput) and [results by model](#results-by-model):
+  - SPX: `pypomp`'s throughput on GPU should be hundreds of times that of R
+    `pomp` on one core, and `pypomp` on CPU should run at least twice as fast as
+    R `pomp` on CPU.
+  - Dhaka cholera: `pypomp`'s throughput on GPU should be thousands of times
+    that of R `pomp` on one core, and the total speedup of `pypomp` on CPU
+    relative to R `pomp` should be about 4x.
+  - Measles: `pypomp`'s throughput on GPU with the fast samplers should be
+    thousands of times that of R `pomp` on one core, and the fast-sampler GPU
+    run should be substantially faster than the stock JAX sampler GPU run. We
+    set no expectation for the CPU run.
+  - Panel measles: `pypomp`'s throughput on GPU should be thousands of times
+    that of R `panelPomp` on one core.
+
+---
+
+## Throughput
+
+```{python Throughput plot}
+#| fig-width: 10
+#| fig-height: 4.5
+CONFIG = {
+    "R": "R",
+    "gpu": "pypomp (GPU)",
+    "gpu_jax": "pypomp (GPU, JAX samplers)",
+    "cpu": "pypomp (CPU, 36 cores)",
+}
+frames = []
+for m, df in tables.items():
+    arms = ru.MODELS[m]["timing"]["arms"]
+    frames.append(
+        pd.DataFrame(
+            {
+                "Model": ru.MODELS[m]["label"],
+                "Configuration": df["Configuration"].map(lambda c: CONFIG[arms[c]]),
+                "throughput": pd.to_numeric(
+                    df["Throughput (vs 1 R CPU core)"].str.rstrip("x"), errors="coerce"
+                ),
+            }
+        )
+    )
+tp = pd.concat(frames, ignore_index=True).dropna()
+tp["Model"] = pd.Categorical(tp["Model"], categories=tp["Model"].unique()[::-1])
+tp["Configuration"] = pd.Categorical(tp["Configuration"], categories=list(CONFIG.values()))
+
+(
+    ggplot(tp, aes(x="Model", y="throughput", color="Configuration"))
+    + geom_point(size=4, position=position_dodge(width=0.5))
+    + scale_y_log10()
+    + coord_flip()
+    + labs(
+        title="Throughput relative to one R CPU core",
+        subtitle="Cold-start particle filter; log scale",
+        x="",
+        y="Throughput (× one R core)",
+        color="Configuration",
+    )
+    + guides(color=guide_legend(nrow=2))
+    + ru.scale_color_premium()
+    + ru.theme_premium
+)
+```
+
+---
+
+## Results by model
+
+The first `pfilter` call in JAX includes one-time JIT compilation. Later calls
+run without recompiling, as the compilation overhead tables show.
+
+```{python Results by model}
+#| output: asis
+for m in MODELS:
+    print(ru.heading(m))
+    print(ru.raw_html(tables[m].to_html(classes="table table-striped table-hover", index=False)))
+    print("\n**JIT compilation overhead**\n")
+    cold_warm = ru.build_cold_vs_warm_df(runs[m])
+    print(ru.raw_html(cold_warm.to_html(classes="table table-striped table-hover", index=False)))
+```
+
+---
+
+## Appendix: settings and environment
+
+```{python Settings}
+#| output: asis
+print(ru.settings_sections(runs))
+```
+
+## References

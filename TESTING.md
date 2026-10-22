@@ -207,10 +207,16 @@ tests/<model>/
     <kind>/
         run.py              # the pypomp entrypoint (always this name)
         run.R               # the R baseline, if there is one
-        report.qmd          # one report per kind
+        report.qmd          # estimation and algorithms only (see below)
         results/<platform>/ # run outputs; CSV/JSON committed, .pkl not
         results/R/          # the R record; CSV/JSON committed, .rds/.rda not
 ```
+
+The `loglik`, `timing` and `scaling` kinds have no per-model report. Instead,
+`reports/loglik.qmd`, `reports/timing.qmd` and `reports/scaling.qmd` each
+cover every model listed in `reports/models.py`, which records where each
+model's results live and which runs to compare. To add a model to those
+reports, add its entry there.
 
 There are five kinds. Which one a test belongs to is decided by a single
 question: **what varies across the runs inside the test?**
@@ -260,7 +266,8 @@ tests/spx/loglik/
             timings.csv            # committed
             latest.json            # committed, provenance
             logs/                  # gitignored
-    report.qmd                     # reads results/R/
+
+reports/loglik.qmd                 # reads tests/spx/loglik/results/R/
 ```
 
 **Reports read `results/R/` and nothing else**, so anyone can render a report

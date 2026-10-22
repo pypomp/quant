@@ -1,0 +1,153 @@
+{
+  "verdict": "PASS",
+  "models": {
+    "spx": {
+      "verdict": "PASS",
+      "run_level": 4,
+      "pypomp_version": "1.0.0rc1",
+      "checks": [
+        {
+          "check": "Mean log-likelihood",
+          "compared": "pypomp (GPU) vs R pomp",
+          "result": "difference +0.050 nats (SE 0.049), z = +1.04",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "pypomp (GPU) vs R pomp",
+          "result": "D = 0.0275, p = 0.131",
+          "verdict": "PASS"
+        }
+      ]
+    },
+    "dacca": {
+      "verdict": "PASS",
+      "run_level": 4,
+      "pypomp_version": "1.0.0rc1",
+      "checks": [
+        {
+          "check": "Mean log-likelihood",
+          "compared": "pypomp (GPU) vs R pomp",
+          "result": "difference +0.000 nats (SE 0.019), z = +0.02",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "pypomp (GPU) vs R pomp",
+          "result": "D = 0.0125, p = 0.941",
+          "verdict": "PASS"
+        }
+      ]
+    },
+    "measles": {
+      "verdict": "PASS",
+      "run_level": 4,
+      "pypomp_version": "1.0.6",
+      "checks": [
+        {
+          "check": "Mean log-likelihood",
+          "compared": "Halesworth: pypomp (64-bit) vs R pomp",
+          "result": "difference -0.004 nats (SE 0.024), z = -0.15",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "Halesworth: pypomp (64-bit) vs R pomp",
+          "result": "D = 0.0161, p = 0.739",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Mean log-likelihood",
+          "compared": "London: pypomp (64-bit) vs R pomp",
+          "result": "difference -0.022 nats (SE 0.030), z = -0.74",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "London: pypomp (64-bit) vs R pomp",
+          "result": "D = 0.0219, p = 0.351",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Mean log-likelihood",
+          "compared": "Halesworth: pypomp (32-bit) vs R pomp",
+          "result": "difference -0.009 nats (SE 0.024), z = -0.39",
+          "verdict": "info"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "Halesworth: pypomp (32-bit) vs R pomp",
+          "result": "D = 0.0181, p = 0.6",
+          "verdict": "info"
+        },
+        {
+          "check": "Mean log-likelihood",
+          "compared": "London: pypomp (32-bit) vs R pomp",
+          "result": "difference -0.143 nats (SE 0.030), z = -4.68",
+          "verdict": "info"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "London: pypomp (32-bit) vs R pomp",
+          "result": "D = 0.0567, p = 1.9e-05",
+          "verdict": "info"
+        }
+      ]
+    },
+    "panel_measles": {
+      "verdict": "PASS",
+      "run_level": 4,
+      "pypomp_version": "1.0.6",
+      "checks": [
+        {
+          "check": "Mean log-likelihood",
+          "compared": "Cardiff: pypomp (GPU) vs R panelPomp",
+          "result": "difference +0.084 nats (SE 0.053), z = +1.58",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "Cardiff: pypomp (GPU) vs R panelPomp",
+          "result": "D = 0.0253, p = 0.2",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Mean log-likelihood",
+          "compared": "Halesworth: pypomp (GPU) vs R panelPomp",
+          "result": "difference +0.026 nats (SE 0.032), z = +0.83",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "Halesworth: pypomp (GPU) vs R panelPomp",
+          "result": "D = 0.0192, p = 0.523",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Mean log-likelihood",
+          "compared": "Hastings: pypomp (GPU) vs R panelPomp",
+          "result": "difference +0.025 nats (SE 0.043), z = +0.57",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "Hastings: pypomp (GPU) vs R panelPomp",
+          "result": "D = 0.0203, p = 0.45",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Mean log-likelihood",
+          "compared": "London: pypomp (GPU) vs R panelPomp",
+          "result": "difference -0.097 nats (SE 0.069), z = -1.40",
+          "verdict": "PASS"
+        },
+        {
+          "check": "Distribution (KS)",
+          "compared": "London: pypomp (GPU) vs R panelPomp",
+          "result": "D = 0.0186, p = 0.561",
+          "verdict": "PASS"
+        }
+      ]
+    }
+  }
+}

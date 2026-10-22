@@ -157,9 +157,9 @@ def process_and_transform_traces(df, language):
 def nav_bar(current):
     pages = [
         ("estimation", "Estimation", "../estimation/report.html"),
-        ("timing", "Timing & Throughput", "../timing/report.html"),
-        ("scaling", "Scaling", "../scaling/report.html"),
-        ("loglik", "Likelihood Evaluation", "../loglik/report.html"),
+        ("timing", "Timing & Throughput", "../../../reports/timing.html#spx"),
+        ("scaling", "Scaling", "../../../reports/scaling.html#spx"),
+        ("loglik", "Likelihood Evaluation", "../../../reports/loglik.html#spx"),
     ]
     parts = []
     for key, title, url in pages:

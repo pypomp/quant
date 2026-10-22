@@ -174,14 +174,6 @@ def summarize(df, by, value_col="logLik"):
     )
 
 
-def logmeanexp(x):
-    """pomp's logmeanexp: the log of the mean likelihood, not the mean logLik."""
-    from scipy.special import logsumexp
-
-    x = np.asarray(x, dtype=float)
-    return float(logsumexp(x) - np.log(len(x)))
-
-
 def read_if_exists(path, **kwargs):
     """Read a results CSV, or return None so a report can note it is missing."""
     if not os.path.exists(path):
@@ -251,10 +243,10 @@ def to_long(traces, max_iters=150):
 
 def nav_bar(current):
     pages = [
-        ("loglik", "Likelihood Evaluation", "../loglik/report.html"),
+        ("loglik", "Likelihood Evaluation", "../../../reports/loglik.html#measles"),
         ("estimation", "Parameter Estimation", "../estimation/report.html"),
-        ("timing", "Timing & Throughput", "../timing/report.html"),
-        ("scaling", "Scaling", "../scaling/report.html"),
+        ("timing", "Timing & Throughput", "../../../reports/timing.html#measles"),
+        ("scaling", "Scaling", "../../../reports/scaling.html#measles"),
     ]
     parts = []
     for key, title, url in pages:

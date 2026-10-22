@@ -40,7 +40,7 @@ test-high:
 test-all:
 	uv run scripts/run_tests.py run tests
 
-DIR ?= tests
+DIR ?= tests reports
 
 render-reports:
 	find $(DIR) -name "*.qmd" -exec quarto render {} \;

@@ -17,21 +17,21 @@ The quant tests also provide additional examples of pypomp, focused on technical
 
 ### Model tests
 
-Each model is tested the same four ways:
+Each model is tested the same four ways. Likelihood, timing and scaling each have one report covering every model; estimation has one report per model.
 
-* **Likelihood**: particle filter log-likelihoods at fixed parameters, `pypomp` vs R `pomp`, compared as distributions (KS test, densities).
+* **[Likelihood](reports/loglik.html)**: particle filter log-likelihoods at fixed parameters, `pypomp` vs R `pomp`, compared as distributions (KS test, densities).
 * **Estimation**: IF2 global search from identical starting points, `pypomp` vs `pomp`: traces, final parameter estimates, final log-likelihoods.
-* **Timing**: IF2 and particle filter runtime on identical work, `pypomp` on GPU and CPU vs `pomp`.
-* **Scaling**: GPU runtime and peak VRAM as particles ($J$) and chains grow; where the GPU saturates.
+* **[Timing](reports/timing.html)**: IF2 and particle filter runtime on identical work, `pypomp` on GPU and CPU vs `pomp`.
+* **[Scaling](reports/scaling.html)**: GPU runtime and peak VRAM as particles ($J$) and chains grow; where the GPU saturates.
 
-PASS, CHECK or FAIL after a link is the worst result among the automated checks in that report, computed when the report was last rendered. The automated checks only compare summary statistics, so each report also lists what its plots should show.
+PASS, CHECK or FAIL after a link is the worst result among that model's automated checks in that report, computed when the report was last rendered. The automated checks only compare summary statistics, so each report also lists what its plots should show.
 
 | Model | Likelihood | Estimation | Timing | Scaling |
 |---|---|---|---|---|
-| SPX (S&P 500) | [report](tests/spx/loglik/report.html) · PASS | [report](tests/spx/estimation/report.html) · PASS | [report](tests/spx/timing/report.html) | [report](tests/spx/scaling/report.html) |
-| Dhaka cholera | [report](tests/dacca/loglik/report.html) · PASS | — | [report](tests/dacca/timing/report.html) | [report](tests/dacca/scaling/report.html) |
-| Measles | [report](tests/measles/loglik/report.html) · PASS¹ | [report](tests/measles/estimation/report.html) · PASS | [report](tests/measles/timing/report.html)² | [report](tests/measles/scaling/report.html) |
-| Panel measles | [report](tests/panel_measles/loglik/report.html) · PASS | [report](tests/panel_measles/estimation/report.html) · PASS³ | [report](tests/panel_measles/timing/report.html) | [report](tests/panel_measles/scaling/report.html) |
+| SPX (S&P 500) | [report](reports/loglik.html#spx) · PASS | [report](tests/spx/estimation/report.html) · PASS | [report](reports/timing.html#spx) | [report](reports/scaling.html#spx) |
+| Dhaka cholera | [report](reports/loglik.html#dacca) · PASS | — | [report](reports/timing.html#dacca) | [report](reports/scaling.html#dacca) |
+| Measles | [report](reports/loglik.html#measles) · PASS¹ | [report](tests/measles/estimation/report.html) · PASS | [report](reports/timing.html#measles)² | [report](reports/scaling.html#measles) |
+| Panel measles | [report](reports/loglik.html#panel_measles) · PASS | [report](tests/panel_measles/estimation/report.html) · PASS³ | [report](reports/timing.html#panel_measles) | [report](reports/scaling.html#panel_measles) |
 
 ¹ Also compares `pypomp` in 32- and 64-bit precision, on London and Halesworth.<br>
 ² Also compares the fast samplers in `pypomp.random` with stock JAX samplers.<br>

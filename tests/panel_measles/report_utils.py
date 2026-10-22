@@ -350,10 +350,14 @@ def to_long(traces, max_iters=150):
 
 def nav_bar(current):
     pages = [
-        ("loglik", "Likelihood Evaluation", "../loglik/report.html"),
+        (
+            "loglik",
+            "Likelihood Evaluation",
+            "../../../reports/loglik.html#panel_measles",
+        ),
         ("estimation", "Parameter Estimation", "../estimation/report.html"),
-        ("timing", "Timing & Throughput", "../timing/report.html"),
-        ("scaling", "Scaling", "../scaling/report.html"),
+        ("timing", "Timing & Throughput", "../../../reports/timing.html#panel_measles"),
+        ("scaling", "Scaling", "../../../reports/scaling.html#panel_measles"),
     ]
     parts = []
     for key, title, url in pages:
