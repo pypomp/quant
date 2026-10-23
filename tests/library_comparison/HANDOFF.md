@@ -41,6 +41,13 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
 - **pydpf** runs PyTorch op by op: 81 kernels per Euler step on dacca, each a full pass over the
   particles at close to peak bandwidth (an add takes 93 us, about 840 GB/s), so 5.5 ms per step
   against about 0.5 ms for pypomp's one fused step kernel (`kernels/torch_kernels.py`).
+- **Aaron's `cute-real-branches`** (07e627a, on top of `feature/cute-rproc` ac6d0a8), checked on
+  the 3090 on 2026-10-23. Warm times, ac6d0a8 -> 07e627a: London interval 17.7 -> 13.7 ms; London PF
+  13.9 -> 10.7 s and IF2 4.9 -> 3.8 s; cholera unchanged (PF 3.2 s, IF2 2.2 s); XLA unchanged.
+  Sampler outputs on the XLA path are bitwise identical (about 32,000 grid values, batched and
+  vmapped). `tests/test_cute`: 31 pass; `test_dpop_train_on_cute` fails on both commits at its first
+  line, because Pomp has added `_logw` to `accumvars` since 4e3ee49, and passes with
+  `assert model.rproc.accumvars == (1,)`. Rows: `kernels/results/cute_real_branches_3090.jsonl`.
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
   runs a user-written transition and measurement density as a particle filter.
