@@ -47,5 +47,6 @@ correctness".
   the scheduler, so CPU-library projections use the best single-filter time.
 
 ## Next steps
-1. Draft the ms table (LaTeX in the ms's `latex_table` style) from `TABLES.md`.
+1. `ms_table_libraries.qmd` is the ms table (reads `table.csv`); it needs this folder merged into
+   the quant commit the ms builds from.
 2. pypomp PRs #55-#58 await review; #55 unblocks lint on the others.

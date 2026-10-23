@@ -1,0 +1,43 @@
+@tbl-libraries compares the particle filter benchmarks of @tbl-timing-full across Python particle filter libraries, with each model written as a user of that library would write it.
+
+::: {#tbl-libraries}
+```{python}
+#| echo: false
+
+lib_times = pd.read_csv(QUANT / "tests" / "library_comparison" / "table.csv")
+lib_times = lib_times.set_index(["model", "column"])
+lib_version = lib_times["version"].dropna().groupby(level="column").first()
+
+
+def fmt_s(x):
+    if x is None or pd.isna(x):
+        return "---"
+    return f"{x:,.0f}" if x >= 100 else f"{x:.1f}"
+
+
+def fmt_lib(model, column):
+    row = lib_times.loc[(model, column)]
+    if row["status"] == "timeout":
+        return f"$>${row['first_s']:,.0f}"
+    return fmt_s(row["first_s"])
+
+
+rows = []
+for model, label in TIMING_MODELS.items():
+    libs = [fmt_lib(model, c) for c in ["pypomp", "pfjax", "pydpf", "particles", "pypfilt"]]
+    r = fmt_s(pf_time(timing[model]["R"]["times"]))
+    rows.append(f"{label} & " + " & ".join(libs) + f" & {r}")
+latex_table(
+    "lrrrrrr",
+    [
+        " & \\multicolumn{3}{c}{1 GPU} & \\multicolumn{3}{c}{36 CPU cores} \\\\",
+        "\\cmidrule(lr){2-4} \\cmidrule(lr){5-7}",
+        "Model & Pypomp & \\texttt{pfjax} & \\texttt{pydpf} & \\texttt{particles}$^\\dagger$ "
+        "& \\texttt{pypfilt}$^\\dagger$ & \\texttt{pomp}$^*$ \\\\",
+    ],
+    rows,
+)
+```
+
+Wall-clock time in seconds for the particle filter benchmarks of @tbl-timing-full in Pypomp `{python} lib_version["pypomp"]`, `pfjax` `{python} lib_version["pfjax"]` (JAX), `pydpf` `{python} lib_version["pydpf"]` (PyTorch), and `particles` `{python} lib_version["particles"]` and `pypfilt` `{python} lib_version["pypfilt"]` (NumPy). GPU times are from one RTX 3090, which is slower than the GPU in @tbl-timing, and include JIT compilation. For the measles models, `pfjax` draws with the `jax.random` samplers (Appendix -@sec-samplers), and it did not finish the 4-town panel within an hour. $^\dagger$`particles` and `pypfilt` run only on CPUs; their times are the time for one filter on one core, multiplied by the number of filters and divided by 36, which assumes perfect scaling over 36 cores. $^*$`panelPomp` for the 4-town panel, as in @tbl-timing-full.
+:::
