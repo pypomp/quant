@@ -132,6 +132,31 @@ replicates in parallel.
 The S&P 500 model takes one Euler step per observation, so there is no loop to fuse;
 CuTe was forced on for those rows, and `"auto"` keeps XLA there.
 
+## Where the time goes in one He10 interval (`profile_he10.py`, `kernel_stats.py`)
+
+One London observation interval (7 daily Euler steps) at the paper workload, 1,296 filters
+x 5,000 particles, profiled with `jax.profiler` on one RTX 3090 (3 warm calls):
+
+| Per interval | stock XLA | `PYPOMP_SUBSTEP_UNROLL=1` | CuTe |
+|---|---:|---:|---:|
+| Time | 59 ms | 80 ms | 18 ms |
+| GPU busy | 99% | 99% | 98% |
+| Kernels | 277 | 179 | 11 |
+| Biggest kernel(s) | 43 ms in one fusion | five or six fusions of 10-15 ms | 16.7 ms in the CuTe kernel |
+| Registers per thread there | 183-216 | 234-255 | 72 |
+| Occupancy there | 17% | 17% | 58% |
+
+At this size launch gaps total 0.1 ms per Euler step and no device-to-host copies show up,
+so neither kernel count nor loop syncs explain XLA's time. Its dominant fusion holds most of
+an Euler step's arithmetic (2,776 HLO operations, mostly the samplers' selects and compares)
+and reads 53 inputs, about 0.9 GB per step of intermediates written by earlier kernels. At
+183 or more registers per thread only 2 blocks of 128 threads fit on an SM, a sixth of its
+thread slots. Unrolling the Euler loop builds bigger fusions that reach the 255-register cap,
+and runs 37% slower. The CuTe kernel does the same arithmetic (it also evaluates every branch)
+with each particle's state in registers across the interval, at 72 registers and 58%
+occupancy; with pypomp's exact threefry numbers it was still 3.2x faster than stock, so the
+random number generator is not the main difference.
+
 ## Replicate layout (`layout_bench.py`; now in branch `cute-rproc`)
 
 `Pomp.pfilter(reps=...)` ran the replicates of each parameter set one after another.
