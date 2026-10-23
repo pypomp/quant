@@ -1,7 +1,7 @@
-# SPX stochastic volatility with leverage: pypomp vs pfjax, pydpf, particles, pypfilt
+# SPX stochastic volatility with leverage: pypomp vs pfjax, cuthbert, pydpf, particles, pypfilt
 
 The S&P 500 model of Bretó (2014), `pypomp.models.spx()` (the model behind
-`tests/spx/`), ported to four other Python particle-filter libraries so the
+`tests/spx/`), ported to five other Python particle-filter libraries so the
 paper's SPX pfilter timing (36 parameter vectors × 24 filters × J = 1,000) can
 gain rows for them.
 
@@ -23,13 +23,13 @@ y_n ~ N(mu - V/2, sqrt(V));        x0 = (V_0, 1105) at t0 = 0, deterministic
 `S` does not enter the likelihood, but pypomp simulates it, so every port does too.
 
 Files: `export_inputs.py` (writes `inputs.npz`), `spx_common.py` (CLI, inputs,
-JSON record), `bench_{pypomp,pfjax,pydpf,particles,pypfilt}.py`, `pypfilt_spx.py`
+JSON record), `bench_{pypomp,pfjax,cuthbert,pydpf,particles,pypfilt}.py`, `pypfilt_spx.py`
 (pypfilt components), `validate_cpu.sh` + `validate.py` (CPU validation),
 `run_full.sh` (full workload).
 
 ## Inputs (`export_inputs.py` -> `inputs.npz`)
 
-Written from pypomp's own `PompStruct` so all five libraries read identical arrays:
+Written from pypomp's own `PompStruct` so all six libraries read identical arrays:
 `ys`, `times`, `t0`, `covars_extended` (T+1), `y_prev` (= `covars_extended[:T]`,
 the covariate each step reads), `dt_array_extended`, `nstep_array` (all 1),
 state/parameter/covariate names, `S0`, `V_floor`, and `thetas` (36 × 6, natural
@@ -50,12 +50,14 @@ log-likelihood values are not comparable to the paper's.
 |---|---|---|---|---|---|
 | pypomp 1.2.0 | `functional.pfilter`, thetas (n,6), keys (n,reps), under `jax.jit` | systematic (`thresh=0`) | 32 | JAX | rinit at t0 |
 | pfjax 0.0.3rc1 | `particle_filter` under `jit(vmap)` over all n·reps filters; `--chunk` = `lax.map` | multinomial (only one shipped) | 32 | JAX | `pf_init` pushes x0 one step |
+| cuthbert 0.1.1 | `smc.particle_filter` run by `cuthbert.filter`, `jit(vmap)` over all n·reps filters; `--chunk` = `lax.map` | `cuthbertlib` systematic | 32 | JAX | `init_sample` at t0, unweighted |
 | pydpf 1.2.3 | batch dim B = n·reps; thetas in `series_metadata`, y_prev in `control` | `SystematicResampler` | 32 | torch.Generator | prior pushes x0 one step |
 | particles 0.3 | one filter per task, `--procs` pool | systematic, `ESSrmin=1` | 64 | NumPy global | `PX0` pushes x0 one step |
 | pypfilt 0.8.7 | one filter per task, `--procs` pool | `deterministic` (systematic), threshold 1 | 64 | pypfilt model PRNG | model `init` at t0 |
 
 Covariate plumbing: pfjax carries `y_prev` in the measurement pytree
-(`y_meas[n] = (y_n, y_prev_n)`, read by an overridden `pf_step`); pydpf passes it
+(`y_meas[n] = (y_n, y_prev_n)`, read by an overridden `pf_step`); cuthbert in each step's
+model inputs (`{y: y_n, y_prev: y_prev_n}`), with theta closed over; pydpf passes it
 as `control`; particles and pypfilt index `y_prev` by the time index. pypfilt's
 time axis is the observation index (time n = observation n, one step per unit),
 since its steps have fixed length while trading days are 1, 3 or more calendar
@@ -71,6 +73,7 @@ python bench_<lib>.py --J 1000 --nthetas 36 --nreps 24 --device {cpu,gpu} [--T N
   pypomp:  --layout {nested,flat}   nested = keys (nthetas, nreps) as Pomp.pfilter(reps=) does (default);
                                     flat = every filter in one vmap
   pfjax:   --chunk N                 lax.map over chunks of N filters (default: one vmap)
+  cuthbert: --chunk N                as pfjax (run with .venv-ssm)
            --resampler systematic    validation diagnostic only
   pydpf:   --procs P                 torch intra-op threads on CPU (default 1)
 ```
@@ -91,12 +94,12 @@ pypomp in combined SEs. Starts 0–2 are the first three timing starts; `sun2024
 `SUN2024_THETA` from `tests/spx/model.py` (rho = −0.74, near the MLE), added
 because it is the sharp test of the leverage term.
 
-| theta | pypomp | pfjax (multinomial) | pydpf | particles | pypfilt |
-|---|---|---|---|---|---|
-| start 0 | 10881.4 ± 9.6 | 10845.8 ± 13.4 (z −2.2) | 10873.5 ± 9.6 (−0.6) | 10880.2 ± 9.1 (−0.1) | 10864.2 ± 10.5 (−1.2)* |
-| start 1 | 10923.9 ± 13.6 | 10902.7 ± 23.0 (−0.8) | 10919.1 ± 13.8 (−0.3) | 10942.2 ± 11.0 (+1.1) | 10940.7 ± 12.1 (+0.9) |
-| start 2 | 11525.94 ± 0.28 | 11525.16 ± 0.41 (−1.6) | 11525.39 ± 0.30 (−1.3) | 11525.65 ± 0.37 (−0.6) | 11526.40 ± 0.38 (+1.0) |
-| sun2024 | 11849.95 ± 0.31 | 11848.35 ± 0.57 (−2.5) | 11849.25 ± 0.39 (−1.4) | 11849.17 ± 0.39 (−1.6) | 11850.09 ± 0.47 (+0.3) |
+| theta | pypomp | pfjax (multinomial) | cuthbert | pydpf | particles | pypfilt |
+|---|---|---|---|---|---|---|
+| start 0 | 10881.4 ± 9.6 | 10845.8 ± 13.4 (z −2.2) | 10859.8 ± 10.8 (−1.5) | 10873.5 ± 9.6 (−0.6) | 10880.2 ± 9.1 (−0.1) | 10864.2 ± 10.5 (−1.2)* |
+| start 1 | 10923.9 ± 13.6 | 10902.7 ± 23.0 (−0.8) | 10927.8 ± 13.9 (+0.2) | 10919.1 ± 13.8 (−0.3) | 10942.2 ± 11.0 (+1.1) | 10940.7 ± 12.1 (+0.9) |
+| start 2 | 11525.94 ± 0.28 | 11525.16 ± 0.41 (−1.6) | 11525.92 ± 0.44 (−0.04) | 11525.39 ± 0.30 (−1.3) | 11525.65 ± 0.37 (−0.6) | 11526.40 ± 0.38 (+1.0) |
+| sun2024 | 11849.95 ± 0.31 | 11848.35 ± 0.57 (−2.5) | 11849.57 ± 0.38 (−0.8) | 11849.25 ± 0.39 (−1.4) | 11849.17 ± 0.39 (−1.6) | 11850.09 ± 0.47 (+0.3) |
 
 All agree within 3 combined SEs. pfjax runs lowest because multinomial resampling
 has a larger variance and E[log L̂] ≈ log L − σ²/2. Compared on mean + sd²/2, its z
@@ -135,9 +138,9 @@ For reference, the paper's SPX pfilter rows are R pomp 36.4 s (36 cores), pypomp
 ## Running the full workload
 
 ```bash
-GPU=0 ./run_full.sh gpu        # pypomp (nested and flat), pfjax, pydpf on one GPU -> results/gpu/
+GPU=0 ./run_full.sh gpu        # pypomp (nested and flat), pfjax, cuthbert, pydpf on one GPU -> results/gpu/
 PROCS=36 ./run_full.sh cpu     # particles, pypfilt, 36 workers -> results/cpu/
-PROCS=36 ./run_full.sh cpu-all # plus pypomp, pfjax, pydpf on CPU
+PROCS=36 ./run_full.sh cpu-all # plus pypomp, pfjax, cuthbert, pydpf on CPU
 ```
 
 ## Deviations and caveats
@@ -146,7 +149,7 @@ PROCS=36 ./run_full.sh cpu-all # plus pypomp, pfjax, pydpf on CPU
 - pfjax: multinomial resampling only, so its log-likelihood has a larger variance.
   Its stock `particle_filter` splits one key per particle with Python unpacking, so
   cold time grows with J. The pf-bench clone's `PFJAX_FIX_KEYSPLIT` toggle is left unset.
-- Precision: pypomp, pfjax and pydpf run in float32; particles and pypfilt in float64.
+- Precision: pypomp, pfjax, cuthbert and pydpf run in float32; particles and pypfilt in float64.
 - pypfilt: every filter parses its TOML and builds a context (natural usage, inside
   the timing). Its resampler loops in Python. `history_window` makes no difference
   (tested at T = 1,000).

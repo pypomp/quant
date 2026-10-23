@@ -1,6 +1,6 @@
-# Dhaka cholera (dacca) in five particle-filter libraries
+# Dhaka cholera (dacca) in six particle-filter libraries
 
-This ports the paper's Dhaka cholera benchmark to pfjax, pydpf, particles and pypfilt, so
+This ports the paper's Dhaka cholera benchmark to pfjax, cuthbert, pydpf, particles and pypfilt, so
 the pfilter timing table (36 parameter vectors x 36 replicate filters x J = 5,000 particles)
 can include them. The benchmark is `tests/dacca`: pypomp's `dacca()` with 20 Euler steps per
 monthly observation, T = 600, 12,000 Euler steps. Every adapter runs the same bootstrap
@@ -14,7 +14,7 @@ filter on the same inputs.
 | `inputs.npz` | ys, times, t0, `nstep`, per-step `dt`, covariates at every Euler step (`covars` = pypomp's `covars_extended`, float32), the 36 `fixed_starts` (`thetas`), pypomp's built-in parameters (`theta_published`), names |
 | `dacca_common.py` | CLI, inputs (truncation, per-interval blocks), result rows, CPU process pool; its docstring states the model |
 | `dacca_numpy.py` | the model in float64 numpy (particles, pypfilt) |
-| `bench_{pypomp,pfjax,pydpf,particles,pypfilt}.py` | one adapter per library |
+| `bench_{pypomp,pfjax,cuthbert,pydpf,particles,pypfilt}.py` | one adapter per library (cuthbert runs from `.venv-ssm`) |
 | `pypfilt_dacca.py` | pypfilt model and observation components (loaded by dotted path from the scenario TOML) |
 | `compare.py` | per-theta mean +/- se of each library against pypomp, with z-scores |
 | `results/validation_cpu*.jsonl`, `results/cpu/single_filter_J5000.jsonl` | the runs below |
@@ -28,9 +28,9 @@ before clipping, and it never resets. The measurement density is
 `logaddexp(log N(y; Mn, tau Mn + 1e-18), log 1e-18)`, or `log 1e-18` once `count > 0`. `rinit`
 is deterministic given theta.
 
-All five target p(y_1..y_T | theta). particles, pfjax and pydpf weight their initial state,
+All six target p(y_1..y_T | theta). particles, pfjax and pydpf weight their initial state,
 so their initial sampler draws x(t0) and pushes it through the first observation interval
-before the first weighting. Every library resamples at every observation. All use systematic
+before the first weighting; cuthbert leaves x(t0) unweighted, so it needs no push. Every library resamples at every observation. All use systematic
 resampling except pfjax, whose only standard resampler is multinomial. particles
 (`ESSrmin = 1`) and pypfilt (`threshold = 1`) skip resampling only when all weights are
 exactly equal.
@@ -39,6 +39,7 @@ exactly equal.
 |---|---|---|---|
 | pypomp | float32 | jax.random | `functional.pfilter`. `--layout map` is `Pomp.pfilter`'s layout (vmap thetas, `lax.map` reps); `--layout vmap` vmaps all nthetas x nreps filters; default `auto` = vmap on GPU, map on CPU |
 | pfjax | float32 | jax.random | `jit(vmap)` over all filters; `--chunk n` = `lax.map(batch_size=n)` |
+| cuthbert | float32 | jax.random | as pfjax |
 | pydpf | float32 | one `torch.Generator` | all filters in one batch, theta per batch element via `series_metadata`; `--chunk n` |
 | particles | float64 | numpy's global `np.random` (what particles' own distributions and resamplers use), seeded per filter | one filter per task, `--procs` single-threaded workers |
 | pypfilt | float64 | numpy Generators seeded by pypfilt (`prng_seed`) | as particles |
@@ -63,6 +64,7 @@ export CUDA_VISIBLE_DEVICES=<gpu> XLA_PYTHON_CLIENT_PREALLOCATE=false
 $VJ bench_pypomp.py --J 5000 --nthetas 36 --nreps 36 --device gpu --layout vmap
 $VJ bench_pypomp.py --J 5000 --nthetas 36 --nreps 36 --device gpu --layout map   # the paper's layout
 $VJ bench_pfjax.py  --J 5000 --nthetas 36 --nreps 36 --device gpu    # add --chunk 324 if out of memory
+~/src/pf-bench/.venv-ssm/bin/python bench_cuthbert.py --J 5000 --nthetas 36 --nreps 36 --device gpu   # likewise
 $VT bench_pydpf.py  --J 5000 --nthetas 36 --nreps 36 --device gpu    # likewise
 # CPU-only libraries (on the shared box: nice -n 19 taskset -c 8-31, at most 8 workers)
 CUDA_VISIBLE_DEVICES= nice -n 19 taskset -c 8-31 $VJ bench_particles.py --J 5000 --nthetas 36 --nreps 36 --procs 8
@@ -80,19 +82,31 @@ First three `fixed_starts`, 20 filters each (`results/validation_cpu.jsonl`):
 |---|---|---|---|
 | pypomp | -7097.5 +/- 5.6 | -5890.9 +/- 1.1 | -12324.9 +/- 69.3 |
 | pfjax | -7102.8 +/- 5.4 (z -0.69) | -5894.0 +/- 2.0 (z -1.37) | -12352.9 +/- 73.7 (z -0.28) |
+| cuthbert | -7091.2 +/- 6.1 (z +0.76) | -5896.5 +/- 1.7 (z -2.77) | -12292.4 +/- 89.9 (z +0.29) |
 | pydpf | -7094.5 +/- 7.2 (z +0.32) | -5890.4 +/- 1.9 (z +0.25) | -12221.6 +/- 73.1 (z +1.03) |
 | particles | -7095.1 +/- 6.0 (z +0.28) | -5893.1 +/- 1.4 (z -1.21) | -12409.5 +/- 83.5 (z -0.78) |
 | pypfilt | -7086.4 +/- 7.2 (z +1.21) | -5891.8 +/- 2.3 (z -0.34) | -12269.6 +/- 78.9 (z +0.53) |
 
-The starting points are far from the MLE, so their Monte Carlo sds are large (5 to 370).
+The starting points are far from the MLE, so their Monte Carlo sds are large (5 to 400).
+cuthbert's theta 2 came out low against pypomp (z -2.77; pfjax and particles are also below
+pypomp there, z -1.37 and -1.21), so the three starts were rerun with 100 filters each (seed 4,
+`results/validation_cpu_n100.jsonl`), where cuthbert agrees:
+
+| Library | theta 1 | theta 2 | theta 3 |
+|---|---|---|---|
+| pypomp (map) | -7086.7 +/- 3.1 | -5891.9 +/- 0.6 | -12243.8 +/- 28.0 |
+| cuthbert | -7087.0 +/- 3.1 (z -0.08) | -5892.1 +/- 0.6 (z -0.25) | -12280.0 +/- 29.6 (z -0.89) |
+| particles | -7084.8 +/- 3.1 (z +0.44) | -5892.6 +/- 0.8 (z -0.73) | -12261.8 +/- 33.1 (z -0.42) |
+
 The sharper check uses pypomp's published parameters, 30 filters each:
 
-| pypomp | pfjax | pydpf | particles | pypfilt |
-|---|---|---|---|---|
-| -3749.59 +/- 0.26 | -3749.98 +/- 0.34 (z -0.91) | -3749.84 +/- 0.39 (z -0.54) | -3750.03 +/- 0.37 (z -0.97) | -3749.88 +/- 0.36 (z -0.66) |
+| pypomp | pfjax | cuthbert | pydpf | particles | pypfilt |
+|---|---|---|---|---|---|
+| -3749.59 +/- 0.26 | -3749.98 +/- 0.34 (z -0.91) | -3749.44 +/- 0.31 (z +0.38) | -3749.84 +/- 0.39 (z -0.54) | -3750.03 +/- 0.37 (z -0.97) | -3749.88 +/- 0.36 (z -0.66) |
 
 With 100 filters each (`results/validation_cpu_n100.jsonl`), the sds also agree: pypomp 1.76
-(vmap) and 1.99 (map), particles 1.93, pydpf 2.01. With the same seeds, pypfilt's
+(vmap) and 1.99 (map), particles 1.93, pydpf 2.01, cuthbert 1.90 (mean -3749.39 +/- 0.19,
+z +1.21 against pypomp vmap). With the same seeds, pypfilt's
 `ministeps` and `euler` modes return identical logliks.
 
 ## Single-filter CPU timings (J = 5,000, theta 1, full T, one process)
@@ -132,8 +146,14 @@ call, which is 32 to 41 min on 8 workers or 8 to 10 min on 32.
   Euler step, as the toy adapters do) needs a sliding history window, because the full history
   is about 5 GB at J = 5,000. Each window slide rescans every step of the run, which costs
   O(T^2 / window); with window 1 a filter at J = 1,000 took about 40 s.
-- pypomp, pfjax and pydpf run in float32 (the JAX and torch default); particles and pypfilt
-  run in float64. The inputs are the float32 values pypomp uses, upcast for numpy.
+- cuthbert's model functions see neither theta nor the time, so each filter is built inside a
+  function of theta (closures, as in cuthbert's examples) and each observation's model inputs
+  carry its interval's covariate block and step sizes (`{deaths, cov, dt}`). The loglik is the
+  last `log_normalizing_constant` of the states `cuthbert.filter` returns; XLA drops the unused
+  particle history, so memory does not grow with T. On CPU, cuthbertlib resamples through a
+  numba callback that runs once per filter, one filter after another.
+- pypomp, pfjax, cuthbert and pydpf run in float32 (the JAX and torch default); particles and
+  pypfilt run in float64. The inputs are the float32 values pypomp uses, upcast for numpy.
 - The paper's `timing/run.py` times `pfilter` at the 36 mif endpoints (mif overwrites
   `theta`); these adapters use `fixed_starts(36)`, as specified. Bootstrap-filter run time
   barely depends on theta here, but the logliks differ from the paper's.
