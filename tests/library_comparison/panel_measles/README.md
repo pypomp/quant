@@ -1,4 +1,4 @@
-# He10 measles, 4-town panel: pypomp vs pfjax, pydpf, particles, pypfilt
+# He10 measles, 4-town panel: pypomp vs pfjax, cuthbert, pydpf, particles, pypfilt
 
 The paper's panel benchmark: London, Halesworth, Hastings and Cardiff, model 001b in
 each town, shared R0, σ, γ, σ_SE, cohort, amplitude and town-specific ι, ρ, ψ, S_0, E_0,
@@ -28,6 +28,7 @@ J=~/src/pf-bench/.venv-jax/bin/python; TORCH=~/src/pf-bench/.venv-torch/bin/pyth
 W="--J 5000 --nthetas 36 --nreps 36"
 $J bench_pypomp.py $W --device gpu                    # --chunk-size 1 for PanelPomp's default
 $J bench_pfjax.py  $W --device gpu                    # add --chunk 864 if memory runs out
+~/src/pf-bench/.venv-ssm/bin/python bench_cuthbert.py $W --device gpu
 $TORCH bench_pydpf.py $W --device gpu                 # add --chunk 1296 if memory runs out
 nice taskset -c <cores> $J bench_particles.py $W --device cpu --procs <cores>
 nice taskset -c <cores> $J bench_pypfilt.py  $W --device cpu --procs <cores>
@@ -40,9 +41,19 @@ Panel loglik (sum of the four towns), mean ± se over reps; z against pypomp.
 | Library | precision | θ1 | θ2 | θ3 |
 |---|---|---|---|---|
 | pypomp | float32 | −14944.0 ± 68.7 | −21208.8 ± 355.6 | −11099.2 ± 28.9 |
+| cuthbert | float32 | −15180.7 ± 90.0 (z −2.09) | −21433.2 ± 324.9 (−0.47) | −11123.0 ± 73.5 (−0.30) |
 | pydpf | float32 | −15019.1 ± 64.2 (z −0.80) | −20526.9 ± 435.5 (1.21) | −11098.2 ± 15.8 (0.03) |
 | particles | float64 | −14564.0 ± 121.3 (2.73) | −20965.7 ± 336.4 (0.50) | −11095.0 ± 21.9 (0.12) |
 | pypfilt | float64 | −14424.9 ± 125.2 (3.63) | −21010.1 ± 358.6 (0.39) | −11136.1 ± 22.4 (−1.01) |
+
+cuthbert's θ1 is low against pypomp at 10 reps (Cardiff carries it: −5848 against pypomp's
+−5613) and its θ3 se is large (one filter at −11750). With 50 reps each on GPU 0 (J = 1000,
+`--tag validation_n50` in `results/gpu/results.jsonl`) the two agree:
+
+| Library | reps | θ1 | θ2 | θ3 |
+|---|---|---|---|---|
+| pypomp | 50 | −14985.0 ± 44.9 | −21150.7 ± 172.8 | −11083.5 ± 12.8 |
+| cuthbert | 50 | −14913.2 ± 37.5 (z 1.23) | −21400.6 ± 120.5 (−1.19) | −11071.3 ± 11.4 (0.71) |
 
 θ1 splits by precision, not by library. The two checks below, both at θ1 with 10 reps,
 put each side on the other's precision:
@@ -56,7 +67,7 @@ Cause: at θ1 the London and Cardiff filters often see counts far above every pa
 predicted mean; in float32 both CDFs in He10's `Φ(y+½) − Φ(y−½)` round to 1 and the
 likelihood floors at the 1e-18 tolerance, where float64 still resolves the tail (see the
 London README). The adapters implement the same model; the float32 libraries (pypomp,
-pydpf, pfjax) and the float64 ones (particles, pypfilt) differ only through this.
+pydpf, pfjax, cuthbert) and the float64 ones (particles, pypfilt) differ only through this.
 
 pfjax on CPU costs about 17 µs per particle-step, too slow for a full-T panel run on the
 shared box, so pfjax's per-unit wiring was checked on the first 26 observations (half a
