@@ -12,8 +12,7 @@ correctness".
 ## State
 - **Tables**: `TABLES.md` (from `make_tables.py`): PF time on the four ms workloads for R pomp,
   pypomp (released, parallel reps, CuTe), pfjax (released, key fix), pydpf, and particles/pypfilt
-  projected to 36 cores. Missing: London measles pfjax and pydpf, all panel GPU rows, panel pypfilt.
-  Rerun `python make_tables.py > TABLES.md` when they land.
+  projected to 36 cores. Complete; pfjax on the panel hit the one-hour limit and shows as > 3,600 s.
 - **Kernel work**: `kernels/README.md`. In pypomp, split into separate PRs to main (combined #54 was
   closed): #55 pyright fixes for jax 0.12, #56 parallel pfilter replicates (branch
   `perf/pfilter-parallel-reps`), #57 the CuTe backend (branch `feature/cute-rproc`, worktree
@@ -42,18 +41,11 @@ correctness".
   with `.venv-pypomp-tests`.
 - Paper workloads, XLA vs CuTe: `PYTHONPATH=<worktree> python kernels/cute_paper_bench.py dacca measles spx`.
 
-## Running jobs (kevtan-linux)
-- `/tmp/measles_gpu.sh` -> `/tmp/measles_gpu.log` on GPU 0: London then panel, for pypomp, pfjax
-  (released and key fix) and pydpf. Copy its rows into `measles/results/gpu/` and
-  `panel_measles/results/gpu/` when done.
-
 ## GPU coordination
-- GPU 0 reserved via `/tmp/gpu0-reserved-pypomp-bench`. genperms and gsim agreed to keep GPU 0 free
-  while it exists. REMOVE IT WHEN THE GPU RUNS FINISH.
+- GPU 0 was reserved via `/tmp/gpu0-reserved-pypomp-bench` for these runs; released 2026-10-22.
 - Other users keep the CPU at load 40-110 on 32 threads; CPU wall times on this box mostly measure
   the scheduler, so CPU-library projections use the best single-filter time.
 
 ## Next steps
-1. When `/tmp/measles_gpu.log` says `MEASLES_GPU_DONE`: copy rows, regenerate `TABLES.md`, remove the
-   GPU 0 reservation.
-2. Draft the ms table (LaTeX in the ms's `latex_table` style) from `TABLES.md` once the rows are in.
+1. Draft the ms table (LaTeX in the ms's `latex_table` style) from `TABLES.md`.
+2. pypomp PRs #55-#58 await review; #55 unblocks lint on the others.
