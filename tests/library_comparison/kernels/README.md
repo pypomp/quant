@@ -126,8 +126,8 @@ replicates in parallel.
 | London measles | IF2, 36 x 5,000, M = 10 | 14.8 (62.6) | 5.0 (28.3) |
 | Cholera | PF, 1,296 filters x 5,000 | 7.8 (15.2) | 3.3 (26.7) |
 | Cholera | IF2, 36 x 5,000, M = 10 | 8.6 (22.5) | 2.4 (29.9) |
-| S&P 500 | PF, 864 filters x 1,000 | 0.68 (6.6) | 0.66 (5.1) |
-| S&P 500 | IF2, 36 x 1,000, M = 10 | 1.9 (12.4) | 2.0 (9.8) |
+| S&P 500 | PF, 864 filters x 1,000 | 0.68 (6.1) | 0.65 (4.7) |
+| S&P 500 | IF2, 36 x 1,000, M = 10 | 2.0 (11.3) | 2.0 (10.7) |
 
 The S&P 500 model takes one Euler step per observation, so there is no loop to fuse;
 CuTe was forced on for those rows, and `"auto"` keeps XLA there.
@@ -142,7 +142,7 @@ warm (`results/pfilter_layout_gpu.jsonl`):
 
 | Model | old (sequential reps) | new (parallel reps) |
 |---|---|---|
-| S&P 500 (36 x 24 x 1,000) | 4.0 s | 0.75 s |
+| S&P 500 (36 x 24 x 1,000) | 4.0 s | 0.77 s |
 | Cholera (36 x 36 x 5,000) | 9.9 s | 7.8 s |
 | London measles (36 x 36 x 5,000) | 46.0 s | 39.8 s |
 
