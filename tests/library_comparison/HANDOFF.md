@@ -14,10 +14,12 @@ correctness".
   pypomp (released, parallel reps, CuTe), pfjax (released, key fix), pydpf, and particles/pypfilt
   projected to 36 cores. Missing: London measles pfjax and pydpf, all panel GPU rows, panel pypfilt.
   Rerun `python make_tables.py > TABLES.md` when they land.
-- **Kernel work**: `kernels/README.md`. The CuTe backend is in pypomp branch `cute-rproc`
-  (worktree `../../../pypomp-wt-cute`), which also has the parallel/adaptive replicate batching
-  (was `pfilter-vmap-reps`) and the float32 measles dmeas fix (was `measles-dmeas-tails`, made by
-  another session). One combined PR to pypomp/pypomp main.
+- **Kernel work**: `kernels/README.md`. In pypomp, split into separate PRs to main (combined #54 was
+  closed): #55 pyright fixes for jax 0.12, #56 parallel pfilter replicates (branch
+  `perf/pfilter-parallel-reps`), #57 the CuTe backend (branch `feature/cute-rproc`, worktree
+  `../../../pypomp-wt-cute-pr`), and the measles dmeas fix from its own session (branch
+  `measles-dmeas-tails`). test_sir_mif_regression fails on main under jax 0.12; Kevin is raising
+  it with Aaron.
 - **pfjax**: key-splitting fix submitted as mlysy/pfjax#38 (Kevin's text).
 - **Correctness**: every library agrees with pypomp within Monte Carlo error on every model
   (per-model READMEs). pypomp's float32 measles dmeas underflowed at poorly fitting parameters;
