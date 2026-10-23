@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Full SPX pfilter workload of tests/spx/timing (36 thetas x 24 filters x J=1000), one library
 # per process, one JSON line each in results/<device>/results.jsonl.
-#   GPU libraries on one card:        GPU=0 ./run_full.sh gpu      (pypomp nested+flat, pfjax, pydpf)
+#   GPU libraries on one card:        GPU=0 ./run_full.sh gpu      (pypomp nested+flat, pfjax, cuthbert, pydpf)
 #   CPU-only libraries:               PROCS=36 ./run_full.sh cpu   (particles, pypfilt)
 #   JAX/torch libraries on CPU too:   PROCS=36 ./run_full.sh cpu-all
 # PIN="nice -n 19 taskset -c 8-31" prefixes every command (shared box).
 cd "$(dirname "$0")"
 VJ="$PIN ${VENV_JAX:-$HOME/src/pf-bench/.venv-jax}/bin/python"
 VT="$PIN ${VENV_TORCH:-$HOME/src/pf-bench/.venv-torch}/bin/python"
+VS="$PIN ${VENV_SSM:-$HOME/src/pf-bench/.venv-ssm}/bin/python"
 A="--J ${J:-1000} --nthetas 36 --nreps 24"
 PROCS=${PROCS:-36}
 export PYTHONWARNINGS=ignore
@@ -20,6 +21,7 @@ case "$1" in
     one $VJ bench_pypomp.py $A --device gpu
     one $VJ bench_pypomp.py $A --device gpu --layout flat
     one $VJ bench_pfjax.py $A --device gpu
+    one $VS bench_cuthbert.py $A --device gpu
     one $VT bench_pydpf.py $A --device gpu ;;
   cpu|cpu-all)
     export CUDA_VISIBLE_DEVICES= JAX_PLATFORMS=cpu
@@ -29,6 +31,7 @@ case "$1" in
     if [ "$1" = cpu-all ]; then
       one $VJ bench_pypomp.py $A
       one $VJ bench_pfjax.py $A
+      one $VS bench_cuthbert.py $A
       one $VT bench_pydpf.py $A --procs "$PROCS"
     fi ;;
   *) echo "usage: $0 gpu|cpu|cpu-all"; exit 2 ;;

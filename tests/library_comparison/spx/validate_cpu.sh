@@ -9,6 +9,7 @@ set -eo pipefail
 cd "$(dirname "$0")"
 VJ="$PIN ${VENV_JAX:-$HOME/src/pf-bench/.venv-jax}/bin/python"
 VT="$PIN ${VENV_TORCH:-$HOME/src/pf-bench/.venv-torch}/bin/python"
+VS="$PIN ${VENV_SSM:-$HOME/src/pf-bench/.venv-ssm}/bin/python"
 NREPS=${NREPS:-24} PROCS=${PROCS:-8} SETS=${SETS:-starts sun2024}
 export CUDA_VISIBLE_DEVICES= JAX_PLATFORMS=cpu PYTHONWARNINGS=ignore
 export PFB_RESULTS=${PFB_RESULTS:-$PWD/results/validation/results.jsonl}
@@ -18,6 +19,7 @@ for SET in $SETS; do
   $VJ bench_pypomp.py $A
   $VJ bench_pfjax.py $A
   $VJ bench_pfjax.py $A --resampler systematic
+  $VS bench_cuthbert.py $A
   $VT bench_pydpf.py $A --procs $PROCS
   $VJ bench_particles.py $A --procs $PROCS
   $VJ bench_pypfilt.py $A --procs $PROCS

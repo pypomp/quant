@@ -2,12 +2,13 @@
 # CPU correctness smoke test of every adapter at small J. Stops at the first failure.
 set -eo pipefail
 cd "$(dirname "$0")"
-VJ=${VENV_JAX:-.venv-jax}/bin/python VT=${VENV_TORCH:-.venv-torch}/bin/python
+VJ=${VENV_JAX:-.venv-jax}/bin/python VT=${VENV_TORCH:-.venv-torch}/bin/python VS=${VENV_SSM:-.venv-ssm}/bin/python
 export PFB_RESULTS=/tmp/pfb_smoke.jsonl CUDA_VISIBLE_DEVICES= JAX_PLATFORMS=cpu PYTHONWARNINGS=ignore
 rm -f $PFB_RESULTS
 for m in ${@:-lg sde}; do
   $VJ bench_pypomp.py $m 2000
   $VJ bench_pfjax.py $m 2000
+  $VS bench_cuthbert.py $m 2000
   $VJ bench_particles.py $m 2000
   $VJ bench_pypfilt.py $m 2000
   $VT bench_pydpf.py $m cpu 2000
