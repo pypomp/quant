@@ -44,7 +44,7 @@ def pypomp_layout(r):
 
 
 def pfjax_fixed(r, path):
-    return bool("keyfix" in path.name or r.get("pfjax_keysplit_fix")
+    return bool("keyfix" in path.name or (r.get("versions") or {}).get("pfjax_keysplit_fix")
                 or (r.get("env_toggles") or {}).get("PFJAX_FIX_KEYSPLIT"))
 
 

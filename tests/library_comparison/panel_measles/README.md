@@ -85,7 +85,7 @@ threads); CPU seconds are the steadier number.
 |---|---|---|---|---|
 | particles | 1 | 127.5 / 85.7 | n/a | 47 |
 | particles | 2 | 438.2 / 577.2 | 65.1 / 60.2 | 75-80 |
-| pypfilt | 2 | pending | pending | load ~95-100, starved at nice 19; row lands under tag `single_J5000_cpu` |
+| pypfilt | 2 | 3305.6 / 3414.1 | 118.5 / 122.0 | 76-99 |
 
 A panel evaluation costs about four London filters (15-16 CPU-s per town for particles at
 J = 5000, the same as London's 12.5-23 s; the J = 1000 validation runs show the same for
