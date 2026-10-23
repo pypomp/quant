@@ -100,11 +100,45 @@ were 64 ms (1 x 5,120), 0.29 s (36 x 5,120) and 9.6 s (1,296 x 5,120), against s
 218 ms, 1.56 s and 46.7 s. It is faster than the CuTe drop-in mainly because a hash is
 much cheaper than threefry; the CuTe kernel keeps pypomp's exact random numbers.
 
-## Replicate layout (pypomp branch `pfilter-vmap-reps`, `layout_bench.py`)
+## CuTe backend in pypomp (branch `cute-rproc`)
 
-`Pomp.pfilter(reps=...)` runs the replicates of each parameter set one after another.
-The branch runs them in parallel by default (`reps_batch_size=None`; 1 restores the old
-behaviour). On the paper's PF workloads, warm (`results/pfilter_layout_gpu.jsonl`):
+The drop-in above is now a pypomp backend, `pypomp/cute/`. What changed from the prototype:
+
+- Random numbers come from Philox4x32-10 computed in the kernel, using all four 32-bit
+  words of each call, instead of threefry. The kernel no longer reproduces stock pypomp's
+  random numbers, which Kevin said he doesn't need. `pp.random.PHILOX` is a JAX key type
+  with the same layout, so the tests compare the kernel with XLA on identical random numbers.
+- Gradients go through `jax.custom_vjp`. The forward kernel saves the state after every
+  Euler step, and a second generated kernel regenerates the Philox numbers and runs the
+  translated `jax.vjp` of one step backwards through them. `train` works on it.
+- It is on by default (`"auto"`): pypomp uses it when `nvidia-cutlass-dsl` and a GPU are
+  there, the rproc translates and there is more than one Euler step per observation, and
+  uses XLA otherwise without a warning. `Pomp.set_rproc_backend("cute" | "xla")` forces one.
+
+The paper's workloads in seconds, warm, with the first call (including compilation) in
+parentheses (`results/cute_paper_gpu.jsonl`, from `cute_paper_bench.py`). Other users
+kept the CPU at load 95-105 on 32 threads, which slows compilation. Both columns run the
+replicates in parallel.
+
+| Model | Task | XLA | CuTe |
+|---|---|---|---|
+| London measles | PF, 1,296 filters x 5,000 | 38.5 (78.2) | 13.5 (36.0) |
+| London measles | IF2, 36 x 5,000, M = 10 | 14.8 (62.6) | 5.0 (28.3) |
+| Cholera | PF, 1,296 filters x 5,000 | 7.8 (15.2) | 3.3 (26.7) |
+| Cholera | IF2, 36 x 5,000, M = 10 | 8.6 (22.5) | 2.4 (29.9) |
+| S&P 500 | PF, 864 filters x 1,000 | 0.68 (6.6) | 0.66 (5.1) |
+| S&P 500 | IF2, 36 x 1,000, M = 10 | 1.9 (12.4) | 2.0 (9.8) |
+
+The S&P 500 model takes one Euler step per observation, so there is no loop to fuse;
+CuTe was forced on for those rows, and `"auto"` keeps XLA there.
+
+## Replicate layout (`layout_bench.py`; now in branch `cute-rproc`)
+
+`Pomp.pfilter(reps=...)` ran the replicates of each parameter set one after another.
+They now run in parallel: on a GPU, all at once if XLA's memory estimate fits in 80% of
+free device memory, otherwise the largest batch that fits; on CPU, one at a time, which
+was faster there. `reps_batch_size` overrides the choice. On the paper's PF workloads,
+warm (`results/pfilter_layout_gpu.jsonl`):
 
 | Model | old (sequential reps) | new (parallel reps) |
 |---|---|---|
@@ -115,4 +149,5 @@ behaviour). On the paper's PF workloads, warm (`results/pfilter_layout_gpu.jsonl
 Run from this folder's parent: `python kernels/pallas_sde_bench.py [--interpret] [--check]`,
 `python kernels/pallas_probe.py` (needs a visible GPU; `--run` also executes),
 `python kernels/cute_check.py {sde,he10} R:J ...` (needs `nvidia-cutlass-dsl`), and
-`PYTHONPATH=<pypomp checkout on pfilter-vmap-reps> python kernels/layout_bench.py`.
+`PYTHONPATH=<pypomp checkout on cute-rproc> python kernels/layout_bench.py` and
+`PYTHONPATH=<same> python kernels/cute_paper_bench.py dacca measles spx`.
