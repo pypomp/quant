@@ -67,10 +67,11 @@ year) against the others at the same T (J = 1000, 10 reps; pfjax 8 reps):
 | pypomp | −895.6 ± 13.5 | −1033.5 ± 15.7 | −475.0 ± 2.1 |
 | pydpf | −886.7 ± 13.2 | −1035.0 ± 12.8 | −475.5 ± 1.1 |
 | particles | −859.6 ± 15.0 | −1023.0 ± 13.1 | −475.3 ± 1.9 |
-| pfjax | pending | pending | pending |
+| pfjax | −890.8 ± 17.4 (z vs pypomp 0.2) | −1034.6 ± 11.7 (−0.1) | −473.8 ± 1.3 (0.5) |
 
-The pfjax run was starved at nice 19 (box load ~100) when this was written; its row lands in
-`results/cpu/results.jsonl` under tag `validation_T26` (`python ../measles/compare.py results/cpu/results.jsonl --tag validation_T26`).
+pfjax's per-town means track the others town by town (e.g. θ3: −231, −36, −53, −154 vs
+pypomp's −231, −36, −53, −156). Regenerate the table with
+`python ../measles/compare.py results/cpu/results.jsonl --tag validation_T26`.
 
 A smaller smoke run (T = 3, J = 20, 3 reps, `--chunk 5`) gives per-town means within noise
 of pypomp's for every town, e.g. θ1: pfjax −23.0, −3.1, −6.3, −9.3 vs pypomp −23.0, −3.3,
