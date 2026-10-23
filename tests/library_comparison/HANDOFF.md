@@ -27,8 +27,20 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
   (`cuthbert.smc.particle_filter`, run by `cuthbert.filter`), systematic resampling every
   observation, float32; measles uses exact `jax.random` samplers like pfjax. CPU validation
   against pypomp is in each model README. GPU 0 times (warm, first call): spx 1.7 (2.7),
-  dacca 45.7 (46.9), London 1,220 (1,224); the panel was killed at the one-hour limit
+  dacca 11.6 (12.8) after the adapter fix below (45.7 before), London 1,220 (1,224); the panel was killed at the one-hour limit
   (table shows > 3,600, as for pfjax). See "cuthbert notes" below.
+- **Cholera gap** (found 2026-10-23): pfjax and cuthbert were about 4x slower than pypomp on
+  dacca only because our adapters counted negative states with `jnp.any(jnp.stack(new) < 0)`.
+  XLA builds that 7-row stack inside the per-step kernel, which then runs at about 165 GB/s
+  instead of 750 (`kernels/any_stack_repro.py`: 2.5 vs 0.56 ms per step at 1,296 x 5,000), and in
+  pfjax it also split the step into two kernels with 150 copies per observation. An OR of the
+  seven comparisons (5daf9a5) gives identical log-likelihoods. Reruns: pfjax 11.2 s, cuthbert
+  11.6 s, pypomp 1.2 10.6 s. Their step kernel now matches pypomp's (502 vs 475 ms at T = 48);
+  the rest is resampling (pfjax's multinomial gather and copies, cuthbert's CUB sort) and drawing
+  each interval's noise in a separate kernel.
+- **pydpf** runs PyTorch op by op: 81 kernels per Euler step on dacca, each a full pass over the
+  particles at close to peak bandwidth (an add takes 93 us, about 840 GB/s), so 5.5 ms per step
+  against about 0.5 ms for pypomp's one fused step kernel (`kernels/torch_kernels.py`).
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
   runs a user-written transition and measurement density as a particle filter.
