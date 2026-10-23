@@ -38,6 +38,7 @@ import numpy as np  # noqa: E402
 import pydpf  # noqa: E402
 import torch  # noqa: E402
 
+H.check_device(args, "gpu" if torch.cuda.is_available() else "cpu")
 if args.device == "gpu":
     dev = torch.device("cuda")
 else:

@@ -44,6 +44,8 @@ import numpy as np  # noqa: E402
 import pfjax  # noqa: E402
 from pfjax.models.base_model import BaseModel  # noqa: E402
 
+H.check_device(args, jax.default_backend())
+
 if args.samplers == "pypomp":
     from pypomp.models.measles import _samplers as smp  # noqa: E402  (import outside any trace)
 

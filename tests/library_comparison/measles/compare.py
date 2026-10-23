@@ -40,11 +40,14 @@ def main():
             line = f"{lib:24s} {r['J']:5d} {r['nreps']:4d} {r['T']:4d} {i:5d}  {m:10.2f} {se(r, i):7.2f}"
             for x in refs:
                 q = rows[x]
-                if x == lib or q["T"] != r["T"] or i >= len(q["loglik_by_theta"]):
+                if x == lib or i >= len(q["loglik_by_theta"]):
                     line += f" {'':>14s}"
                     continue
-                z = (m - q["loglik_by_theta"][i]) / math.sqrt(se(r, i) ** 2 + se(q, i) ** 2)
-                line += f" {z:14.2f}"
+                if (q["J"], q["T"]) != (r["J"], r["T"]):
+                    line += f" {'J/T differ':>14s}"
+                    continue
+                d = math.sqrt(se(r, i) ** 2 + se(q, i) ** 2)
+                line += f" {(m - q['loglik_by_theta'][i]) / d:14.2f}" if d > 0 else f" {'n/a':>14s}"
             print(line)
 
 

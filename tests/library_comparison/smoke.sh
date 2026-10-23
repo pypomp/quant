@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# CPU correctness smoke test of every adapter at small J.
+# CPU correctness smoke test of every adapter at small J. Stops at the first failure.
+set -eo pipefail
 cd "$(dirname "$0")"
 VJ=${VENV_JAX:-.venv-jax}/bin/python VT=${VENV_TORCH:-.venv-torch}/bin/python
 export PFB_RESULTS=/tmp/pfb_smoke.jsonl CUDA_VISIBLE_DEVICES= JAX_PLATFORMS=cpu PYTHONWARNINGS=ignore

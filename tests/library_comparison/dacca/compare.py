@@ -27,6 +27,9 @@ with open(a.path) as f:
 ref = next((r for k, r in rows.items() if k.startswith("functional.pfilter")), None)
 if ref is None:
     raise SystemExit("no pypomp row")
+mixed = {k: (r["J"], r["T"]) for k, r in rows.items() if (r["J"], r["T"]) != (ref["J"], ref["T"])}
+if mixed:
+    raise SystemExit(f"rows differ from pypomp's (J, T) = {(ref['J'], ref['T'])}: {mixed}; pass --J and --T")
 
 
 def se(r, i):
@@ -38,6 +41,7 @@ for name, r in rows.items():
     cells = []
     for i, m in enumerate(r["loglik_by_theta"]):
         s = se(r, i)
-        z = (m - ref["loglik_by_theta"][i]) / math.sqrt(s * s + se(ref, i) ** 2)
-        cells.append(f"{m:10.2f} +/- {s:5.2f} (z={z:+.2f})")
+        d = math.sqrt(s * s + se(ref, i) ** 2)
+        z = f"{(m - ref['loglik_by_theta'][i]) / d:+.2f}" if d > 0 else "n/a"
+        cells.append(f"{m:10.2f} +/- {s:5.2f} (z={z})")
     print(f"{r['lib']:9s} {name:32s} " + " | ".join(cells))

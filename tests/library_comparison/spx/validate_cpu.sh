@@ -4,6 +4,8 @@
 #   sun2024 = the Sun (2024) near-MLE vector (rho = -0.74: a sharp test of the leverage term)
 # Never touches a GPU. Results: results/validation/results.jsonl; tables: validate.py.
 # usage: [SETS="starts sun2024"] [NREPS=24] [PROCS=8] [PIN="nice -n 19 taskset -c 8-31"] ./validate_cpu.sh
+# Stops at the first failure, so a stale earlier row is never validated in its place.
+set -eo pipefail
 cd "$(dirname "$0")"
 VJ="$PIN ${VENV_JAX:-$HOME/src/pf-bench/.venv-jax}/bin/python"
 VT="$PIN ${VENV_TORCH:-$HOME/src/pf-bench/.venv-torch}/bin/python"

@@ -12,15 +12,17 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 from copy import deepcopy
 
 import jax
+import numpy as np
 import jax.numpy as jnp
 
 import pypomp as pp
 import pypomp.functional as F
 
-QUANT_TESTS = os.path.expanduser("~/OneDrive/Documents/UMich/Research/pypomp/quant/tests")
+QUANT_TESTS = str(Path(__file__).resolve().parents[2])  # this checkout's tests/
 sys.path.insert(0, QUANT_TESTS)
 OUT = os.environ.get("PFB_RESULTS", "results_cute_paper.jsonl")
 
@@ -36,7 +38,10 @@ def load(name):
         starts = m.fixed_starts(36)
         return m.measles("London", starts, model="001b"), starts, m.RW_SD, 5000, 36
     if name == "spx":
-        return m.spx(), m.sample_starts(36, jax.random.key(m.MAIN_SEED)), m.RW_SD, 1000, 24
+        # As tests/spx/timing/run.py draws them: sample_starts also uses NumPy's global RNG.
+        np.random.seed(m.MAIN_SEED)
+        _, subkey = jax.random.split(jax.random.key(m.MAIN_SEED))
+        return m.spx(), m.sample_starts(36, key=subkey), m.RW_SD, 1000, 24
     raise ValueError(name)
 
 

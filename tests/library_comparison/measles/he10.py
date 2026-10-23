@@ -74,6 +74,12 @@ def parse_args(lib, add_args=None, argv=None):
     return a
 
 
+def check_device(args, platform):
+    """Exit before timing if the library runs on another platform than --device."""
+    if (args.device == "gpu") != (platform == "gpu"):
+        raise SystemExit(f"--device {args.device} but the library runs on {platform}")
+
+
 def single_thread_env():
     """One BLAS/OpenMP thread per worker process (set before numpy is imported)."""
     for v in THREAD_VARS:

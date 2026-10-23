@@ -37,6 +37,8 @@ import jax.numpy as jnp  # noqa: E402
 import numpy as np  # noqa: E402
 import pypomp.functional as F  # noqa: E402
 
+H.check_device(args, jax.default_backend())
+
 import export_inputs as X  # noqa: E402
 
 inp = H.Inputs(args.panel, args.T)

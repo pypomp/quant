@@ -11,10 +11,12 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 
 import jax
+import numpy as np
 
-QUANT_TESTS = os.path.expanduser("~/OneDrive/Documents/UMich/Research/pypomp/quant/tests")
+QUANT_TESTS = str(Path(__file__).resolve().parents[2])  # this checkout's tests/
 sys.path.insert(0, QUANT_TESTS)
 
 
@@ -22,7 +24,7 @@ def load(name):
     sys.path.insert(0, os.path.join(QUANT_TESTS, name))
     import importlib
 
-    model = importlib.import_module("model")
+    model = m = importlib.import_module("model")
     sys.path.pop(0)
     sys.modules.pop("model", None)
     if name == "dacca":
@@ -31,8 +33,10 @@ def load(name):
         starts = model.fixed_starts(36)
         return model.measles("London", starts, model="001b"), starts, 5000, 36
     if name == "spx":
-        starts = model.sample_starts(36, jax.random.key(model.MAIN_SEED))
-        return model.spx(), starts, 1000, 24
+        # As tests/spx/timing/run.py draws them: sample_starts also uses NumPy's global RNG.
+        np.random.seed(m.MAIN_SEED)
+        _, subkey = jax.random.split(jax.random.key(m.MAIN_SEED))
+        return model.spx(), model.sample_starts(36, key=subkey), 1000, 24
     raise ValueError(name)
 
 
