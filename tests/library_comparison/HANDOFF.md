@@ -50,3 +50,6 @@ correctness".
 1. `ms_table_libraries.qmd` is the ms table (reads `table.csv`); it needs this folder merged into
    the quant commit the ms builds from.
 2. pypomp PRs #55-#58 await review; #55 unblocks lint on the others.
+3. Kevin's call (2026-10-23): the ms table keeps the released Pypomp column for now. After #56 and #57
+   merge, rerun the Pypomp rows on an idle GPU (first call and warm), then add a "+ speedups" column
+   (parallel replicates + CuTe "auto") to `ms_table_libraries.qmd`.
