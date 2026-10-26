@@ -125,7 +125,7 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
   7.5 -> 3.3 / 3.2 s, IF2 8.6 -> 2.3 / 2.3 s. tests/test_cute: 43 pass on the 3090.
   **XLA regression**: London PF on XLA is 33.9 s at 1853ea5 and 43.1-44.1 s from 2335b5e on
   (`kernels/results/xla_bisect_299fbc8.jsonl`, same load for all commits); IF2 15.3 -> 17.6 s.
-  2335b5e makes the unbatched samplers stop early, and under vmap XLA still runs every branch.
+  2335b5e makes the unbatched samplers stop early; the slowdown is probably because XLA still runs every branch under vmap (not checked).
   Cholera is unchanged. #57's description now compares against XLA at ac6d0a8 and states this.
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
