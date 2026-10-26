@@ -112,6 +112,14 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
   compiled program, so different rounding and resampling).
 - **CuTe with `JAX_PLATFORMS=cuda`**: fixed on #57 (1853ea5). The translator now folds constants
   on the default device when JAX has no CPU backend; `test_builds_without_a_cpu_backend`.
+- **CuTe at 299fbc8** (Aaron's merge into #57: real branches, early exit, device functions,
+  threefry by default; 2026-10-26 evening, CPU load ~43 from other users, which only slows
+  the first call). Warm, all filters in one batch: London 10.0 s (threefry) and 8.6 s
+  (`rng="philox"`); cholera 3.27 and 3.22 s. `Pomp.pfilter`'s layout gives the same times.
+  The S&P 500 still falls back with either generator (gradient check, 45%). The cholera
+  adapter forces `JAX_PLATFORMS=cuda`, and CuTe now builds there (1853ea5). The real-branches
+  column is gone from the tables, since #57 now has that work. `kernels/cute_rng.py` compares
+  the two generators.
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
   runs a user-written transition and measurement density as a particle filter.
