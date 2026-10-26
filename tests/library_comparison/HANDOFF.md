@@ -48,6 +48,20 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
   vmapped). `tests/test_cute`: 31 pass; `test_dpop_train_on_cute` fails on both commits at its first
   line, because Pomp has added `_logw` to `accumvars` since 4e3ee49, and passes with
   `assert model.rproc.accumvars == (1,)`. Rows: `kernels/results/cute_real_branches_3090.jsonl`.
+- **Why XLA's He10 step kernel needs 183 registers** (2026-10-26): XLA runs its elementwise kernels
+  with 4 particles per thread whenever the element count divides by 4, which it always does with 1,296
+  filters. At 1,295 x 4,999 it uses 1 per thread. London's main step kernel then needs 72 registers
+  instead of 183 (ptxas) and takes 9.6 ms instead of 43 per launch. The London interval drops from 59
+  to 24 ms, and the full London XLA PF from 33.7 to 21.0 s. Cholera doesn't change (7.5 s). No kernel
+  spills. At 2 per thread (1,295 x 4,998): 108 registers and 10.6 ms. The kernel is straight-line
+  code of 47, 92 and 186 KB at 1, 2 and 4 per thread, and the same number of particles is in flight
+  per SM at 2 and 4, so the cliff is most likely instruction fetch. That is unconfirmed: the GPU
+  counters need admin rights here (ERR_NVGPUCTRPERM; ncu 2022.4 is under ~/anaconda3/nsight-compute).
+  Cholera's step kernel is 21 KB at 4 per thread and costs nothing. `xla_gpu_experimental_max_unroll_factor`
+  has no effect. Scripts: `kernels/xla_regs.py` (time, registers and particles per thread),
+  `kernels/pf_odd.py` (full PF at both sizes), `kernels/ptxas_save.sh` (first on PATH, with
+  `--xla_gpu_enable_libnvptxcompiler=false --xla_gpu_enable_libnvjitlink=false`, saves XLA's PTX and
+  the ptxas -v report).
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
   runs a user-written transition and measurement density as a particle filter.
