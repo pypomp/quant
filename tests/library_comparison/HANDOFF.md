@@ -105,8 +105,11 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
   Why `Pomp.pfilter`'s layout is slower on XLA (40.3 s): profiling 30 observations, #56's
   `lax.map` over replicates inside the `vmap` over parameter sets adds a large slice-and-copy
   kernel every Euler step (0.85 s per call) and a worse fusion of one sampler kernel (0.55 vs
-  0.26 s); the main step kernel is the same. Fix to propose on main: when all replicates run at
-  once, flatten parameter sets x replicates into one batch.
+  0.26 s); the main step kernel is the same. Fixed in pypomp#59 (branch , d437a49, off main
+  14d3d4a): when all replicates run at once, parameter sets x replicates run as one batch.
+  Through , London 40.1 -> 33.7 s; cholera 7.5 -> 7.6 s and S&P 500 0.71 s unchanged.
+  London and S&P log-likelihoods identical; cholera moves by at most 0.56 MC sd (different
+  compiled program, so different rounding and resampling).
 - **CuTe with `JAX_PLATFORMS=cuda`**: fixed on #57 (1853ea5). The translator now folds constants
   on the default device when JAX has no CPU backend; `test_builds_without_a_cpu_backend`.
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
