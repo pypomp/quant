@@ -1,10 +1,9 @@
 """One He10 London interval (1,296 x 5,000) on pypomp's XLA rproc: time, top kernels with registers and
-launch shape, and the compiled kernels' cubins. usage: xla_regs.py OUTDIR   (XLA_FLAGS from the environment)"""
-import glob, os, re, shutil, struct, subprocess, sys, time
+launch shape. R and J (filters, particles) from the environment. usage: xla_regs.py OUTDIR"""
+import glob, os, re, shutil, sys, time
 import jax, jax.numpy as jnp, numpy as np
 import pypomp as pp
 from jax._src.lib import _profile_data
-from jax.experimental import serialize_executable
 out = sys.argv[1]; os.makedirs(out, exist_ok=True)
 R, J, I_OBS = int(os.environ.get("R", 1296)), int(os.environ.get("J", 5000)), 3
 THETA = {"R0": 56.8, "sigma": 28.9, "gamma": 30.4, "iota": 2.9, "rho": 0.488, "sigmaSE": 0.0878,
@@ -46,17 +45,3 @@ for name, (ms, n, det) in sorted(agg.items(), key=lambda kv: -kv[1][0])[:6]:
     regs = re.search(r"regs:(\d+)", det); occ = re.search(r"occ_pct:([\d.]+)", det)
     print(f"  {ms:6.1f} ms {100 * ms / tot:4.1f}% x{n:<3d} regs {regs.group(1) if regs else '?':>3} occ {float(occ.group(1)) if occ else 0:5.1f}%"
           f"  elems/thread {R * J / thr if thr else 0:4.1f}  {name[:60]}")
-blob = serialize_executable.serialize(compiled)[0]
-n = 0
-for m in re.finditer(rb"\x7fELF", blob):
-    o = m.start()
-    if blob[o + 4] != 2:
-        continue
-    shoff, = struct.unpack_from("<Q", blob, o + 0x28); shentsize, shnum = struct.unpack_from("<HH", blob, o + 0x3A)
-    size = shoff + shentsize * shnum
-    if 0 < size < len(blob) - o:
-        open(f"{out}/k{n}.cubin", "wb").write(blob[o:o + size]); n += 1
-ptx = re.findall(rb"\.version [\d.]+.*?(?=\x00)", blob, re.S)
-for i, p in enumerate(ptx):
-    open(f"{out}/k{i}.ptx", "wb").write(p)
-print(f"extracted {n} cubins, {len(ptx)} ptx from a {len(blob)}-byte executable")
