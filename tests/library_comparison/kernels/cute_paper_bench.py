@@ -4,7 +4,8 @@ Needs the pypomp branch cute-rproc on PYTHONPATH and nvidia-cutlass-dsl.
 PF: all 36 starting parameter vectors x NREPS replicates in one flat vmap, as
 pypomp.functional.pfilter runs them. IF2: Pomp.mif with the quant RW_SD, 36 searches.
 
-usage: python cute_paper_bench.py [--if2-iters M] MODEL [MODEL ...]   (dacca | measles | spx)
+usage: python cute_paper_bench.py [--if2-iters M] [--rng threefry|philox] MODEL [MODEL ...]
+       (dacca | measles | spx); --rng needs a pypomp whose set_rproc_backend takes rng
 """
 
 import importlib
@@ -68,13 +69,21 @@ def main():
         i = args.index("--if2-iters")
         iters = int(args[i + 1])
         del args[i:i + 2]
+    rng = None
+    if "--rng" in args:
+        i = args.index("--rng")
+        rng = args[i + 1]
+        del args[i:i + 2]
     print("pypomp from", pp.__file__, flush=True)
     for name in args or ["spx", "dacca", "measles"]:
         model, starts, rw_sd, J, reps = load(name)
         th = jnp.repeat(starts.to_jax_array(model.canonical_param_names), reps, axis=0)
         for backend in ("xla", "cute"):
             m = deepcopy(model)
-            m.set_rproc_backend(backend)
+            if rng is None:
+                m.set_rproc_backend(backend)
+            else:
+                m.set_rproc_backend(backend, rng=rng)
             struct = m.to_struct()
             used = "cute" if struct.rproc_pf is not m.rproc.mechanics_pf_interp else "xla"
 
@@ -83,7 +92,7 @@ def main():
                 return F.pfilter(struct, th, J, keys)["logLik"]
 
             cold, warm, ll = timed(pf)
-            emit(model=name, task="PF", backend=backend, used=used, J=J, filters=int(th.shape[0]),
+            emit(model=name, task="PF", backend=backend, rng=rng, used=used, J=J, filters=int(th.shape[0]),
                  cold_s=round(cold, 2), warm_s=round(warm, 3), loglik_median=float(jnp.median(ll)))
 
             def if2(seed, m=m):
@@ -91,7 +100,7 @@ def main():
                 return jnp.asarray(m.results()["logLik"].to_numpy(dtype=float))
 
             cold, warm, ll = timed(if2)
-            emit(model=name, task=f"IF2 M={iters}", backend=backend, used=used, J=J, searches=36,
+            emit(model=name, task=f"IF2 M={iters}", backend=backend, rng=rng, used=used, J=J, searches=36,
                  cold_s=round(cold, 2), warm_s=round(warm, 3), loglik_median=float(jnp.nanmedian(ll)))
 
 

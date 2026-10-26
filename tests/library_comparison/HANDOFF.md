@@ -120,6 +120,13 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
   adapter forces `JAX_PLATFORMS=cuda`, and CuTe now builds there (1853ea5). The real-branches
   column is gone from the tables, since #57 now has that work. `kernels/cute_rng.py` compares
   the two generators.
+- **#57 at 299fbc8, PF and IF2** (paper bench, one batch; `cute_paper_bench.py --rng`): warm XLA ->
+  CuTe threefry / Philox. London PF 44.0 -> 10.0 / 8.6 s, IF2 17.6 -> 3.8 / 3.4 s; cholera PF
+  7.5 -> 3.3 / 3.2 s, IF2 8.6 -> 2.3 / 2.3 s. tests/test_cute: 43 pass on the 3090.
+  **XLA regression**: London PF on XLA is 33.9 s at 1853ea5 and 43.1-44.1 s from 2335b5e on
+  (`kernels/results/xla_bisect_299fbc8.jsonl`, same load for all commits); IF2 15.3 -> 17.6 s.
+  2335b5e makes the unbatched samplers stop early, and under vmap XLA still runs every branch.
+  Cholera is unchanged. #57's description now compares against XLA at ac6d0a8 and states this.
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
   runs a user-written transition and measurement density as a particle filter.
