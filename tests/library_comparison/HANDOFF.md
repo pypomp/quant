@@ -82,6 +82,22 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
   column understates #56 on London, and #57's description compares CuTe with a pre-#56 XLA
   baseline (38.5 s; 33.9 s now, so 2.4x rather than 2.8x). The released-pypomp column in the ms
   chunk is unaffected. Rows: /tmp/rerun_measles.jsonl and /tmp/bisect_xla.jsonl on kevtan-linux.
+- **pypomp columns rerun** (2026-10-26, box otherwise idle, load 6-13), all in `Pomp.pfilter`'s
+  layout (36 parameter sets x 36 replicates). Warm (first call): released 1.2.0: cholera 10.6
+  (12.7), London 45.1 (53.8), panel 133 (145), S&P 4.2 (5.4). Main at 353be4d (#56): 7.8 (9.6),
+  40.3 (49.9), n/a, 0.72 (2.0). CuTe at ac6d0a8: 3.2 (10.1), 14.2 (22.0), n/a, n/a. Flattened
+  layout, for reference: XLA on main 7.5 / 34.0 / 0.74, CuTe 3.2 / 14.0. Rows are in
+  `results_pypomp_main.jsonl` and `results_pypomp_cute.jsonl` in each model's `results/gpu`
+  (flat rows tagged, so make_tables skips them). The paper-bench rows (flat PF and IF2, XLA and
+  CuTe) are appended to `kernels/results/cute_paper_gpu.jsonl`, which make_tables no longer reads.
+  The rerun found two CuTe fallbacks:
+  - With `JAX_PLATFORMS=cuda`, building the kernel fails, because the translator folds constants on
+    the CPU device, and pypomp falls back to XLA with a warning. The dacca adapter sets
+    `JAX_PLATFORMS=cuda` by default, so CuTe runs need `JAX_PLATFORMS=cuda,cpu`.
+  - Forcing CuTe on the S&P 500 now falls back. The gradient check from 042f0a8 finds 45% of
+    particles' gradients differ from XLA.
+  `Pomp.pfilter`'s layout is also 19% slower than the flattened one on London XLA (40.3 vs 34.0 s),
+  although #56 runs all 36 replicates at once (0.8 GB workspace, 19 GB free). The cause isn't traced.
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
   runs a user-written transition and measurement density as a particle filter.

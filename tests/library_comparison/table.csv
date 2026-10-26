@@ -1,8 +1,8 @@
 model,column,first_s,warm_s,status,version
 dacca,R,379.504,379.504,,
-dacca,pypomp,14.38,10.5557,,1.2.0
-dacca,pypomp_flat,12.0204,7.7755,,
-dacca,pypomp_cute,26.73,3.252,,
+dacca,pypomp,12.655,10.5832,,1.2.0
+dacca,pypomp_flat,9.618,7.7531,,
+dacca,pypomp_cute,10.1166,3.2262,,
 dacca,pfjax,15.0058,11.2347,,0.0.3rc1
 dacca,pfjax_fixed,12.6806,11.2369,,
 dacca,cuthbert,12.845,11.646,,0.1.1
@@ -10,9 +10,9 @@ dacca,pydpf,68.2908,67.8678,,1.2.3
 dacca,particles,203.24880000000002,203.24880000000002,projected,0.3
 dacca,pypfilt,429.102,429.102,projected,0.8.7
 measles,R,895.03,895.03,,
-measles,pypomp,70.0492,45.03,,1.2.0
-measles,pypomp_flat,69.2464,38.431,,
-measles,pypomp_cute,36.0,13.527,,
+measles,pypomp,53.7578,45.1186,,1.2.0
+measles,pypomp_flat,49.9137,40.3177,,
+measles,pypomp_cute,22.0189,14.1515,,
 measles,pfjax,1400.3508,1340.2749,,0.0.3rc1
 measles,pfjax_fixed,1283.5328,1266.2601,,
 measles,cuthbert,1224.3201,1219.6189,,0.1.1
@@ -20,7 +20,7 @@ measles,pydpf,152.4746,152.1114,,1.2.3
 measles,particles,450.0792,450.0792,projected,0.3
 measles,pypfilt,897.138,897.138,projected,0.8.7
 panel_measles,R,2251.637,2251.637,,
-panel_measles,pypomp,167.6036,133.5503,,1.2.0
+panel_measles,pypomp,144.5043,133.0962,,1.2.0
 panel_measles,pypomp_flat,,,n/a,
 panel_measles,pypomp_cute,,,n/a,
 panel_measles,pfjax,3600,,timeout,0.0.3rc1
@@ -30,9 +30,9 @@ panel_measles,pydpf,321.3269,321.2596,,1.2.3
 panel_measles,particles,2166.192,2166.192,projected,0.3
 panel_measles,pypfilt,4392.612,4392.612,projected,0.8.7
 spx,R,36.375,36.375,,
-spx,pypomp,6.3135,4.1018,,1.2.0
-spx,pypomp_flat,2.9338,0.6794,,
-spx,pypomp_cute,4.7,0.652,,
+spx,pypomp,5.3694,4.1681,,1.2.0
+spx,pypomp_flat,1.9747,0.7158,,
+spx,pypomp_cute,,,n/a,
 spx,pfjax,4.6042,2.0454,,0.0.3rc1
 spx,pfjax_fixed,4.9001,2.0462,,
 spx,cuthbert,2.6523,1.6872,,0.1.1
