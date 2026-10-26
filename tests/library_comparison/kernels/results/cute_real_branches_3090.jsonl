@@ -1,0 +1,16 @@
+{"model": "measles", "task": "PF", "backend": "xla", "used": "xla", "J": 5000, "filters": 1296, "cold_s": 41.28, "warm_s": 33.918, "loglik_median": -5003.73828125, "load": 9.3, "pypomp_commit": "ac6d0a8"}
+{"model": "measles", "task": "IF2 M=10", "backend": "xla", "used": "xla", "J": 5000, "searches": 36, "cold_s": 22.44, "warm_s": 15.193, "loglik_median": -3845.2734375, "load": 7.5, "pypomp_commit": "ac6d0a8"}
+{"model": "measles", "task": "PF", "backend": "cute", "used": "cute", "J": 5000, "filters": 1296, "cold_s": 17.45, "warm_s": 13.904, "loglik_median": -4999.54931640625, "load": 4.2, "pypomp_commit": "ac6d0a8"}
+{"model": "measles", "task": "IF2 M=10", "backend": "cute", "used": "cute", "J": 5000, "searches": 36, "cold_s": 9.39, "warm_s": 4.865, "loglik_median": -3845.046875, "load": 3.7, "pypomp_commit": "ac6d0a8"}
+{"model": "dacca", "task": "PF", "backend": "xla", "used": "xla", "J": 5000, "filters": 1296, "cold_s": 8.66, "warm_s": 7.482, "loglik_median": -7948.59423828125, "load": 3.4, "pypomp_commit": "ac6d0a8"}
+{"model": "dacca", "task": "IF2 M=10", "backend": "xla", "used": "xla", "J": 5000, "searches": 36, "cold_s": 11.1, "warm_s": 8.532, "loglik_median": -3844.7578125, "load": 3.1, "pypomp_commit": "ac6d0a8"}
+{"model": "dacca", "task": "PF", "backend": "cute", "used": "cute", "J": 5000, "filters": 1296, "cold_s": 6.24, "warm_s": 3.232, "loglik_median": -7929.32373046875, "load": 2.8, "pypomp_commit": "ac6d0a8"}
+{"model": "dacca", "task": "IF2 M=10", "backend": "cute", "used": "cute", "J": 5000, "searches": 36, "cold_s": 5.8, "warm_s": 2.233, "loglik_median": -3852.99951171875, "load": 2.8, "pypomp_commit": "ac6d0a8"}
+{"model": "measles", "task": "PF", "backend": "xla", "used": "xla", "J": 5000, "filters": 1296, "cold_s": 41.4, "warm_s": 33.645, "loglik_median": -5003.73828125, "load": 3.1, "pypomp_commit": "07e627a"}
+{"model": "measles", "task": "IF2 M=10", "backend": "xla", "used": "xla", "J": 5000, "searches": 36, "cold_s": 22.54, "warm_s": 15.195, "loglik_median": -3845.2734375, "load": 2.8, "pypomp_commit": "07e627a"}
+{"model": "measles", "task": "PF", "backend": "cute", "used": "cute", "J": 5000, "filters": 1296, "cold_s": 14.47, "warm_s": 10.671, "loglik_median": -4999.54931640625, "load": 2.1, "pypomp_commit": "07e627a"}
+{"model": "measles", "task": "IF2 M=10", "backend": "cute", "used": "cute", "J": 5000, "searches": 36, "cold_s": 8.38, "warm_s": 3.843, "loglik_median": -3845.046875, "load": 1.8, "pypomp_commit": "07e627a"}
+{"model": "dacca", "task": "PF", "backend": "xla", "used": "xla", "J": 5000, "filters": 1296, "cold_s": 8.55, "warm_s": 7.486, "loglik_median": -7948.59423828125, "load": 1.7, "pypomp_commit": "07e627a"}
+{"model": "dacca", "task": "IF2 M=10", "backend": "xla", "used": "xla", "J": 5000, "searches": 36, "cold_s": 11.01, "warm_s": 8.55, "loglik_median": -3844.7578125, "load": 1.6, "pypomp_commit": "07e627a"}
+{"model": "dacca", "task": "PF", "backend": "cute", "used": "cute", "J": 5000, "filters": 1296, "cold_s": 5.93, "warm_s": 3.237, "loglik_median": -7929.32373046875, "load": 1.6, "pypomp_commit": "07e627a"}
+{"model": "dacca", "task": "IF2 M=10", "backend": "cute", "used": "cute", "J": 5000, "searches": 36, "cold_s": 5.57, "warm_s": 2.254, "loglik_median": -3852.99951171875, "load": 1.5, "pypomp_commit": "07e627a"}

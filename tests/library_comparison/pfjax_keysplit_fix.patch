@@ -1,0 +1,61 @@
+diff --git a/src/pfjax/particle_filter.py b/src/pfjax/particle_filter.py
+index 78b0707..9051d35 100644
+--- a/src/pfjax/particle_filter.py
++++ b/src/pfjax/particle_filter.py
+@@ -1,3 +1,4 @@
++import os as _os
+ """
+ Particle filters which approximate the score and fisher information.
+ """
+@@ -187,7 +188,11 @@ def particle_filter(
+             logw=carry["logw"] + logw_aux,
+         )
+         # 2. sample particles for current time point
+-        key, *subkeys = random.split(key, num=n_particles + 1)
++        if _os.environ.get("PFJAX_FIX_KEYSPLIT"):  # BENCH-ONLY: no per-particle unpacking
++            _ks = random.split(key, num=n_particles + 1)
++            key, subkeys = _ks[0], _ks[1:]
++        else:
++            key, *subkeys = random.split(key, num=n_particles + 1)
+         x_particles, logw = jax.vmap(
+             fun=pf_step,
+             in_axes=(0, 0, None),
+@@ -234,7 +239,11 @@ def particle_filter(
+         return res_carry, res_stack
+ 
+     # lax.scan initial value
+-    key, *subkeys = random.split(key, num=n_particles + 1)
++    if _os.environ.get("PFJAX_FIX_KEYSPLIT"):  # BENCH-ONLY: no per-particle unpacking
++        _ks = random.split(key, num=n_particles + 1)
++        key, subkeys = _ks[0], _ks[1:]
++    else:
++        key, *subkeys = random.split(key, num=n_particles + 1)
+     x_particles, logw = jax.vmap(pf_init)(jnp.array(subkeys))
+     filter_init = {
+         "x_particles": x_particles,
+@@ -498,7 +507,11 @@ def particle_filter_rb(
+             logw=logw_aux + carry["logw_bar"],
+         )
+         # 2. sample particles for current timepoint
+-        key, *subkeys = random.split(key, num=n_particles + 1)
++        if _os.environ.get("PFJAX_FIX_KEYSPLIT"):  # BENCH-ONLY: no per-particle unpacking
++            _ks = random.split(key, num=n_particles + 1)
++            key, subkeys = _ks[0], _ks[1:]
++        else:
++            key, *subkeys = random.split(key, num=n_particles + 1)
+         x_particles = jax.vmap(
+             pf_step,
+             in_axes=(0, 0, None),
+@@ -532,7 +545,11 @@ def particle_filter_rb(
+         return res_carry, res_stack
+ 
+     # lax.scan initial value
+-    key, *subkeys = random.split(key, num=n_particles + 1)
++    if _os.environ.get("PFJAX_FIX_KEYSPLIT"):  # BENCH-ONLY: no per-particle unpacking
++        _ks = random.split(key, num=n_particles + 1)
++        key, subkeys = _ks[0], _ks[1:]
++    else:
++        key, *subkeys = random.split(key, num=n_particles + 1)
+     # initial particles and weights
+     x_particles, logw = jax.vmap(pf_init)(jnp.array(subkeys))
+     # # dummy initialization for resampler

@@ -1,0 +1,2 @@
+{"failed": "nice -n 19 taskset -c 8-31 /home/kevin/src/pf-bench/.venv-jax/bin/python bench_particles.py --J 5000 --nthetas 36 --nreps 36 --procs 8", "rc": 124}
+{"failed": "nice -n 19 taskset -c 8-31 /home/kevin/src/pf-bench/.venv-jax/bin/python bench_pypfilt.py --J 5000 --nthetas 36 --nreps 36 --procs 8", "rc": 124}
