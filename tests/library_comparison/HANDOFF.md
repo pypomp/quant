@@ -67,6 +67,11 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
   because each step's intermediates and the state go through GPU memory between kernels. CuTe reads
   and writes the 6-variable state (155 MB) once per interval and is limited by arithmetic instead
   (`kernels/xla_bytes.py`).
+  Odd size on other models (`kernels/pf_odd.py`, warm XLA PF, usual -> one filter and one particle
+  fewer): London 33.7 -> 21.0 s, pypomp's SIR 41.0 -> 36.6 s, cholera 7.49 -> 7.51 s, S&P 500
+  0.74 -> 0.77 s, linear Gaussian (T = 100) 0.29 -> 0.30 s. It helps large sampler-heavy steps and
+  costs a few percent on small ones. Asked Aaron's agents on #57 to run it on the A40, A100 and
+  RTX Pro 6000 before changing pypomp.
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
   runs a user-written transition and measurement density as a particle filter.
