@@ -1,7 +1,7 @@
 model,column,first_s,warm_s,status,version
 dacca,R,379.504,379.504,,
 dacca,pypomp,12.655,10.5832,,1.2.0
-dacca,pypomp_flat,8.1891,3.2168,,
+dacca,pypomp_flat,9.4305,7.4924,,
 dacca,pypomp_cute,16.1644,3.2705,,
 dacca,pfjax,15.0058,11.2347,,0.0.3rc1
 dacca,pfjax_fixed,12.6806,11.2369,,
@@ -11,7 +11,7 @@ dacca,particles,203.24880000000002,203.24880000000002,projected,0.3
 dacca,pypfilt,429.102,429.102,projected,0.8.7
 measles,R,895.03,895.03,,
 measles,pypomp,53.7578,45.1186,,1.2.0
-measles,pypomp_flat,16.238,10.6943,,
+measles,pypomp_flat,44.7348,33.9747,,
 measles,pypomp_cute,27.7099,9.9853,,
 measles,pfjax,1400.3508,1340.2749,,0.0.3rc1
 measles,pfjax_fixed,1283.5328,1266.2601,,
