@@ -98,6 +98,17 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
     particles' gradients differ from XLA.
   `Pomp.pfilter`'s layout is also 19% slower than the flattened one on London XLA (40.3 vs 34.0 s),
   although #56 runs all 36 replicates at once (0.8 GB workspace, 19 GB free). The cause isn't traced.
+- **Table layout** (2026-10-26, later the same day): the parallel, CuTe and real-branches columns
+  now use the one-batch rows (all 1,296 filters in one vmap), as the other GPU libraries' adapters
+  do; the `Pomp.pfilter`-layout rows stay in the same files, tagged. London: 34.0 (#56), 14.0
+  (CuTe), 10.7 s (Aaron's `cute-real-branches`, 07e627a, new column, `results_pypomp_realbranches.jsonl`).
+  Why `Pomp.pfilter`'s layout is slower on XLA (40.3 s): profiling 30 observations, #56's
+  `lax.map` over replicates inside the `vmap` over parameter sets adds a large slice-and-copy
+  kernel every Euler step (0.85 s per call) and a worse fusion of one sampler kernel (0.55 vs
+  0.26 s); the main step kernel is the same. Fix to propose on main: when all replicates run at
+  once, flatten parameter sets x replicates into one batch.
+- **CuTe with `JAX_PLATFORMS=cuda`**: fixed on #57 (1853ea5). The translator now folds constants
+  on the default device when JAX has no CPU backend; `test_builds_without_a_cpu_backend`.
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
   runs a user-written transition and measurement density as a particle filter.
