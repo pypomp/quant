@@ -72,6 +72,16 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
   0.74 -> 0.77 s, linear Gaussian (T = 100) 0.29 -> 0.30 s. It helps large sampler-heavy steps and
   costs a few percent on small ones. Asked Aaron's agents on #57 to run it on the A40, A100 and
   RTX Pro 6000 before changing pypomp.
+- **London XLA PF: 38.4 s in the table, 33.3-33.9 s on current code** (checked 2026-10-26). The
+  "+ parallel reps" column was measured with pypomp 1.2.0 and the adapter's flat layout (all 1,296
+  filters in one vmap), standing in for #56. Rerun at load 0.2, 1.2.0 still gives 38.3 s (flat) and
+  44.9 s (api), so the load of ~100 on 2026-10-22 only slowed compilation. The same flat run with
+  pypomp at each main merge: 05291e9 (#55) 38.4 s, 0cee020 (#56) 33.3 s, 353be4d (#58) 33.9 s,
+  ac6d0a8 33.9 s. #56's only change on this path is the batch_size it passes to lax.map in
+  `_mapped_pfilter_internal_reps`; why that is 13% faster is not traced. So the "+ parallel reps"
+  column understates #56 on London, and #57's description compares CuTe with a pre-#56 XLA
+  baseline (38.5 s; 33.9 s now, so 2.4x rather than 2.8x). The released-pypomp column in the ms
+  chunk is unaffected. Rows: /tmp/rerun_measles.jsonl and /tmp/bisect_xla.jsonl on kevtan-linux.
 - **dynamax 1.0.3**: skipped, per Kevin. It has Kalman, EKF/UKF, conditional-moments and HMM
   filters, plus a Rao-Blackwellised PF only for switching linear-Gaussian models; nothing that
   runs a user-written transition and measurement density as a particle filter.
