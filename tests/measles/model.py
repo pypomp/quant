@@ -116,11 +116,15 @@ MeaslesModelVariant = Literal["001", "001b", "001d", "002", "002d", "003"]
 
 def measles(unit, theta, model: MeaslesModelVariant = "001b"):
     """The measles model for one unit, at `theta`."""
-    return pp.models.UKMeasles.pomp(
-        unit=unit,
-        theta=theta,
-        model=model,
-        clean=False,
+    from utils import apply_backend
+
+    return apply_backend(
+        pp.models.UKMeasles.pomp(
+            unit=unit,
+            theta=theta,
+            model=model,
+            clean=False,
+        )
     )
 
 
@@ -133,9 +137,10 @@ def measles_jax(theta, unit="London"):
     import model_001b_jax as mj
     from pypomp.core.par_trans import ParTrans
     from pypomp.core.pomp import Pomp
+    from utils import apply_backend
 
-    base = measles(unit, theta=theta)
-    return Pomp(
+    base = pp.models.UKMeasles.pomp(unit=unit, theta=theta, model="001b", clean=False)
+    obj = Pomp(
         ys=base.ys,
         theta=theta,
         covars=base.covars,
@@ -150,6 +155,7 @@ def measles_jax(theta, unit="London"):
         rmeas=mj.rmeas,
         par_trans=ParTrans(to_est=mj.to_est, from_est=mj.from_est),
     )
+    return apply_backend(obj)
 
 
 def measles_continuous(theta, unit="London"):
@@ -158,11 +164,15 @@ def measles_continuous(theta, unit="London"):
     `clean=True` here because model 003 is fitted rather than evaluated at
     published estimates, so the cleaned series is the right target.
     """
-    return pp.models.UKMeasles.pomp(
-        unit=unit,
-        theta=theta,
-        model="003",
-        clean=True,
+    from utils import apply_backend
+
+    return apply_backend(
+        pp.models.UKMeasles.pomp(
+            unit=unit,
+            theta=theta,
+            model="003",
+            clean=True,
+        )
     )
 
 

@@ -18,6 +18,25 @@ results/R/timings.csv. Both start from the same committed parameter vectors
 #       cpus-per-gpu: 1
 #       mem: 6GB
 #       output: "results/gpu/logs/slurm-%j.out"
+#   gpu_cute:
+#     sbatch_args:
+#       job-name: "panel measles timing (gpu, cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 16GB
+#       output: "results/gpu_cute/logs/slurm-%j.out"
+#     env:
+#       BACKEND: "cute"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:08:00" }
+#       2:
+#         sbatch_args: { time: "00:25:00" }
+#       3:
+#         sbatch_args: { time: "01:00:00" }
+#       4:
+#         sbatch_args: { time: "00:20:00" }
 #
 # run_levels:
 #   1:
@@ -46,7 +65,7 @@ import jax
 import model
 import numpy as np
 import pandas as pd
-from utils import run_metadata
+from utils import backend_suffix, run_metadata
 
 print(jax.devices())
 
@@ -93,7 +112,7 @@ timed("pfilter_cold", lambda: panel_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL, key=
 timed("pfilter_warm", lambda: panel_obj.pfilter(J=NP_EVAL, reps=NREPS_EVAL))
 
 platform = jax.devices()[0].platform
-out_dir = os.path.join("results", platform)
+out_dir = os.path.join("results", platform + backend_suffix())
 os.makedirs(out_dir, exist_ok=True)
 
 timings_df = pd.DataFrame(timings)

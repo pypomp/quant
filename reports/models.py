@@ -12,7 +12,11 @@ MODELS = {
         "panel": False,
         "loglik": {
             "dir": "tests/spx/loglik/results",
-            "arms": {"R pomp": "R", "pypomp (GPU)": "gpu"},
+            "arms": {
+                "R pomp": "R",
+                "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe)": "gpu_cute",
+            },
             "reference": "R pomp",
         },
         "timing": {
@@ -20,6 +24,7 @@ MODELS = {
             "arms": {
                 "R pomp (36 cores)": "R",
                 "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe)": "gpu_cute",
                 "pypomp (CPU, 36 cores)": "cpu",
             },
         },
@@ -30,7 +35,11 @@ MODELS = {
         "panel": False,
         "loglik": {
             "dir": "tests/dacca/loglik/results",
-            "arms": {"R pomp": "R", "pypomp (GPU)": "gpu"},
+            "arms": {
+                "R pomp": "R",
+                "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe)": "gpu_cute",
+            },
             "reference": "R pomp",
         },
         "timing": {
@@ -38,6 +47,7 @@ MODELS = {
             "arms": {
                 "R pomp (36 cores)": "R",
                 "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe)": "gpu_cute",
                 "pypomp (CPU, 36 cores)": "cpu",
             },
         },
@@ -52,9 +62,10 @@ MODELS = {
                 "R pomp": "R",
                 "pypomp (64-bit)": "f64",
                 "pypomp (32-bit)": "f32",
+                "pypomp (32-bit, CuTe)": "f32_cute",
             },
             "reference": "R pomp",
-            "info": ["pypomp (32-bit)"],
+            "info": ["pypomp (32-bit)", "pypomp (32-bit, CuTe)"],
         },
         "timing": {
             "dir": "tests/measles/timing/results",
@@ -62,6 +73,7 @@ MODELS = {
                 "R pomp (36 cores)": "R",
                 "pypomp (GPU)": "gpu",
                 "pypomp (GPU, JAX samplers)": "gpu_jax",
+                "pypomp (GPU, CuTe)": "gpu_cute",
                 "pypomp (CPU, 36 cores)": "cpu",
             },
         },
@@ -72,12 +84,20 @@ MODELS = {
         "panel": True,
         "loglik": {
             "dir": "tests/panel_measles/loglik/results",
-            "arms": {"R panelPomp": "R", "pypomp (GPU)": "gpu"},
+            "arms": {
+                "R panelPomp": "R",
+                "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe)": "gpu_cute",
+            },
             "reference": "R panelPomp",
         },
         "timing": {
             "dir": "tests/panel_measles/timing/results",
-            "arms": {"R panelPomp (36 cores)": "R", "pypomp (GPU)": "gpu"},
+            "arms": {
+                "R panelPomp (36 cores)": "R",
+                "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe)": "gpu_cute",
+            },
         },
         "scaling": {"dir": "tests/panel_measles/scaling/results/gpu"},
     },

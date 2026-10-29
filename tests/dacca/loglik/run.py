@@ -10,12 +10,34 @@ Compared against results/R/pfilter_logliks.csv.
 # description: "Dhaka: distribution of pfilter logLik at the published MLE"
 # tags: [loglik, dacca, gpu]
 # sbatch_args:
-#   job-name: "dacca loglik check"
-#   partition: gpu
-#   gpus: "v100:1"
 #   cpus-per-gpu: 1
 #   mem: 6GB
-#   output: "results/logs/slurm-%j.out"
+# jobs:
+#   gpu:
+#     sbatch_args:
+#       job-name: "dacca loglik check"
+#       partition: gpu
+#       gpus: "v100:1"
+#       output: "results/logs/slurm-%j.out"
+#   gpu_cute:
+#     sbatch_args:
+#       job-name: "dacca loglik check (cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 16GB
+#       output: "results/gpu_cute/logs/slurm-%j.out"
+#     env:
+#       BACKEND: "cute"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:05:00" }
+#       2:
+#         sbatch_args: { time: "00:20:00" }
+#       3:
+#         sbatch_args: { time: "00:20:00" }
+#       4:
+#         sbatch_args: { time: "00:35:00" }
 #
 # run_levels:
 #   1:
@@ -46,7 +68,7 @@ if model_dir not in sys.path:
 import jax
 import model
 import numpy as np
-from utils import pfilter_logliks_frame, save_run
+from utils import backend_suffix, pfilter_logliks_frame, save_run
 
 print(jax.devices())
 
@@ -70,7 +92,7 @@ print(f"pfilter time taken: {execution_time:.2f} seconds")
 print(dacca_obj.results())
 
 platform = jax.devices()[0].platform
-out_dir = os.path.join("results", platform)
+out_dir = os.path.join("results", platform + backend_suffix())
 
 save_run(
     dacca_obj,

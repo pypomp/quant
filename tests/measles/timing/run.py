@@ -11,7 +11,7 @@ All four start from the same committed parameter vectors
 
 # --- SLURM CONFIG ---
 # importance: high
-# description: "Measles: wall-clock timing of mif and pfilter (GPU fast / GPU JAX / CPU)"
+# description: "Measles: wall-clock timing of mif and pfilter (GPU fast / GPU JAX / GPU CuTe / CPU)"
 # tags: [timing, measles, gpu, cpu]
 # jobs:
 #   gpu:
@@ -52,6 +52,26 @@ All four start from the same committed parameter vectors
 #         sbatch_args: { time: "00:45:00" }
 #       4:
 #         sbatch_args: { time: "01:00:00" }
+#   gpu_cute:
+#     sbatch_args:
+#       job-name: "measles timing (gpu, cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 16GB
+#       output: "results/gpu_cute/logs/slurm-%j.out"
+#     env:
+#       SAMPLERS: "fast"
+#       BACKEND: "cute"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:06:00" }
+#       2:
+#         sbatch_args: { time: "00:12:00" }
+#       3:
+#         sbatch_args: { time: "00:15:00" }
+#       4:
+#         sbatch_args: { time: "00:15:00" }
 #   cpu:
 #     sbatch_args:
 #       job-name: "measles timing (cpu)"
@@ -99,7 +119,7 @@ import jax
 import model
 import numpy as np
 import pandas as pd
-from utils import run_metadata
+from utils import backend_suffix, run_metadata
 
 print(jax.devices())
 print("Using CPU:", USE_CPU)
@@ -157,7 +177,9 @@ timed(
 timed("pfilter_warm", lambda: measles_obj.pfilter(J=NP, reps=NREPS))
 
 platform = jax.devices()[0].platform
-out_dir = os.path.join("results", f"{platform}_jax" if SAMPLERS == "jax" else platform)
+out_dir = os.path.join(
+    "results", (f"{platform}_jax" if SAMPLERS == "jax" else platform) + backend_suffix()
+)
 os.makedirs(out_dir, exist_ok=True)
 
 timings_df = pd.DataFrame(timings)

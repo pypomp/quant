@@ -136,7 +136,9 @@ def panel_measles(theta, units=UNITS, align=True):
     }
     if align:
         align_covariates(pomp_dict)
-    return pp.PanelPomp(pomp_dict=pomp_dict, theta=theta)
+    from utils import apply_backend
+
+    return apply_backend(pp.PanelPomp(pomp_dict=pomp_dict, theta=theta))
 
 
 def mle_theta(units=UNITS):
