@@ -73,12 +73,11 @@ spx_filt <- function(sp500 = spx_data()) {
 
     dWv = rho * dWs + sqrt(1 - rho * rho) * dZ;
 
-    S += S * (mu + sqrt(fmax(V, 0.0)) * dWs);
+    // Floor V at 1e-12, as pypomp does (pypomp/models/spx.py, _V_FLOOR).
+    S += S * (mu + sqrt(fmax(V, 1e-12)) * dWs);
     V += kappa*(theta - V) + xi*sqrt(V)*dWv;
 
-    if (V<=0) {
-      V=1e-32;
-    }
+    V = fmax(V, 1e-12);
   "
 
   rinit <- "
