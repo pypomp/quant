@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-02T18:41:53+00:00",
+  "timestamp": "2026-11-02T23:06:48+00:00",
   "run_config": {
     "kind": "algorithms",
     "model": "dacca",
@@ -13,7 +13,7 @@
     "NP_FITR": 5000,
     "NP_EVAL": 5000,
     "NREPS_EVAL": 36,
-    "execution_time": 532.2865335941315,
+    "execution_time": 472.25867915153503,
     "platform": "gpu"
   },
   "results_history": [
@@ -21,7 +21,7 @@
       "method": "mif",
       "kind": "trace",
       "panel": false,
-      "execution_time": 99.04857420921326,
+      "execution_time": 88.60023236274719,
       "config": {
         "J": 5000,
         "M": 175,
@@ -34,7 +34,7 @@
       "method": "train",
       "kind": "trace",
       "panel": false,
-      "execution_time": 413.4931130409241,
+      "execution_time": 374.18660950660706,
       "config": {
         "optimizer": "Adam(clip_norm=None, scale=False, ls=False, c=0.1, max_ls_itn=10, beta1=0.9, beta2=0.999, epsilon=1e-08)",
         "J": 5000,
@@ -42,14 +42,15 @@
         "eta": "LearningRate(\n    'gamma': [0.005 ... 0.002504] (len=175)\n    'epsilon': [0.01 ... 0.005008] (len=175)\n    'rho': 0\n    'm': [0.01 ... 0.005008] (len=175)\n    'c': 0\n    'alpha': 0\n    'delta': 0\n    'beta_trend': [0.005 ... 0.002504] (len=175)\n    'bs1': [0.01 ... 0.005008] (len=175)\n    'bs2': [0.01 ... 0.005008] (len=175)\n    'bs3': [0.01 ... 0.005008] (len=175)\n    'bs4': [0.01 ... 0.005008] (len=175)\n    'bs5': [0.01 ... 0.005008] (len=175)\n    'bs6': [0.01 ... 0.005008] (len=175)\n    'sigma': [0.005 ... 0.002504] (len=175)\n    'tau': [0.005 ... 0.002504] (len=175)\n    'omegas1': [0.01 ... 0.005008] (len=175)\n    'omegas2': [0.01 ... 0.005008] (len=175)\n    'omegas3': [0.01 ... 0.005008] (len=175)\n    'omegas4': [0.01 ... 0.005008] (len=175)\n    'omegas5': [0.01 ... 0.005008] (len=175)\n    'omegas6': [0.01 ... 0.005008] (len=175)\n    'S_0': [0.005 ... 0.002504] (len=175)\n    'I_0': [0.005 ... 0.002504] (len=175)\n    'Y_0': 0\n    'R1_0': [0.005 ... 0.002504] (len=175)\n    'R2_0': [0.005 ... 0.002504] (len=175)\n    'R3_0': [0.005 ... 0.002504] (len=175)\n)",
         "alpha": 0.97,
         "thresh": 0.0,
-        "alpha_cooling": 1.0
+        "alpha_cooling": 1.0,
+        "dpop": false
       }
     },
     {
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 11.918884992599487,
+      "execution_time": 7.097621917724609,
       "config": {
         "J": 5000,
         "reps": 36,
@@ -60,7 +61,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.769556045532227,
+      "execution_time": 2.3284897804260254,
       "config": {
         "J": 5000,
         "reps": 36,
@@ -68,9 +69,9 @@
       }
     }
   ],
-  "pypomp_version": "1.0.0rc1",
-  "jax_version": "0.11.1",
-  "quant_git_sha": "630cc2325273e7af2386effd11b3ae827dfde18f",
+  "pypomp_version": "1.3.0rc1",
+  "jax_version": "0.11.2",
+  "quant_git_sha": "cb5002505fcd605e31fe640d74028777d35b9381",
   "hardware": {
     "cpu_model": "AMD EPYC 9575F 64-Core Processor",
     "nodelist": "gl1800",
@@ -80,7 +81,7 @@
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "59673747",
+    "job_id": "65257235",
     "partition": "gpu-rtx6000",
     "gpus": "rtx_pro_6000_blackwell:1",
     "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"

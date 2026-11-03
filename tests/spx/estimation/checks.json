@@ -1,24 +1,24 @@
 {
   "verdict": "PASS",
   "run_level": 4,
-  "pypomp_version": "1.0.0rc1",
+  "pypomp_version": "1.3.0rc1",
   "checks": [
     {
       "check": "Final log-likelihood (KS)",
       "compared": "pypomp (GPU) vs R pomp",
-      "result": "D = 0.0528, p = 0.698",
+      "result": "D = 0.0583, p = 0.573",
       "verdict": "PASS"
     },
     {
       "check": "Final estimates: means",
       "compared": "pypomp (GPU) vs R pomp",
-      "result": "largest |z| = 1.85 (xi) of 6",
+      "result": "largest |z| = 0.61 (rho) of 6",
       "verdict": "PASS"
     },
     {
       "check": "Final estimates: distributions (KS)",
       "compared": "pypomp (GPU) vs R pomp",
-      "result": "smallest p = 0.0234 (kappa) of 6",
+      "result": "smallest p = 0.305 (V_0) of 6",
       "verdict": "PASS"
     },
     {
@@ -36,19 +36,19 @@
     {
       "check": "Final log-likelihood (KS)",
       "compared": "pypomp (CPU) vs R pomp",
-      "result": "D = 0.0694, p = 0.351",
+      "result": "D = 0.0528, p = 0.698",
       "verdict": "PASS"
     },
     {
       "check": "Final estimates: means",
       "compared": "pypomp (CPU) vs R pomp",
-      "result": "largest |z| = 0.69 (theta) of 6",
+      "result": "largest |z| = 0.63 (theta) of 6",
       "verdict": "PASS"
     },
     {
       "check": "Final estimates: distributions (KS)",
       "compared": "pypomp (CPU) vs R pomp",
-      "result": "smallest p = 0.401 (kappa) of 6",
+      "result": "smallest p = 0.573 (kappa) of 6",
       "verdict": "PASS"
     },
     {

@@ -1,6 +1,6 @@
 "stage","seconds"
-"user.self",0.666
-"sys.self",0.158
-"elapsed",129.766
-"user.child",4547.714
-"sys.child",11.219
+"user.self",0.541999999999998
+"sys.self",0.136
+"elapsed",125.459
+"user.child",4367.288
+"sys.child",14.329

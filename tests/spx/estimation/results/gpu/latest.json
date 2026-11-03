@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-02T18:33:59+00:00",
+  "timestamp": "2026-11-02T21:16:23+00:00",
   "run_config": {
     "kind": "estimation",
     "model": "spx",
@@ -13,7 +13,7 @@
       "method": "mif",
       "kind": "trace",
       "panel": false,
-      "execution_time": 296.6049454212189,
+      "execution_time": 187.48410868644714,
       "config": {
         "J": 1000,
         "M": 200,
@@ -26,7 +26,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 29.22696828842163,
+      "execution_time": 14.114236116409302,
       "config": {
         "J": 1000,
         "reps": 24,
@@ -34,19 +34,19 @@
       }
     }
   ],
-  "pypomp_version": "1.0.0rc1",
-  "jax_version": "0.11.1",
-  "quant_git_sha": "630cc2325273e7af2386effd11b3ae827dfde18f",
+  "pypomp_version": "1.3.0rc1",
+  "jax_version": "0.11.2",
+  "quant_git_sha": "cb5002505fcd605e31fe640d74028777d35b9381",
   "hardware": {
-    "cpu_model": "Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz",
-    "nodelist": "gl1022",
+    "cpu_model": "Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz",
+    "nodelist": "gl1018",
     "cores": 40
   },
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "59673765",
+    "job_id": "65259424",
     "partition": "gpu",
     "gpus": "v100:1",
     "gpu_type": "Tesla V100-PCIE-16GB"
