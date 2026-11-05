@@ -8,12 +8,34 @@ Compared against results/R/pfilter_logliks.csv (3600 R replicates).
 # description: "SPX: distribution of pfilter logLik at the Sun (2024) estimates"
 # tags: [loglik, spx, gpu]
 # sbatch_args:
-#   job-name: "spx loglik check"
-#   partition: gpu
-#   gpus: "v100:1"
 #   cpus-per-gpu: 1
 #   mem: 6GB
-#   output: "results/logs/slurm-%j.out"
+# jobs:
+#   gpu:
+#     sbatch_args:
+#       job-name: "spx loglik check"
+#       partition: gpu
+#       gpus: "v100:1"
+#       output: "results/logs/slurm-%j.out"
+#   gpu_cute:
+#     sbatch_args:
+#       job-name: "spx loglik check (cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 16GB
+#       output: "results/gpu_cute/logs/slurm-%j.out"
+#     env:
+#       BACKEND: "cute"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:05:00" }
+#       2:
+#         sbatch_args: { time: "00:10:00" }
+#       3:
+#         sbatch_args: { time: "00:30:00" }
+#       4:
+#         sbatch_args: { time: "00:55:00" }
 #
 # run_levels:
 #   1:
@@ -40,7 +62,7 @@ if model_dir not in sys.path:
 import jax
 import model
 import numpy as np
-from utils import pfilter_logliks_frame, save_run
+from utils import backend_suffix, pfilter_logliks_frame, save_run
 
 print(jax.devices())
 
@@ -63,7 +85,7 @@ execution_time = time.time() - started
 print(spx_obj.results())
 
 platform = jax.devices()[0].platform
-out_dir = os.path.join("results", platform)
+out_dir = os.path.join("results", platform + backend_suffix())
 
 metrics = save_run(
     spx_obj,

@@ -100,6 +100,74 @@ def _hardware_info() -> dict[str, Any]:
     return hw
 
 
+def _pypomp_source() -> str | None:
+    """Where pypomp was installed from, when it was not PyPI.
+
+    A git or local install carries the version number of the release it branched
+    from, so the version alone cannot tell a PR build from the release.
+    """
+    from importlib.metadata import distribution
+
+    try:
+        text = distribution("pypomp").read_text("direct_url.json")
+    except PackageNotFoundError:
+        return None
+    if not text:
+        return None
+    info = json.loads(text)
+    commit = info.get("vcs_info", {}).get("commit_id")
+    return f"{info.get('url')}@{commit}" if commit else info.get("url")
+
+
+#: The pypomp backend a run asks for through the BACKEND environment variable
+#: ("xla", "cute" or "auto"); unset leaves pypomp's default.
+BACKEND = os.environ.get("BACKEND", "").lower() or None
+
+#: The CuTe kernel's random numbers ("threefry" or "philox"), used with BACKEND.
+CUTE_RNG = os.environ.get("CUTE_RNG", "threefry").lower()
+
+_backend_objs: list[Any] = []
+
+
+def apply_backend(obj):
+    """Put a Pomp or PanelPomp on the backend BACKEND names.
+
+    Model builders call this on everything they return, so a test picks up the
+    backend from its job's environment without changes of its own.
+    """
+    if BACKEND is None:
+        return obj
+    if not hasattr(obj, "set_backend"):
+        raise RuntimeError(
+            f"BACKEND={BACKEND!r} needs a pypomp with set_backend (the CuTe backend)"
+        )
+    obj.set_backend(BACKEND, rng=CUTE_RNG)
+    _backend_objs.append(obj)
+    return obj
+
+
+def backend_reports() -> list[str] | None:
+    """What ran on CuTe and what on XLA, for each object apply_backend saw.
+
+    Asked for after the run rather than in apply_backend: the report builds and
+    checks the kernels, which would otherwise move that cost out of the timings.
+    """
+    if BACKEND in (None, "xla"):
+        return None
+    reports = []
+    for obj in _backend_objs:
+        try:
+            reports.append(str(obj.backend_report()))
+        except Exception as exc:  # noqa: BLE001 -- provenance must not fail a run
+            reports.append(f"backend_report failed: {type(exc).__name__}: {exc}")
+    return reports
+
+
+def backend_suffix() -> str:
+    """The suffix that keeps a non-default backend's results apart, e.g. "_cute"."""
+    return "" if BACKEND in (None, "xla") else f"_{BACKEND}"
+
+
 def run_metadata(run_config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Provenance for a single run.
 
@@ -129,12 +197,20 @@ def run_metadata(run_config: dict[str, Any] | None = None) -> dict[str, Any]:
 
     hw_info = _hardware_info()
 
+    reports = backend_reports()
+    for report in reports or ():
+        print(f"backend report:\n{report}", flush=True)
+
     return {
         "timestamp": datetime.datetime.now(datetime.UTC)
         .replace(microsecond=0)
         .isoformat(),
         "pypomp_version": _package_version("pypomp"),
+        "pypomp_source": _pypomp_source(),
         "jax_version": _package_version("jax"),
+        "backend": BACKEND or "default",
+        "cute_rng": None if BACKEND in (None, "xla") else CUTE_RNG,
+        "backend_reports": reports,
         "quant_git_sha": _git_sha(),
         "hardware": hw_info,
         "devices": devices,

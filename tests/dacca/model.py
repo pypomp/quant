@@ -82,7 +82,9 @@ def dacca():
     `nstep=20` is the same discretisation as pomp's `dacca()`, which uses
     dt = 1/240 on observations spaced 1/12 of a year apart.
     """
-    return pp.models.dacca(dt=None, nstep=20)
+    from utils import apply_backend
+
+    return apply_backend(pp.models.dacca(dt=None, nstep=20))
 
 
 def sample_starts(n, key):

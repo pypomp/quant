@@ -10,12 +10,34 @@ difference between the implementations rather than between the models.
 # description: "Panel measles: distribution of pfilter logLik at the He et al. (2010) estimates"
 # tags: [loglik, panel_measles, gpu]
 # sbatch_args:
-#   job-name: "panel measles loglik (pypomp)"
 #   partition: gpu-rtx6000
 #   gpus: "rtx_pro_6000_blackwell:1"
 #   cpus-per-gpu: 1
 #   mem: 6GB
-#   output: "results/gpu/logs/slurm-%j.out"
+# jobs:
+#   gpu:
+#     sbatch_args:
+#       job-name: "panel measles loglik (pypomp)"
+#       output: "results/gpu/logs/slurm-%j.out"
+#   gpu_cute:
+#     sbatch_args:
+#       job-name: "panel measles loglik (pypomp, cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 16GB
+#       output: "results/gpu_cute/logs/slurm-%j.out"
+#     env:
+#       BACKEND: "cute"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:08:00" }
+#       2:
+#         sbatch_args: { time: "00:20:00" }
+#       3:
+#         sbatch_args: { time: "00:20:00" }
+#       4:
+#         sbatch_args: { time: "00:20:00" }
 #
 # run_levels:
 #   1:
@@ -52,7 +74,7 @@ if USE_CPU:
 import jax
 import model
 import numpy as np
-from utils import pfilter_logliks_frame, save_run
+from utils import backend_suffix, pfilter_logliks_frame, save_run
 
 print(jax.devices())
 
@@ -77,7 +99,7 @@ execution_time = time.time() - started
 print(f"pfilter completed in {execution_time:.2f} s")
 
 platform = jax.devices()[0].platform
-out_dir = os.path.join("results", platform)
+out_dir = os.path.join("results", platform + backend_suffix())
 
 save_run(
     panel_obj,

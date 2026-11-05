@@ -115,6 +115,10 @@ def run_one(spec, build):
     stats = _device_stats()
     peak = stats.get("peak_bytes_in_use") if stats else None
 
+    from utils import backend_reports
+
+    for report in backend_reports() or ():
+        print(f"backend report:\n{report}")
     print(
         f"[{spec['scaling_type']}] J={J} chains={chains}: "
         f"mif cold {mif_cold:.2f} s, warm {mif_warm:.2f} s ({mif_warm / M:.4f} s/iter); "
@@ -201,9 +205,9 @@ def main(
 
     import jax
     import model
-    from utils import run_metadata
+    from utils import backend_suffix, run_metadata
 
-    out_dir = os.path.join("results", jax.devices()[0].platform)
+    out_dir = os.path.join("results", jax.devices()[0].platform + backend_suffix())
     os.makedirs(out_dir, exist_ok=True)
     df = pd.DataFrame(results)
     df.to_csv(os.path.join(out_dir, "scaling.csv"), index=False)
@@ -212,7 +216,7 @@ def main(
         {
             "kind": "scaling",
             "model": model_name,
-            "job": "gpu",
+            "job": "gpu" + backend_suffix(),
             "RUN_LEVEL": run_level,
             "MAIN_SEED": model.MAIN_SEED,
             "PARTICLE_J_GRID": particle_j_grid,

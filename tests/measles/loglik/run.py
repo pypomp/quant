@@ -30,6 +30,26 @@ Compared against results/R/pfilter_logliks.csv, which pomp computes in double.
 #         sbatch_args: { time: "00:15:00" }
 #       4:
 #         sbatch_args: { time: "00:35:00" }
+#   f32_cute:
+#     sbatch_args:
+#       job-name: "measles loglik (32-bit, cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 16GB
+#       output: "results/f32_cute/logs/slurm-%j.out"
+#     env:
+#       USE_64BIT: "false"
+#       BACKEND: "cute"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:06:00" }
+#       2:
+#         sbatch_args: { time: "00:15:00" }
+#       3:
+#         sbatch_args: { time: "00:15:00" }
+#       4:
+#         sbatch_args: { time: "00:30:00" }
 #   f64:
 #     sbatch_args:
 #       job-name: "measles loglik (64-bit)"
@@ -72,7 +92,7 @@ if USE_64BIT:
     jax.config.update("jax_enable_x64", True)
 
 import model
-from utils import pfilter_logliks_frame, save_run_multi
+from utils import backend_suffix, pfilter_logliks_frame, save_run_multi
 
 print(jax.devices())
 print(f"Precision: {'64-bit' if USE_64BIT else '32-bit'}")
@@ -106,7 +126,7 @@ for unit in model.UNITS:
 
 execution_time = time.time() - started
 
-out_dir = os.path.join("results", "f64" if USE_64BIT else "f32")
+out_dir = os.path.join("results", ("f64" if USE_64BIT else "f32") + backend_suffix())
 
 save_run_multi(
     objs,

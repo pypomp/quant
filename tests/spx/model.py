@@ -47,7 +47,9 @@ SUN2024_THETA = pp.PompParameters(
 
 
 def spx():
-    return pp.models.spx()
+    from utils import apply_backend
+
+    return apply_backend(pp.models.spx())
 
 
 def sample_starts(n, key):

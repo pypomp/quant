@@ -37,6 +37,28 @@ results/<algorithm>/.
 #       output: "results/ifad/logs/slurm-%j.out"
 #     env:
 #       ALGORITHM: "ifad"
+#   if2_cute:
+#     sbatch_args:
+#       job-name: "measles algorithms (if2, cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 30GB
+#       output: "results/if2_cute/logs/slurm-%j.out"
+#     env:
+#       ALGORITHM: "if2"
+#       BACKEND: "cute"
+#   ifad_cute:
+#     sbatch_args:
+#       job-name: "measles algorithms (ifad, cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 30GB
+#       output: "results/ifad_cute/logs/slurm-%j.out"
+#     env:
+#       ALGORITHM: "ifad"
+#       BACKEND: "cute"
 #
 # run_levels:
 #   1:
@@ -77,7 +99,7 @@ import jax
 import model
 import numpy as np
 import pypomp as pp
-from utils import pfilter_logliks_frame, save_run
+from utils import backend_suffix, pfilter_logliks_frame, save_run
 
 print(jax.devices())
 print("Using CPU:", USE_CPU)
@@ -181,7 +203,7 @@ execution_time = time.time() - started
 measles_obj.print_summary()
 print(measles_obj.time())
 
-out_dir = os.path.join("results", ALGORITHM)
+out_dir = os.path.join("results", ALGORITHM + backend_suffix())
 save_run(
     measles_obj,
     out_dir=out_dir,

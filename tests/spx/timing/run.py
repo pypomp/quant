@@ -26,6 +26,25 @@ Compared against the frozen R baseline in ../estimation/results/R/timings.csv.
 #         sbatch_args: { time: "00:30:00" }
 #       4:
 #         sbatch_args: { time: "00:05:00" }
+#   gpu_cute:
+#     sbatch_args:
+#       job-name: "spx timing (gpu, cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 16GB
+#       output: "results/gpu_cute/logs/slurm-%j.out"
+#     env:
+#       BACKEND: "cute"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:06:00" }
+#       2:
+#         sbatch_args: { time: "00:30:00" }
+#       3:
+#         sbatch_args: { time: "00:30:00" }
+#       4:
+#         sbatch_args: { time: "00:12:00" }
 #   cpu:
 #     sbatch_args:
 #       job-name: "spx timing (cpu)"
@@ -73,7 +92,7 @@ import jax
 import model
 import numpy as np
 import pandas as pd
-from utils import run_metadata
+from utils import backend_suffix, run_metadata
 
 print(jax.devices())
 print("Using CPU:", USE_CPU)
@@ -119,7 +138,7 @@ timed("pfilter_cold", lambda: spx_obj.pfilter(J=NP, reps=NREPS))
 timed("pfilter_warm", lambda: spx_obj.pfilter(J=NP, reps=NREPS))
 
 platform = jax.devices()[0].platform
-out_dir = os.path.join("results", platform)
+out_dir = os.path.join("results", platform + backend_suffix())
 os.makedirs(out_dir, exist_ok=True)
 
 timings_df = pd.DataFrame(timings)
