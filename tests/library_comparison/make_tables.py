@@ -1,0 +1,254 @@
+"""Particle filter times for the ms workloads, every library: TABLES.md and table.csv.
+
+GPU columns (pypomp, pfjax, cuthbert, pydpf): one RTX 3090 (kevtan-linux), from
+{model}/results/gpu/*.jsonl and kernels/results/cute_paper_gpu.jsonl. R: pomp/panelPomp
+on a 36-core node, the pfilter time behind the ms tables (quant
+tests/{model}/timing/results/R). CPU
+libraries: the fastest single-filter time measured, times the number of filters,
+over 36 cores, assuming perfect scaling (the box was shared, so a full run's wall
+time measures the other users).
+
+table.csv has one row per model and column: first_s (first call, including any
+compilation), warm_s, status ("", "projected", "timeout" with first_s the time limit,
+or "n/a"), and the library's version for released libraries. The ms reads it.
+
+usage: python make_tables.py > TABLES.md
+"""
+
+import csv
+import json
+from pathlib import Path
+
+HERE = Path(__file__).parent
+QUANT_TESTS = HERE.parent
+CORES = 36
+MODELS = {
+    "dacca": "Cholera, Dhaka",
+    "measles": "Measles, London",
+    "panel_measles": "Measles, 4-town panel",
+    "spx": "S&P 500",
+}
+# Filters (starting points x replicates) and particles per filter, as in the ms.
+WORKLOAD = {"dacca": (36 * 36, 5000), "measles": (36 * 36, 5000),
+            "panel_measles": (36 * 36, 5000), "spx": (36 * 24, 1000)}
+CUTE_NAME = {"dacca": "dacca", "measles": "measles", "spx": "spx"}
+# Load average above which a wall time on the 32-thread box is not used.
+MAX_LOAD = 50
+# Runs killed by the one-hour limit (pfjax: /tmp/measles_gpu.sh; cuthbert: the timeout in its
+# GPU runs, see HANDOFF.md), so they wrote no row.
+TIMEOUT_S = 3600
+TIMED_OUT = {("panel_measles", "pfjax"), ("panel_measles", "pfjax_fixed"),
+             ("panel_measles", "cuthbert")}
+
+
+def rows(path):
+    if not path.exists():
+        return []
+    return [json.loads(l) for l in path.read_text().splitlines() if l.startswith("{")]
+
+
+def pypomp_layout(r):
+    layout = str(r.get("layout", ""))
+    if layout.startswith("panel"):
+        # panel_pfilter already vmaps the replicates; chunk_size=1 is its default.
+        return "pypomp" if "chunk_size=1" in layout else None
+    old = r.get("variant") in ("functional/nested", "functional.pfilter/map") or str(
+        r.get("layout", "")).startswith("api")
+    return "pypomp" if old else "pypomp_flat"
+
+
+def pfjax_fixed(r, path):
+    return bool("keyfix" in path.name or (r.get("versions") or {}).get("pfjax_keysplit_fix")
+                or (r.get("env_toggles") or {}).get("PFJAX_FIX_KEYSPLIT"))
+
+
+def gpu_times(model):
+    """Column -> (warm, cold) seconds for the ms PF workload on the GPU."""
+    out = {}
+    for path in sorted((HERE / model / "results" / "gpu").glob("*.jsonl")):
+        for r in rows(path):
+            if r.get("tag") or "warm_s" not in r or r["nthetas"] * r["nreps"] != WORKLOAD[model][0]:
+                continue
+            col = r["lib"]
+            if col == "pypomp":
+                # pypomp main (#56) and the CuTe branch (#57) have files of their own.
+                if "pypomp_main" in path.name:
+                    col = "pypomp_flat"
+                elif "pypomp_cute" in path.name:
+                    col = "pypomp_cute"
+                else:
+                    col = pypomp_layout(r)
+                if col is None:
+                    continue
+            elif col == "pfjax" and pfjax_fixed(r, path):
+                col = "pfjax_fixed"
+            out[col] = (r["warm_s"], r["cold_s"])
+    return out
+
+
+def single_filter_s(model, lib):
+    """Fastest per-filter (per-evaluation for the panel) CPU time measured."""
+    best = None
+    for path in (HERE / model / "results").glob("cpu*/*.jsonl"):
+        for r in rows(path):
+            if r.get("lib") != lib or r.get("nthetas") != 1 or r.get("nreps") != 1:
+                continue
+            cands = [r.get("warm_cpu_s")]
+            load = (r.get("loadavg_start") or [0])[0]
+            if load <= MAX_LOAD:
+                cands.append(r.get("warm_s"))
+            for c in cands:
+                if c is not None and (best is None or c < best):
+                    best = c
+    return best
+
+
+def r_pf_s(model):
+    p = QUANT_TESTS / model / "timing" / "results" / "R" / "timings.csv"
+    t = {row["phase"]: float(row["time_seconds"]) for row in csv.DictReader(p.open())}
+    return t["pfilter_warm"]
+
+
+def fmt(x):
+    if x is None:
+        return "---"
+    return f"{x:,.0f}" if x >= 100 else f"{x:.1f}" if x >= 1 else f"{x:.2f}"
+
+
+COLUMNS = [
+    ("R", "R pomp, 36 cores"),
+    ("pypomp", "pypomp 1.2"),
+    ("pypomp_flat", "+ parallel reps"),
+    ("pypomp_cute", "+ CuTe"),
+    ("pfjax", "pfjax"),
+    ("pfjax_fixed", "pfjax, key fix"),
+    ("cuthbert", "cuthbert"),
+    ("pydpf", "pydpf"),
+    ("particles", "particles, 36 cores"),
+    ("pypfilt", "pypfilt, 36 cores"),
+]
+
+
+NOTES = """\
+# Particle filter times on the ms workloads
+
+Seconds to run the particle filter workload of the ms timing tables: every starting
+point times every replicate, J particles each, resampling at every observation.
+Generated by `make_tables.py`; `---` is not run yet (or did not finish).
+
+- **R pomp**: the `pfilter` time behind the ms tables (`panelPomp` for the panel), on a
+  36-core CPU node.
+- **GPU columns** (pypomp, pfjax, cuthbert, pydpf): one RTX 3090, a different GPU from the ms's.
+  Warm time, with the first call (including compilation) in parentheses. The pypomp
+  columns were rerun on 2026-10-26 with the box otherwise idle. pfjax, cuthbert and pydpf
+  ran while other users kept the CPU at load 40-110 on 32 threads, which slows
+  compilation (the pfjax and cuthbert cholera rows were rerun at load about 9).
+  Rerunning pypomp 1.2 at low load left its warm times unchanged.
+  - **pypomp 1.2**: as released; replicates of each parameter set run one after another.
+  - **+ parallel reps**: pypomp `main` at 353be4d, which has #56 (replicates run in
+    parallel) and #58. The panel filter already ran them in parallel, so it has no such row.
+  - **+ CuTe**: also the CuTe rproc backend (`feature/cute-rproc` at 299fbc8, #57, which
+    now has Aaron's real branches, early exit and device functions), chosen by "auto" and
+    drawing JAX's threefry numbers, the default. With `rng="philox"` London takes 8.6 s
+    instead of 9.9 s, and cholera doesn't change. These runs had other users at CPU load
+    about 43, which slows the first call. The S&P 500 has one Euler step per observation,
+    so "auto" keeps XLA there, and forcing CuTe falls back too: the build-time check finds
+    45% of particles' gradients differ from XLA. PanelPomp doesn't use CuTe yet.
+  - pypomp 1.2 runs through `Pomp.pfilter`'s layout, replicates one after another. The
+    other pypomp columns run all 1,296 filters as one batch, as the adapters for the other
+    GPU libraries do. Through `Pomp.pfilter`'s layout (36 parameter sets x 36 replicates),
+    main takes 40.3 s on London instead of 34.0 s, because it nests a `lax.map` over
+    replicates inside the `vmap` over parameter sets (pypomp#59 fixes that); CuTe takes
+    10.0 s either way.
+    See HANDOFF.md.
+  - **pfjax**: as released, multinomial resampling. **Key fix**: with mlysy/pfjax#38.
+    For measles, pfjax draws with `jax.random`'s exact gamma, Poisson and binomial
+    samplers, as a pfjax user would; pypomp uses its inverse-CDF samplers. On the
+    panel, pfjax didn't finish within the one-hour limit.
+  - **cuthbert** 0.1.1: its bootstrap particle filter (`cuthbert.smc.particle_filter`, run
+    by `cuthbert.filter`), systematic resampling. Like pfjax, it draws with `jax.random`'s
+    exact samplers for measles, and it didn't finish the panel within the one-hour limit.
+- **particles, pypfilt** (CPU only): the fastest single-filter time measured on the
+  shared box (wall time at load under 50, or CPU seconds), times the number of
+  filters, divided by 36 cores. This assumes perfect scaling, so it flatters them.
+- **dynamax** is not in the table: it has Kalman-type and HMM filters, and a
+  Rao-Blackwellised particle filter only for switching linear-Gaussian models, but no
+  particle filter for a user-written transition and measurement density.
+"""
+
+
+def lib_versions():
+    """Library -> version string, from the versions recorded with the runs."""
+    out = {}
+    for path in sorted(HERE.glob("*/results/*/*.jsonl")):
+        for r in rows(path):
+            lib = r.get("lib")
+            v = (r.get("versions") or {}).get(lib)
+            if lib and v:
+                out[lib] = v
+    return out
+
+
+def entries(model):
+    """Column -> (first_s, warm_s, status) for one model; None if not run."""
+    g = gpu_times(model)
+    n, _ = WORKLOAD[model]
+    out = {}
+    for col, _ in COLUMNS:
+        if col == "R":
+            out[col] = (r_pf_s(model), r_pf_s(model), "")
+        elif col in ("pypomp_flat", "pypomp_cute") and model == "panel_measles":
+            out[col] = (None, None, "n/a")
+        elif col == "pypomp_cute" and model == "spx":
+            out[col] = (None, None, "n/a")
+        elif (model, col) in TIMED_OUT:
+            out[col] = (TIMEOUT_S, None, "timeout")
+        elif col in ("particles", "pypfilt"):
+            s = single_filter_s(model, col)
+            p = None if s is None else s * n / CORES
+            out[col] = (p, p, "projected")
+        elif col in g:
+            warm, first = g[col]
+            out[col] = (first, warm, "")
+        else:
+            out[col] = None
+    return out
+
+
+def cell(e, col):
+    if e is None:
+        return "---"
+    first, warm, status = e
+    if status == "n/a":
+        return "n/a"
+    if status == "timeout":
+        return f"> {first:,}"
+    if status == "projected" or col == "R":
+        return fmt(first)
+    return f"{fmt(warm)} ({fmt(first)})"
+
+
+def main():
+    print(NOTES)
+    print("| Model | Filters | J | " + " | ".join(h for _, h in COLUMNS) + " |")
+    print("|---|---:|---:|" + "---:|" * len(COLUMNS))
+    with open(HERE / "table.csv", "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["model", "column", "first_s", "warm_s", "status", "version"])
+        versions = lib_versions()
+        for model, label in MODELS.items():
+            n, J = WORKLOAD[model]
+            es = entries(model)
+            print(
+                f"| {label} | {n:,} | {J:,} | "
+                + " | ".join(cell(es[c], c) for c, _ in COLUMNS)
+                + " |"
+            )
+            for col, e in es.items():
+                if e is not None:
+                    vals = ("" if v is None else v for v in e)
+                    w.writerow([model, col, *vals, versions.get(col, "")])
+
+
+if __name__ == "__main__":
+    main()
