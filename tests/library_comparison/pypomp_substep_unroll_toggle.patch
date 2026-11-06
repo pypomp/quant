@@ -1,0 +1,25 @@
+diff --git a/pypomp/core/model_mechanics.py b/pypomp/core/model_mechanics.py
+index db9d282..27b6818 100644
+--- a/pypomp/core/model_mechanics.py
++++ b/pypomp/core/model_mechanics.py
+@@ -3,6 +3,7 @@ This file contains the classes for components that define the model mechanics.
+ """
+ 
+ import inspect
++import os as _os
+ import types
+ from collections.abc import Callable
+ from functools import partial
+@@ -1026,6 +1027,12 @@ def _time_interp(
+                 dt_array_extended=dt_array_extended,
+             ),
+             (X_dict, keys, t, t_idx),
++            # BENCH-ONLY toggle (pf-bench experiment); unset = stock behaviour.
++            **(
++                {"unroll": True}
++                if _os.environ.get("PYPOMP_SUBSTEP_UNROLL") and nstep_fixed is not None
++                else {}
++            ),
+         )
+         X_dict_out = final[0]
+         X_out = jnp.stack([X_dict_out[n] for n in snames], axis=-1)

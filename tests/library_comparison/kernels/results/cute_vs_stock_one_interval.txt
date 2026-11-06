@@ -1,0 +1,4 @@
+interval 0: vmapped max rel |dX| 9.20e-07, share of particles differing > 1e-4: 0.0000, unbatched vs vmapped max |d| 0.00e+00
+interval 40: vmapped max rel |dX| 7.29e-07, share of particles differing > 1e-4: 0.0000, unbatched vs vmapped max |d| 0.00e+00
+interval 0: vmapped max rel |dX| 6.45e-03, share of particles differing > 1e-4: 0.0005, unbatched vs vmapped max |d| 0.00e+00
+interval 40: vmapped max rel |dX| 1.13e-07, share of particles differing > 1e-4: 0.0000, unbatched vs vmapped max |d| 0.00e+00
