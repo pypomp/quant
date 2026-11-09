@@ -34,7 +34,7 @@ and projects the level 4 runtime from its own rates.
 #   3:
 #     sbatch_args: { time: "01:30:00" }
 #   4:
-#     sbatch_args: { time: "2-00:00:00" }
+#     sbatch_args: { time: "1-06:00:00" }
 # --- END SLURM CONFIG ---
 
 import json
