@@ -41,6 +41,7 @@ Compared against results/R/pfilter_logliks.csv, which pomp computes in double.
 #     env:
 #       USE_64BIT: "false"
 #       BACKEND: "cute"
+#       CUTE_RNG: "philox"
 #     run_levels:
 #       1:
 #         sbatch_args: { time: "00:06:00" }

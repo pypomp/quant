@@ -1,0 +1,69 @@
+{
+  "timestamp": "2026-11-06T22:22:15+00:00",
+  "pypomp_version": "1.4.0",
+  "pypomp_source": null,
+  "jax_version": "0.11.2",
+  "backend": "cute",
+  "cute_rng": "philox",
+  "backend_reports": [
+    "Backend 'cute', CuTe rng 'philox'.\n  rproc         CuTe\n  gradients     CuTe\n  dmeasure      CuTe\n  perturbation  CuTe\n  resampling    CuTe  XLA for float64 weights, and for fewer filters than half the GPU's multiprocessors when they have over 10,000 particles each\nCalls with float64 particles still run on XLA, as does train with an optimizer that needs Hessians.",
+    "Backend 'cute', CuTe rng 'philox'.\n  rproc         CuTe\n  gradients     CuTe\n  dmeasure      CuTe\n  perturbation  CuTe\n  resampling    CuTe  XLA for float64 weights, and for fewer filters than half the GPU's multiprocessors when they have over 10,000 particles each\nCalls with float64 particles still run on XLA, as does train with an optimizer that needs Hessians."
+  ],
+  "quant_git_sha": "392fa7b8fa6f5d13d6be92c09284bf794ac8e52a",
+  "hardware": {
+    "cpu_model": "AMD EPYC 9575F 64-Core Processor",
+    "nodelist": "gl1800",
+    "cores": 128
+  },
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "65581867",
+    "partition": "gpu-rtx6000",
+    "gpus": "rtx_pro_6000_blackwell:1",
+    "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+  },
+  "run_config": {
+    "kind": "loglik",
+    "model": "measles",
+    "RUN_LEVEL": 4,
+    "USE_64BIT": false,
+    "MAIN_SEED": 594709947,
+    "UNITS": [
+      "London",
+      "Halesworth"
+    ],
+    "NP_EVAL": 5000,
+    "NREPS_EVAL": 3600,
+    "execution_time": 107.14615273475647
+  },
+  "results_history": {
+    "London": [
+      {
+        "method": "pfilter",
+        "kind": "table",
+        "panel": false,
+        "execution_time": 57.67634654045105,
+        "config": {
+          "J": 5000,
+          "reps": 3600,
+          "thresh": 0.0
+        }
+      }
+    ],
+    "Halesworth": [
+      {
+        "method": "pfilter",
+        "kind": "table",
+        "panel": false,
+        "execution_time": 45.128819942474365,
+        "config": {
+          "J": 5000,
+          "reps": 3600,
+          "thresh": 0.0
+        }
+      }
+    ]
+  }
+}

@@ -75,7 +75,7 @@ SCALE_PATH = "../data/probe_scale.csv"
 
 T0 = 0.0
 NSTEP = 20
-ACCUMVARS = ("cases", "logw")
+ACCUMVARS = ("cases",)
 
 
 def load_data(path: str = DATA_PATH) -> pd.DataFrame:

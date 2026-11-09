@@ -33,7 +33,8 @@ ru.nav_bar("scaling")
 ## Introduction
 
 This benchmark finds how many concurrent particles it takes to saturate the GPU
-for each model. The number of particles in flight during IF2 is
+for each model, on the XLA backend and on the CuTe backend (Philox random
+numbers). The number of particles in flight during IF2 is
 $J \times \text{chains}$. We grow it two ways: by raising $J$ at a fixed number
 of chains, and by adding chains at a fixed $J$.
 
@@ -59,27 +60,31 @@ SWEEP = {"particles": "Varying J (fixed chains)", "chains": "Varying chains (fix
 
 frames = {}
 for m in MODELS:
-    csv_path = os.path.join(ru.results_dir(ru.MODELS[m]["scaling"]["dir"]), "scaling.csv")
+    spec = ru.MODELS[m]["scaling"]
     label = ru.MODELS[m]["label"]
-    if not os.path.exists(csv_path):
-        display(HTML(
-            f"<div class='alert alert-info'><strong>{label} not run yet:</strong> "
-            f"<code>python scripts/run_tests.py run tests/{m}/scaling/run.py --run-level 4</code></div>"
-        ))
-        continue
-    df = pd.read_csv(csv_path)
-    if "error" in df.columns and df["error"].notna().any():
-        items = "".join(
-            f"<li>{r.scaling_type} J={r.J} chains={r.chains}: <pre>{r.error}</pre></li>"
-            for r in df[df["error"].notna()].itertuples()
-        )
-        display(HTML(
-            f"<div class='alert alert-warning'><strong>{label}, failed grid points:</strong><ul>{items}</ul></div>"
-        ))
-    frames[m] = df.dropna(subset=["mif_per_iter_seconds"]).assign(Model=label)
+    for backend, sub in spec["arms"].items():
+        csv_path = os.path.join(ru.results_dir(spec["dir"], sub), "scaling.csv")
+        if not os.path.exists(csv_path):
+            job = "" if sub == "gpu" else f" --job {sub}"
+            display(HTML(
+                f"<div class='alert alert-info'><strong>{label}, {backend} not run yet:</strong> "
+                f"<code>python scripts/run_tests.py run tests/{m}/scaling/run.py --run-level 4{job}</code></div>"
+            ))
+            continue
+        bdf = pd.read_csv(csv_path)
+        if "error" in bdf.columns and bdf["error"].notna().any():
+            items = "".join(
+                f"<li>{r.scaling_type} J={r.J} chains={r.chains}: <pre>{r.error}</pre></li>"
+                for r in bdf[bdf["error"].notna()].itertuples()
+            )
+            display(HTML(
+                f"<div class='alert alert-warning'><strong>{label}, {backend}, failed grid points:</strong><ul>{items}</ul></div>"
+            ))
+        frames[(m, backend)] = bdf.dropna(subset=["mif_per_iter_seconds"]).assign(Model=label, Backend=backend)
 
 df = pd.concat(frames.values(), ignore_index=True)
 df["Model"] = pd.Categorical(df["Model"], categories=df["Model"].unique())
+df["Backend"] = pd.Categorical(df["Backend"], categories=df["Backend"].unique())
 df["Sweep"] = df["scaling_type"].map(SWEEP)
 df["ns_per_particle"] = df["mif_per_iter_seconds"] / df["total_particles_mif"] * 1e9
 df["pf_ns_per_particle"] = df["pfilter_warm_seconds"] / df["total_particles_pfilter"] * 1e9
@@ -101,13 +106,13 @@ df["pf_ns_per_particle"] = df["pfilter_warm_seconds"] / df["total_particles_pfil
 #| fig-height: 4.5
 def sweep_plot(y, x, title, ylab, xlab="Particles in flight (J × chains)"):
     return (
-        ggplot(df, aes(x, y, color="Model"))
+        ggplot(df, aes(x, y, color="Model", linetype="Backend", shape="Backend"))
         + geom_line(size=1.2)
         + geom_point(size=2.5)
         + facet_wrap("~Sweep")
         + scale_x_log10()
         + scale_y_log10()
-        + labs(title=title, x=xlab, y=ylab, color="Model")
+        + labs(title=title, x=xlab, y=ylab, color="Model", linetype="Backend", shape="Backend")
         + ru.scale_color_premium()
         + ru.theme_premium
     )
@@ -138,12 +143,17 @@ if df["peak_vram_mb"].notna().any():
 
 ```{python Cost tables}
 #| output: asis
-for m, mdf in frames.items():
+for m in MODELS:
+    if not any(k[0] == m for k in frames):
+        continue
     print(ru.heading(m))
-    for kind, sort_by in [("particles", "J"), ("chains", "chains")]:
-        print(f"\n**{SWEEP[kind]}**\n")
-        table = scaling.cost_table(mdf[mdf["scaling_type"] == kind], sort_by)
-        print(ru.raw_html(table.to_html(classes="table table-striped table-hover", index=False)))
+    for (fm, backend), mdf in frames.items():
+        if fm != m:
+            continue
+        for kind, sort_by in [("particles", "J"), ("chains", "chains")]:
+            print(f"\n**{backend}: {SWEEP[kind]}**\n")
+            table = scaling.cost_table(mdf[mdf["scaling_type"] == kind], sort_by)
+            print(ru.raw_html(table.to_html(classes="table table-striped table-hover", index=False)))
 ```
 
 ---

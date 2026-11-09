@@ -140,8 +140,7 @@ for rung, eps in enumerate(EPS_LADDER):
     key, subkey = jax.random.split(key)
 
     start = time.time()
-    # Private until these tests pass (pypomp c2fbb62).
-    obj._abc(
+    obj.abc(
         M=M,
         probes=model.PROBES,
         epsilon=eps,

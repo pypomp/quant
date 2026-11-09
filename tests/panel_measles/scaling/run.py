@@ -30,6 +30,27 @@ M and reps are cut to keep the run near 20 min; see ../../scaling.py.
 #         sbatch_args: { time: "00:20:00" }
 #       4:
 #         sbatch_args: { time: "00:45:00" }
+#   gpu_cute:
+#     sbatch_args:
+#       job-name: "panel measles scaling (gpu, cute)"
+#       partition: gpu-rtx6000
+#       gpus: "rtx_pro_6000_blackwell:1"
+#       cpus-per-gpu: 1
+#       mem: 16GB
+#       output: "results/gpu_cute/logs/slurm-%j.out"
+#     env:
+#       XLA_PYTHON_CLIENT_PREALLOCATE: "false"
+#       BACKEND: "cute"
+#       CUTE_RNG: "philox"
+#     run_levels:
+#       1:
+#         sbatch_args: { time: "00:10:00" }
+#       2:
+#         sbatch_args: { time: "00:20:00" }
+#       3:
+#         sbatch_args: { time: "00:40:00" }
+#       4:
+#         sbatch_args: { time: "01:15:00" }
 # --- END SLURM CONFIG ---
 
 import os

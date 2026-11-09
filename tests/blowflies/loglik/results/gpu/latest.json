@@ -1,0 +1,65 @@
+{
+  "timestamp": "2026-11-06T21:08:00+00:00",
+  "run_config": {
+    "kind": "loglik",
+    "model": "blowflies",
+    "RUN_LEVEL": 4,
+    "MAIN_SEED": 828411,
+    "NP_EVAL": 5000,
+    "NREPS_EVAL": 100,
+    "NOBS": 192,
+    "theta": {
+      "P": 3.2838,
+      "delta": 0.16073,
+      "N0": 679.94,
+      "sigma.P": 1.3512,
+      "sigma.d": 0.74677,
+      "sigma.y": 0.026649
+    },
+    "USE_64BIT": true,
+    "SAMPLERS": "jax",
+    "data_sha256": "aed36213ce260b7b92787d4d802c2dfb15fbee66e358431f769a2ddd456c05fb",
+    "model_source_commit": "7cfb3f9aa84c85de687b82d71b081016b9cc5762",
+    "source_sha256": {
+      "run.py": "b5dc52ee4b55208d785d3e6e8592c43426fa91c92190651872c5e85d691ecdfb",
+      "model.py": "8bc8c8f334fdc785ab0abceed374cd8f654440964d376da59397812ad5466728"
+    },
+    "execution_time_including_compilation": 25.04781432636082,
+    "optimization_performed": false,
+    "pathwise_ad_supported": false
+  },
+  "results_history": [
+    {
+      "method": "pfilter",
+      "kind": "table",
+      "panel": false,
+      "execution_time": 25.04331398010254,
+      "config": {
+        "J": 5000,
+        "reps": 100,
+        "thresh": 0.0
+      }
+    }
+  ],
+  "pypomp_version": "1.4.0",
+  "pypomp_source": null,
+  "jax_version": "0.11.2",
+  "backend": "default",
+  "cute_rng": null,
+  "backend_reports": null,
+  "quant_git_sha": "392fa7b8fa6f5d13d6be92c09284bf794ac8e52a",
+  "hardware": {
+    "cpu_model": "Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz",
+    "nodelist": "gl1015",
+    "cores": 40
+  },
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "65580774",
+    "partition": "gpu",
+    "gpus": "v100:1",
+    "gpu_type": "Tesla V100-PCIE-16GB"
+  }
+}

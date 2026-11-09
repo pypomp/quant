@@ -1,4 +1,4 @@
 stage,seconds
-native_dt0.0001 (includes JAX compilation),0.621002416999545
-native_dt0.002 (includes JAX compilation),0.2215410829958273
-native_dt0.02 (includes JAX compilation),0.2286602919921279
+native_dt0.0001 (includes JAX compilation),2.3037775149568915
+native_dt0.002 (includes JAX compilation),1.5508007174357772
+native_dt0.02 (includes JAX compilation),1.5048305056989193

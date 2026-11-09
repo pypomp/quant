@@ -45,6 +45,7 @@ import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 import strang
+from model import FHNParameters
 from scipy.integrate import quad_vec
 from scipy.linalg import expm
 from scipy.stats import ks_2samp
@@ -56,7 +57,7 @@ def sha(path):
 
 
 def parameters(data):
-    return strang.FHNParameters(
+    return FHNParameters(
         data["epsilon"], data["gamma"], data["beta"], data["sigma"], 0.0
     )
 

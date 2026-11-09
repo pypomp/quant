@@ -93,7 +93,7 @@ CONFIG = {
     "R": "R",
     "gpu": "pypomp (GPU)",
     "gpu_jax": "pypomp (GPU, JAX samplers)",
-    "gpu_cute": "pypomp (GPU, CuTe)",
+    "gpu_cute": "pypomp (GPU, CuTe philox)",
     "cpu": "pypomp (CPU, 36 cores)",
 }
 frames = []

@@ -63,6 +63,7 @@ All four start from the same committed parameter vectors
 #     env:
 #       SAMPLERS: "fast"
 #       BACKEND: "cute"
+#       CUTE_RNG: "philox"
 #     run_levels:
 #       1:
 #         sbatch_args: { time: "00:06:00" }

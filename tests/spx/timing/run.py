@@ -36,6 +36,7 @@ Compared against the frozen R baseline in ../estimation/results/R/timings.csv.
 #       output: "results/gpu_cute/logs/slurm-%j.out"
 #     env:
 #       BACKEND: "cute"
+#       CUTE_RNG: "philox"
 #     run_levels:
 #       1:
 #         sbatch_args: { time: "00:06:00" }

@@ -27,13 +27,14 @@ else:
     os.environ.setdefault("JAX_PLATFORMS", "cuda")
     os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
 
-import jax  # noqa: E402
-import jax.numpy as jnp  # noqa: E402
-import numpy as np  # noqa: E402
-import pypomp.functional as F  # noqa: E402
+import jax
+import jax.numpy as jnp
+import numpy as np
+import pypomp.functional as F
 
 sys.path.insert(0, os.path.abspath(os.path.join(DC.HERE, "..", "..", "dacca")))
-import model as dacca_model  # noqa: E402  (quant tests/dacca/model.py)
+sys.path.append(os.path.abspath(os.path.join(DC.HERE, "..", "..")))
+import model as dacca_model
 
 assert jax.devices()[0].platform == args.device, jax.devices()
 if args.layout == "auto":
@@ -41,10 +42,19 @@ if args.layout == "auto":
 inp = DC.load_inputs(args.T, args.theta_set)
 T, n = inp["T"], inp["dt"].size
 
-struct = dacca_model.dacca().to_struct()
+BACKEND, CUTE_RNG = (
+    os.environ.get("PFB_BACKEND", "xla"),
+    os.environ.get("PFB_CUTE_RNG", "philox"),
+)
+obj = dacca_model.dacca()
+obj.set_backend(BACKEND, rng=CUTE_RNG)
+struct = obj.to_struct()
 struct = struct._replace(
-    ys=struct.ys[:T], times=struct.times[:T], nstep_array=struct.nstep_array[:T],
-    dt_array_extended=struct.dt_array_extended[:n], covars_extended=struct.covars_extended[: n + 1],
+    ys=struct.ys[:T],
+    times=struct.times[:T],
+    nstep_array=struct.nstep_array[:T],
+    dt_array_extended=struct.dt_array_extended[:n],
+    covars_extended=struct.covars_extended[: n + 1],
 )
 # Same arrays as everyone else gets from inputs.npz.
 assert list(struct.param_names) == inp["paramnames"]
@@ -73,14 +83,29 @@ else:
 
 def call(c):
     t0 = time.perf_counter()
-    ll = np.asarray(jax.block_until_ready(workload(jax.random.fold_in(jax.random.key(args.seed), c))))
+    ll = np.asarray(
+        jax.block_until_ready(
+            workload(jax.random.fold_in(jax.random.key(args.seed), c))
+        )
+    )
     return time.perf_counter() - t0, ll
 
 
 cold_s, ll = call(0)
 warm_s, _ = call(1)
 DC.record(
-    "pypomp", args, inp, cold_s, warm_s, ll, DC.versions("pypomp", "jax", "jaxlib"),
-    variant=f"functional.pfilter/{args.layout}", dtype="float32", resampler="systematic",
+    "pypomp",
+    args,
+    inp,
+    cold_s,
+    warm_s,
+    ll,
+    DC.versions("pypomp", "jax", "jaxlib"),
+    variant=f"functional.pfilter/{args.layout}",
+    dtype="float32",
+    resampler="systematic",
     env_toggles={k: os.environ.get(k) for k in ("PYPOMP_SUBSTEP_UNROLL",)},
+    backend=BACKEND,
+    cute_rng=None if BACKEND == "xla" else CUTE_RNG,
+    backend_report=str(obj.backend_report()),
 )

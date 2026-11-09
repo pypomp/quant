@@ -15,7 +15,7 @@ MODELS = {
             "arms": {
                 "R pomp": "R",
                 "pypomp (GPU)": "gpu",
-                "pypomp (GPU, CuTe)": "gpu_cute",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
             },
             "reference": "R pomp",
         },
@@ -24,11 +24,17 @@ MODELS = {
             "arms": {
                 "R pomp (36 cores)": "R",
                 "pypomp (GPU)": "gpu",
-                "pypomp (GPU, CuTe)": "gpu_cute",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
                 "pypomp (CPU, 36 cores)": "cpu",
             },
         },
-        "scaling": {"dir": "tests/spx/scaling/results/gpu"},
+        "scaling": {
+            "dir": "tests/spx/scaling/results",
+            "arms": {
+                "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
+            },
+        },
     },
     "dacca": {
         "label": "Dhaka cholera",
@@ -38,7 +44,7 @@ MODELS = {
             "arms": {
                 "R pomp": "R",
                 "pypomp (GPU)": "gpu",
-                "pypomp (GPU, CuTe)": "gpu_cute",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
             },
             "reference": "R pomp",
         },
@@ -47,11 +53,17 @@ MODELS = {
             "arms": {
                 "R pomp (36 cores)": "R",
                 "pypomp (GPU)": "gpu",
-                "pypomp (GPU, CuTe)": "gpu_cute",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
                 "pypomp (CPU, 36 cores)": "cpu",
             },
         },
-        "scaling": {"dir": "tests/dacca/scaling/results/gpu"},
+        "scaling": {
+            "dir": "tests/dacca/scaling/results",
+            "arms": {
+                "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
+            },
+        },
     },
     "measles": {
         "label": "Measles",
@@ -62,10 +74,10 @@ MODELS = {
                 "R pomp": "R",
                 "pypomp (64-bit)": "f64",
                 "pypomp (32-bit)": "f32",
-                "pypomp (32-bit, CuTe)": "f32_cute",
+                "pypomp (32-bit, CuTe philox)": "f32_cute",
             },
             "reference": "R pomp",
-            "info": ["pypomp (32-bit)", "pypomp (32-bit, CuTe)"],
+            "info": ["pypomp (32-bit)", "pypomp (32-bit, CuTe philox)"],
         },
         "timing": {
             "dir": "tests/measles/timing/results",
@@ -73,11 +85,17 @@ MODELS = {
                 "R pomp (36 cores)": "R",
                 "pypomp (GPU)": "gpu",
                 "pypomp (GPU, JAX samplers)": "gpu_jax",
-                "pypomp (GPU, CuTe)": "gpu_cute",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
                 "pypomp (CPU, 36 cores)": "cpu",
             },
         },
-        "scaling": {"dir": "tests/measles/scaling/results/gpu"},
+        "scaling": {
+            "dir": "tests/measles/scaling/results",
+            "arms": {
+                "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
+            },
+        },
     },
     "panel_measles": {
         "label": "Panel measles",
@@ -87,7 +105,7 @@ MODELS = {
             "arms": {
                 "R panelPomp": "R",
                 "pypomp (GPU)": "gpu",
-                "pypomp (GPU, CuTe)": "gpu_cute",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
             },
             "reference": "R panelPomp",
         },
@@ -96,9 +114,15 @@ MODELS = {
             "arms": {
                 "R panelPomp (36 cores)": "R",
                 "pypomp (GPU)": "gpu",
-                "pypomp (GPU, CuTe)": "gpu_cute",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
             },
         },
-        "scaling": {"dir": "tests/panel_measles/scaling/results/gpu"},
+        "scaling": {
+            "dir": "tests/panel_measles/scaling/results",
+            "arms": {
+                "pypomp (GPU)": "gpu",
+                "pypomp (GPU, CuTe philox)": "gpu_cute",
+            },
+        },
     },
 }

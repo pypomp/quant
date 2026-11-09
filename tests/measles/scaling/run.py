@@ -40,6 +40,7 @@ convergence, is the quantity of interest; see ../../scaling.py.
 #     env:
 #       XLA_PYTHON_CLIENT_PREALLOCATE: "false"
 #       BACKEND: "cute"
+#       CUTE_RNG: "philox"
 #     run_levels:
 #       1:
 #         sbatch_args: { time: "00:10:00" }

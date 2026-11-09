@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-08T00:18:45+00:00",
+  "timestamp": "2026-11-06T23:37:51+00:00",
   "run_config": {
     "kind": "reference",
     "model": "sir",
@@ -26,9 +26,9 @@
         0.8
       ]
     },
-    "grid_time": 145.90228652954102,
-    "rejection_time": 75.43277430534363,
-    "execution_time": 221.33506083488464,
+    "grid_time": 111.68296909332275,
+    "rejection_time": 46.6758246421814,
+    "execution_time": 158.35879373550415,
     "platform": "gpu"
   },
   "results_history": [
@@ -36,7 +36,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 18.019375324249268,
+      "execution_time": 15.519237279891968,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -47,7 +47,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.7346391677856445,
+      "execution_time": 5.647736072540283,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -58,7 +58,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.497896432876587,
+      "execution_time": 5.646284341812134,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -69,7 +69,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.4972288608551025,
+      "execution_time": 5.649717807769775,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -80,7 +80,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.496108293533325,
+      "execution_time": 5.644758701324463,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -91,7 +91,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.495684862136841,
+      "execution_time": 5.6477062702178955,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -102,7 +102,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.49583101272583,
+      "execution_time": 5.648311614990234,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -113,7 +113,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.495589733123779,
+      "execution_time": 5.6400673389434814,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -124,7 +124,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.496626377105713,
+      "execution_time": 5.648187160491943,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -135,7 +135,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.495655059814453,
+      "execution_time": 5.64096212387085,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -146,7 +146,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.49541163444519,
+      "execution_time": 5.647591590881348,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -157,7 +157,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.494447946548462,
+      "execution_time": 5.64026951789856,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -168,7 +168,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.496758222579956,
+      "execution_time": 5.646941184997559,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -179,7 +179,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.494264364242554,
+      "execution_time": 5.639940977096558,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -190,7 +190,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.494460105895996,
+      "execution_time": 5.640975475311279,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -201,7 +201,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.495157957077026,
+      "execution_time": 5.64794659614563,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -212,7 +212,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.495001316070557,
+      "execution_time": 5.640007257461548,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -223,7 +223,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 7.495194435119629,
+      "execution_time": 5.641392230987549,
       "config": {
         "J": 5000,
         "reps": 3,
@@ -231,19 +231,23 @@
       }
     }
   ],
-  "pypomp_version": "1.0.8",
+  "pypomp_version": "1.4.0",
+  "pypomp_source": null,
   "jax_version": "0.11.2",
-  "quant_git_sha": "c6ac80ca36bf03b9bb17c9f3814a25bdae01a57a",
+  "backend": "default",
+  "cute_rng": null,
+  "backend_reports": null,
+  "quant_git_sha": "392fa7b8fa6f5d13d6be92c09284bf794ac8e52a",
   "hardware": {
     "cpu_model": "AMD EPYC 9575F 64-Core Processor",
-    "nodelist": "gl1800",
+    "nodelist": "gl1805",
     "cores": 128
   },
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "63438723",
+    "job_id": "65587901",
     "partition": "gpu-rtx6000",
     "gpus": "rtx_pro_6000_blackwell:1",
     "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"

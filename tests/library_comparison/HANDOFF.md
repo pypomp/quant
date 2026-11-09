@@ -11,6 +11,14 @@ correctness". 2026-10-23: "Can you also extend the benchmarks to cover the cuthb
 packages?" ... "if dynamax doesn't support PF then let's just skip it."
 
 ## State
+- **Blackwell rerun** (2026-11-06, quant on Great Lakes): `TABLES_rtxpro6000.md` / `table_rtxpro6000.csv`
+  from `make_tables.py gpu_rtxpro6000`, rows in `*/results/gpu_rtxpro6000/`. One RTX Pro 6000
+  Blackwell per model (`sbatch run_blackwell.sh <model> [smoke]`), envs built by `sbatch build_envs.sbat`
+  (pypomp 1.4.0 from PyPI, jax 0.11.2 in all three JAX envs, Python 3.14). The pypomp adapters take
+  `PFB_BACKEND`/`PFB_CUTE_RNG` (CuTe column: `cute`/`philox`) and record `backend_report`. CuTe now
+  runs every part of all four models, the S&P 500 and the panel included. pfjax and cuthbert still
+  hit the one-hour limit on the panel. TABLES.md / table.csv (3090) are unchanged; regenerating
+  table.csv moves the S&P R pomp cell from 36.4 to 32.0 s (R spx timings rerun after quant cb50025).
 - **Tables**: `TABLES.md` (from `make_tables.py`): PF time on the four ms workloads for R pomp,
   pypomp (released, parallel reps, CuTe), pfjax (released, key fix), cuthbert, pydpf, and
   particles/pypfilt projected to 36 cores. Complete; pfjax and cuthbert on the panel hit the one-hour

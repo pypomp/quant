@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-11-06T22:17:58+00:00",
+  "run_config": {
+    "kind": "loglik",
+    "model": "spx",
+    "RUN_LEVEL": 4,
+    "MAIN_SEED": 631409
+  },
+  "results_history": [
+    {
+      "method": "pfilter",
+      "kind": "table",
+      "panel": false,
+      "execution_time": 7.551697731018066,
+      "config": {
+        "J": 1000,
+        "reps": 3600,
+        "thresh": 0.0
+      }
+    }
+  ],
+  "pypomp_version": "1.4.0",
+  "pypomp_source": null,
+  "jax_version": "0.11.2",
+  "backend": "cute",
+  "cute_rng": "philox",
+  "backend_reports": [
+    "Backend 'cute', CuTe rng 'philox'.\n  rproc         CuTe\n  gradients     CuTe\n  dmeasure      CuTe\n  perturbation  CuTe\n  resampling    CuTe  XLA for float64 weights, and for fewer filters than half the GPU's multiprocessors when they have over 10,000 particles each\nCalls with float64 particles still run on XLA, as does train with an optimizer that needs Hessians."
+  ],
+  "quant_git_sha": "392fa7b8fa6f5d13d6be92c09284bf794ac8e52a",
+  "hardware": {
+    "cpu_model": "AMD EPYC 9575F 64-Core Processor",
+    "nodelist": "gl1800",
+    "cores": 128
+  },
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "65581864",
+    "partition": "gpu-rtx6000",
+    "gpus": "rtx_pro_6000_blackwell:1",
+    "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+  }
+}

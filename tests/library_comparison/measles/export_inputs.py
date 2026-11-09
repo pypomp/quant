@@ -34,6 +34,8 @@ def load_quant_model(subdir):
 
     path = os.path.join(TESTS, subdir, "model.py")
     sys.path.insert(0, os.path.join(TESTS, subdir))
+    if TESTS not in sys.path:
+        sys.path.append(TESTS)
     spec = importlib.util.spec_from_file_location(f"quant_{subdir}_model", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -109,15 +111,26 @@ def probe_step_times(pomp):
         accumvars=names,
     )
     s = probe.to_struct()
-    assert np.array_equal(np.asarray(s.dt_array_extended), np.asarray(pomp.to_struct().dt_array_extended))
-    out = F.pfilter(s, jnp.ones((1, 1)), 1, jax.random.split(jax.random.key(0), 1)[:, None],
-                    filter_mean=True)
+    assert np.array_equal(
+        np.asarray(s.dt_array_extended), np.asarray(pomp.to_struct().dt_array_extended)
+    )
+    out = F.pfilter(
+        s,
+        jnp.ones((1, 1)),
+        1,
+        jax.random.split(jax.random.key(0), 1)[:, None],
+        filter_mean=True,
+    )
     fm = np.asarray(out["filter_mean"])[0, 0]  # (T, 1 + M)
     nstep = np.asarray(pomp._nstep_array)
-    return np.concatenate([fm[i, 1:1 + nstep[i]] for i in range(len(nstep))]).astype(np.float32)
+    return np.concatenate([fm[i, 1 : 1 + nstep[i]] for i in range(len(nstep))]).astype(
+        np.float32
+    )
 
 
-def export(model_tag, pomps, unit_structs, thetas, param_names, out_path, extra_meta=None):
+def export(
+    model_tag, pomps, unit_structs, thetas, param_names, out_path, extra_meta=None
+):
     """pomps: {unit: Pomp}; unit_structs: {unit: (ys (T,), covars_extended (K+1, C))};
     thetas: (n, U, P) float32 in `param_names` order."""
     units = list(pomps)
@@ -129,9 +142,13 @@ def export(model_tag, pomps, unit_structs, thetas, param_names, out_path, extra_
     dt32 = np.asarray(s.dt_array_extended, dtype=np.float32)
     for u in units[1:]:
         su = pomps[u].to_struct()
-        assert np.array_equal(np.asarray(pomps[u].ys.index), np.asarray(ref.ys.index)), u
+        assert np.array_equal(
+            np.asarray(pomps[u].ys.index), np.asarray(ref.ys.index)
+        ), u
         assert np.array_equal(np.asarray(su.nstep_array), np.asarray(s.nstep_array)), u
-        assert np.array_equal(np.asarray(su.dt_array_extended), np.asarray(s.dt_array_extended)), u
+        assert np.array_equal(
+            np.asarray(su.dt_array_extended), np.asarray(s.dt_array_extended)
+        ), u
         assert pomps[u].t0 == ref.t0, u
 
     t_step = pypomp_step_times(ref.t0, times32, nstep, dt32)
@@ -141,18 +158,26 @@ def export(model_tag, pomps, unit_structs, thetas, param_names, out_path, extra_
         raise AssertionError(f"{n_bad} Euler-step times differ from pypomp's own loop")
     term, cohort = flags_001b(t_step, dt32)
     years = np.floor(t_step).astype(int)
-    per_year = np.bincount(years[cohort] - years.min(), minlength=years.max() - years.min() + 1)
+    per_year = np.bincount(
+        years[cohort] - years.min(), minlength=years.max() - years.min() + 1
+    )
     covar_names = list(ref.covars.columns)
     ipop, ibr = covar_names.index("pop"), covar_names.index("birthrate")
     ys = np.stack([np.asarray(unit_structs[u][0], dtype=np.float64) for u in units])
-    cov = np.stack([np.asarray(unit_structs[u][1], dtype=np.float64) for u in units])  # (U, K+1, C)
+    cov = np.stack(
+        [np.asarray(unit_structs[u][1], dtype=np.float64) for u in units]
+    )  # (U, K+1, C)
     K = int(nstep.sum())
     assert cov.shape[1] == K + 1 and dt32.shape[0] == K
 
     try:
-        commit = subprocess.run(["git", "-C", HERE, "rev-parse", "--short", "HEAD"],
-                                capture_output=True, text=True).stdout.strip()
-    except Exception:
+        commit = subprocess.run(
+            ["git", "-C", HERE, "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+    except OSError:
         commit = ""
     import importlib.metadata as md
 
@@ -175,14 +200,26 @@ def export(model_tag, pomps, unit_structs, thetas, param_names, out_path, extra_
         t_step=t_step.astype(np.float64),
         term=term,
         cohort_step=cohort,
-        meta=np.array(str(dict(pypomp=md.version("pypomp"), quant_commit=commit, **(extra_meta or {})))),
+        meta=np.array(
+            str(
+                dict(
+                    pypomp=md.version("pypomp"),
+                    quant_commit=commit,
+                    **(extra_meta or {}),
+                )
+            )
+        ),
     )
     print(f"wrote {out_path}")
-    print(f"  model {model_tag}, units {units}, T {ys.shape[1]}, K {K} Euler steps, "
-          f"nstep {np.unique(nstep).tolist()}, dt {np.unique(dt32).tolist()}")
+    print(
+        f"  model {model_tag}, units {units}, T {ys.shape[1]}, K {K} Euler steps, "
+        f"nstep {np.unique(nstep).tolist()}, dt {np.unique(dt32).tolist()}"
+    )
     print(f"  theta {np.shape(thetas)}, params {list(param_names)}")
-    print(f"  t_step matches pypomp's loop at all {K} steps; term-time steps {int(term.sum())}, "
-          f"cohort steps per year {per_year.tolist()}")
+    print(
+        f"  t_step matches pypomp's loop at all {K} steps; term-time steps {int(term.sum())}, "
+        f"cohort steps per year {per_year.tolist()}"
+    )
     print(f"  NaN observations per unit {np.isnan(ys).sum(axis=1).tolist()}")
 
 
@@ -199,7 +236,9 @@ def main():
         thetas,
         list(pomp.canonical_param_names),
         os.path.join(HERE, "inputs.npz"),
-        extra_meta=dict(source="tests/measles/model.py: measles('London', fixed_starts(36), model='001b'), clean=False"),
+        extra_meta={
+            "source": "tests/measles/model.py: measles('London', fixed_starts(36), model='001b'), clean=False"
+        },
     )
 
 

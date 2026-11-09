@@ -37,6 +37,7 @@ timing exactly the same work.
 #       output: "results/gpu_cute/logs/slurm-%j.out"
 #     env:
 #       BACKEND: "cute"
+#       CUTE_RNG: "philox"
 #     run_levels:
 #       1:
 #         sbatch_args: { time: "00:06:00" }

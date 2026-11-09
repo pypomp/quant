@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-02T21:09:10+00:00",
+  "timestamp": "2026-11-06T20:55:22+00:00",
   "run_config": {
     "kind": "loglik",
     "model": "spx",
@@ -11,7 +11,7 @@
       "method": "pfilter",
       "kind": "table",
       "panel": false,
-      "execution_time": 8.367709636688232,
+      "execution_time": 8.45845627784729,
       "config": {
         "J": 1000,
         "reps": 3600,
@@ -19,19 +19,23 @@
       }
     }
   ],
-  "pypomp_version": "1.3.0rc1",
+  "pypomp_version": "1.4.0",
+  "pypomp_source": null,
   "jax_version": "0.11.2",
-  "quant_git_sha": "cb5002505fcd605e31fe640d74028777d35b9381",
+  "backend": "default",
+  "cute_rng": null,
+  "backend_reports": null,
+  "quant_git_sha": "392fa7b8fa6f5d13d6be92c09284bf794ac8e52a",
   "hardware": {
-    "cpu_model": "Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz",
-    "nodelist": "gl1021",
+    "cpu_model": "Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz",
+    "nodelist": "gl1000",
     "cores": 40
   },
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "65257230",
+    "job_id": "65580736",
     "partition": "gpu",
     "gpus": "v100:1",
     "gpu_type": "Tesla V100-PCIE-16GB"

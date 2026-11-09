@@ -1,7 +1,7 @@
 {
   "verdict": "PASS",
   "run_level": 4,
-  "pypomp_version": "1.0.8",
+  "pypomp_version": "1.4.0",
   "checks": [
     {
       "check": "1. Same probes",

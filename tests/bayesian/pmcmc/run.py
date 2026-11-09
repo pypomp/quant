@@ -147,8 +147,7 @@ for J in J_GRID:
     key, subkey = jax.random.split(key)
 
     start = time.time()
-    # Private until these tests pass (pypomp c2fbb62).
-    obj._pmcmc(J=J, M=M, proposal=model.proposal(), dprior=model.sir_dprior, key=subkey)
+    obj.pmcmc(J=J, M=M, proposal=model.proposal(), dprior=model.sir_dprior, key=subkey)
     execution_time = time.time() - start
 
     result = obj.results_history[-1]

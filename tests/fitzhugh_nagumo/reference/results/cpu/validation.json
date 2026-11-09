@@ -1,6 +1,5 @@
 {
-  "scope": "Strang simulator reference check only; no likelihood, gradient, IF2, IFAD, ABC fit, or reproduction of the 2019 estimation experiment.",
-  "all_passed": true,
+  "scope": "Strang simulator only; no likelihood, gradient, optimizer, or 2019 experiment reproduction.",
   "coupled_scenarios": [
     {
       "name": "theta1_dt0.0001_state1_fixed",
@@ -39,7 +38,7 @@
         0
       ],
       "max_absolute_state_error": 4.85722573273506e-17,
-      "max_absolute_voltage_error_vs_package": 1.3552527156068805e-18,
+      "max_absolute_voltage_error_vs_package": 1.2468324983583301e-18,
       "jax_covariance_max_relative_error_vs_quadrature": 3.676726112996026e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 4.256205130332135e-17,
       "author_package_covariance_max_relative_error_vs_quadrature": 1.4188414941520353e-05,
@@ -82,8 +81,8 @@
         -0.5,
         -0.6
       ],
-      "max_absolute_state_error": 3.7192471324942744e-15,
-      "max_absolute_voltage_error_vs_package": 3.7192471324942744e-15,
+      "max_absolute_state_error": 3.0531133177191805e-15,
+      "max_absolute_voltage_error_vs_package": 3.0531133177191805e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 3.676726112996026e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 4.256205130332135e-17,
       "author_package_covariance_max_relative_error_vs_quadrature": 1.4188414941520353e-05,
@@ -126,8 +125,8 @@
         0.7,
         0.2
       ],
-      "max_absolute_state_error": 4.440892098500626e-15,
-      "max_absolute_voltage_error_vs_package": 4.440892098500626e-15,
+      "max_absolute_state_error": 4.107825191113079e-15,
+      "max_absolute_voltage_error_vs_package": 3.9968028886505635e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 3.676726112996026e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 4.256205130332135e-17,
       "author_package_covariance_max_relative_error_vs_quadrature": 1.4188414941520353e-05,
@@ -149,7 +148,7 @@
         0
       ],
       "max_absolute_state_error": 5.204170427930421e-17,
-      "max_absolute_voltage_error_vs_package": 9.215718466126788e-19,
+      "max_absolute_voltage_error_vs_package": 9.75781955236954e-19,
       "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
       "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
@@ -171,7 +170,7 @@
         0
       ],
       "max_absolute_state_error": 1.0408340855860843e-16,
-      "max_absolute_voltage_error_vs_package": 2.5153490401663703e-17,
+      "max_absolute_voltage_error_vs_package": 2.42861286636753e-17,
       "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
       "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
@@ -192,8 +191,8 @@
         -0.5,
         -0.6
       ],
-      "max_absolute_state_error": 4.996003610813204e-16,
-      "max_absolute_voltage_error_vs_package": 4.996003610813204e-16,
+      "max_absolute_state_error": 6.106226635438361e-16,
+      "max_absolute_voltage_error_vs_package": 6.106226635438361e-16,
       "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
       "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
@@ -215,7 +214,7 @@
         -0.6
       ],
       "max_absolute_state_error": 2.7755575615628914e-15,
-      "max_absolute_voltage_error_vs_package": 8.881784197001252e-16,
+      "max_absolute_voltage_error_vs_package": 1.0547118733938987e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
       "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
@@ -258,8 +257,8 @@
         0.7,
         0.2
       ],
-      "max_absolute_state_error": 1.887379141862766e-15,
-      "max_absolute_voltage_error_vs_package": 1.887379141862766e-15,
+      "max_absolute_state_error": 1.2212453270876722e-15,
+      "max_absolute_voltage_error_vs_package": 1.2212453270876722e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 4.1421601309523503e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 6.086455827658262e-17,
       "author_package_covariance_max_relative_error_vs_quadrature": 2.539859925544419e-09,
@@ -281,8 +280,8 @@
         0
       ],
       "max_absolute_state_error": 5.551115123125783e-17,
-      "max_absolute_voltage_error_vs_package": 4.85722573273506e-17,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "max_absolute_voltage_error_vs_package": 5.204170427930421e-17,
+      "jax_covariance_max_relative_error_vs_quadrature": 1.434735472343793e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
@@ -302,9 +301,9 @@
         0,
         0
       ],
-      "max_absolute_state_error": 4.218847493575595e-15,
-      "max_absolute_voltage_error_vs_package": 4.218847493575595e-15,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "max_absolute_state_error": 3.9968028886505635e-15,
+      "max_absolute_voltage_error_vs_package": 3.9968028886505635e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 1.434735472343793e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
@@ -326,7 +325,7 @@
       ],
       "max_absolute_state_error": 3.3306690738754696e-16,
       "max_absolute_voltage_error_vs_package": 6.661338147750939e-16,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 1.434735472343793e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
@@ -346,9 +345,9 @@
         -0.5,
         -0.6
       ],
-      "max_absolute_state_error": 3.6637359812630166e-15,
-      "max_absolute_voltage_error_vs_package": 3.6637359812630166e-15,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "max_absolute_state_error": 2.7755575615628914e-15,
+      "max_absolute_voltage_error_vs_package": 2.7755575615628914e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 1.434735472343793e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
@@ -370,7 +369,7 @@
       ],
       "max_absolute_state_error": 4.996003610813204e-16,
       "max_absolute_voltage_error_vs_package": 4.440892098500626e-16,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 1.434735472343793e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
@@ -390,9 +389,9 @@
         0.7,
         0.2
       ],
-      "max_absolute_state_error": 4.6629367034256575e-15,
-      "max_absolute_voltage_error_vs_package": 4.6629367034256575e-15,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "max_absolute_state_error": 4.884981308350689e-15,
+      "max_absolute_voltage_error_vs_package": 4.884981308350689e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 1.434735472343793e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
@@ -479,7 +478,7 @@
         -0.6
       ],
       "max_absolute_state_error": 3.1086244689504383e-15,
-      "max_absolute_voltage_error_vs_package": 6.106226635438361e-16,
+      "max_absolute_voltage_error_vs_package": 1.0547118733938987e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 4.20757374140958e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 2.2479189479616535e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 1.8734063008727227e-05,
@@ -500,8 +499,8 @@
         0.7,
         0.2
       ],
-      "max_absolute_state_error": 4.440892098500626e-16,
-      "max_absolute_voltage_error_vs_package": 4.440892098500626e-16,
+      "max_absolute_state_error": 5.551115123125783e-16,
+      "max_absolute_voltage_error_vs_package": 5.551115123125783e-16,
       "jax_covariance_max_relative_error_vs_quadrature": 4.20757374140958e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 2.2479189479616535e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 1.8734063008727227e-05,
@@ -523,7 +522,7 @@
         0.2
       ],
       "max_absolute_state_error": 9.159339953157541e-16,
-      "max_absolute_voltage_error_vs_package": 6.661338147750939e-16,
+      "max_absolute_voltage_error_vs_package": 7.771561172376096e-16,
       "jax_covariance_max_relative_error_vs_quadrature": 4.20757374140958e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 2.2479189479616535e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 1.8734063008727227e-05,
@@ -567,7 +566,7 @@
         0
       ],
       "max_absolute_state_error": 1.0755285551056204e-16,
-      "max_absolute_voltage_error_vs_package": 1.0462550964485118e-17,
+      "max_absolute_voltage_error_vs_package": 1.0516761073109393e-17,
       "jax_covariance_max_relative_error_vs_quadrature": 8.845154294877377e-15,
       "author_package_covariance_max_absolute_error_vs_quadrature": 8.890221033930793e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 9.274569492791497e-09,
@@ -611,7 +610,7 @@
         -0.6
       ],
       "max_absolute_state_error": 2.55351295663786e-15,
-      "max_absolute_voltage_error_vs_package": 1.5543122344752192e-15,
+      "max_absolute_voltage_error_vs_package": 1.7763568394002505e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 8.845154294877377e-15,
       "author_package_covariance_max_absolute_error_vs_quadrature": 8.890221033930793e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 9.274569492791497e-09,
@@ -654,8 +653,8 @@
         0.7,
         0.2
       ],
-      "max_absolute_state_error": 2.1094237467877974e-15,
-      "max_absolute_voltage_error_vs_package": 2.1094237467877974e-15,
+      "max_absolute_state_error": 1.5543122344752192e-15,
+      "max_absolute_voltage_error_vs_package": 1.4432899320127035e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 8.845154294877377e-15,
       "author_package_covariance_max_absolute_error_vs_quadrature": 8.890221033930793e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 9.274569492791497e-09,
@@ -698,8 +697,8 @@
         0,
         0
       ],
-      "max_absolute_state_error": 5.273559366969494e-16,
-      "max_absolute_voltage_error_vs_package": 5.273559366969494e-16,
+      "max_absolute_state_error": 6.106226635438361e-16,
+      "max_absolute_voltage_error_vs_package": 6.106226635438361e-16,
       "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
@@ -742,8 +741,8 @@
         -0.5,
         -0.6
       ],
-      "max_absolute_state_error": 9.454242944073599e-16,
-      "max_absolute_voltage_error_vs_package": 1.4068607390171906e-15,
+      "max_absolute_state_error": 7.129713486264677e-16,
+      "max_absolute_voltage_error_vs_package": 1.1744077932362984e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
@@ -765,7 +764,7 @@
         0.2
       ],
       "max_absolute_state_error": 4.440892098500626e-16,
-      "max_absolute_voltage_error_vs_package": 7.771561172376096e-16,
+      "max_absolute_voltage_error_vs_package": 8.881784197001252e-16,
       "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
@@ -786,8 +785,8 @@
         0.7,
         0.2
       ],
-      "max_absolute_state_error": 9.992007221626409e-16,
-      "max_absolute_voltage_error_vs_package": 9.992007221626409e-16,
+      "max_absolute_state_error": 8.881784197001252e-16,
+      "max_absolute_voltage_error_vs_package": 8.881784197001252e-16,
       "jax_covariance_max_relative_error_vs_quadrature": 3.8421516656197594e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 3.1706560798096597e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.353446508089335e-12,
@@ -810,7 +809,7 @@
       ],
       "max_absolute_state_error": 1.5612511283791264e-17,
       "max_absolute_voltage_error_vs_package": 3.3881317890172014e-20,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.798563391819803e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
@@ -831,8 +830,8 @@
         0
       ],
       "max_absolute_state_error": 2.1510571102112408e-16,
-      "max_absolute_voltage_error_vs_package": 1.8648277366750676e-17,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "max_absolute_voltage_error_vs_package": 1.8865117801247777e-17,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.798563391819803e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
@@ -854,7 +853,7 @@
       ],
       "max_absolute_state_error": 9.992007221626409e-16,
       "max_absolute_voltage_error_vs_package": 5.551115123125783e-16,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.798563391819803e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
@@ -875,8 +874,8 @@
         -0.6
       ],
       "max_absolute_state_error": 4.218847493575595e-15,
-      "max_absolute_voltage_error_vs_package": 1.7763568394002505e-15,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "max_absolute_voltage_error_vs_package": 1.5543122344752192e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.798563391819803e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
@@ -898,7 +897,7 @@
       ],
       "max_absolute_state_error": 4.440892098500626e-16,
       "max_absolute_voltage_error_vs_package": 3.3306690738754696e-16,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.798563391819803e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
@@ -918,9 +917,9 @@
         0.7,
         0.2
       ],
-      "max_absolute_state_error": 2.7755575615628914e-15,
-      "max_absolute_voltage_error_vs_package": 2.886579864025407e-15,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.161014603753933e-16,
+      "max_absolute_state_error": 2.6645352591003757e-15,
+      "max_absolute_voltage_error_vs_package": 2.7755575615628914e-15,
+      "jax_covariance_max_relative_error_vs_quadrature": 3.798563391819803e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 1.860427277832857e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 4.55649038414623e-06,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 2.8641460971443794e-06,
@@ -984,8 +983,8 @@
         -0.5,
         -0.6
       ],
-      "max_absolute_state_error": 5.551115123125783e-16,
-      "max_absolute_voltage_error_vs_package": 5.551115123125783e-16,
+      "max_absolute_state_error": 7.771561172376096e-16,
+      "max_absolute_voltage_error_vs_package": 7.771561172376096e-16,
       "jax_covariance_max_relative_error_vs_quadrature": 2.771450504315393e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 1.4464654585319599e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 4.4346898612345416e-10,
@@ -1006,8 +1005,8 @@
         -0.5,
         -0.6
       ],
-      "max_absolute_state_error": 1.9984014443252818e-15,
-      "max_absolute_voltage_error_vs_package": 3.497202527569243e-15,
+      "max_absolute_state_error": 1.6653345369377348e-15,
+      "max_absolute_voltage_error_vs_package": 4.107825191113079e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 2.771450504315393e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 1.4464654585319599e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 4.4346898612345416e-10,
@@ -1051,7 +1050,7 @@
         0.2
       ],
       "max_absolute_state_error": 1.4432899320127035e-15,
-      "max_absolute_voltage_error_vs_package": 1.5543122344752192e-15,
+      "max_absolute_voltage_error_vs_package": 1.7763568394002505e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 2.771450504315393e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 1.4464654585319599e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 4.4346898612345416e-10,
@@ -1094,8 +1093,8 @@
         0,
         0
       ],
-      "max_absolute_state_error": 5.329070518200751e-15,
-      "max_absolute_voltage_error_vs_package": 5.329070518200751e-15,
+      "max_absolute_state_error": 5.551115123125783e-15,
+      "max_absolute_voltage_error_vs_package": 5.551115123125783e-15,
       "jax_covariance_max_relative_error_vs_quadrature": 3.6235226974771227e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 3.838943052336674e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 1.1952988810012082e-12,
@@ -1182,8 +1181,8 @@
         0.7,
         0.2
       ],
-      "max_absolute_state_error": 2.603472992745992e-14,
-      "max_absolute_voltage_error_vs_package": 2.1038726316646716e-14,
+      "max_absolute_state_error": 2.4480417692984702e-14,
+      "max_absolute_voltage_error_vs_package": 1.9484414082171497e-14,
       "jax_covariance_max_relative_error_vs_quadrature": 3.6235226974771227e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 3.838943052336674e-15,
       "author_package_covariance_max_relative_error_vs_quadrature": 1.1952988810012082e-12,
@@ -1204,9 +1203,9 @@
         0,
         0
       ],
-      "max_absolute_state_error": 1.4654943925052066e-14,
-      "max_absolute_voltage_error_vs_package": 1.4210854715202004e-14,
-      "jax_covariance_max_relative_error_vs_quadrature": 2.4627409977673965e-16,
+      "max_absolute_state_error": 2.1649348980190553e-14,
+      "max_absolute_voltage_error_vs_package": 2.1149748619109232e-14,
+      "jax_covariance_max_relative_error_vs_quadrature": 1.434735472343793e-16,
       "author_package_covariance_max_absolute_error_vs_quadrature": 7.558922021297376e-18,
       "author_package_covariance_max_relative_error_vs_quadrature": 3.2008948387990025e-13,
       "author_experiment_covariance_max_relative_error_vs_quadrature": 3.750398524706675e-13,
@@ -1230,52 +1229,52 @@
       ],
       "paths_per_implementation": 4096,
       "jax_seed": 672013,
-      "elapsed_jax_seconds_including_compile": 0.621002416999545,
+      "elapsed_jax_seconds_including_compile": 2.3037775149568915,
       "R_mean": [
         -0.28581361351557744,
         0.12207046615458414
       ],
       "JAX_mean": [
-        -0.28424420800698064,
-        0.12111921596008518
+        -0.2842442080069807,
+        0.1211192159600852
       ],
       "R_covariance": [
         [
-          0.08445652747221814,
-          -0.01823480308293456
+          0.08445652747221812,
+          -0.018234803082934552
         ],
         [
-          -0.01823480308293456,
+          -0.018234803082934552,
           0.010985204437931047
         ]
       ],
       "JAX_covariance": [
         [
-          0.08200623830372969,
+          0.08200623830372963,
           -0.018725351449879614
         ],
         [
           -0.018725351449879614,
-          0.0110216708959698
+          0.011021670895969792
         ]
       ],
       "mean_difference_combined_mcse": [
-        0.006374976366683135,
-        0.0023179241355824475
+        0.0063749763666831345,
+        0.002317924135582447
       ],
       "mean_difference_z": [
-        0.24618216889380445,
-        -0.41038883883053806
+        0.2461821688937958,
+        -0.4103888388305322
       ],
       "covariance_difference_combined_mcse": [
-        0.002350484781107942,
-        0.0007476068095454967,
+        0.0023504847811079417,
+        0.0007476068095454966,
         0.00033954024995341223
       ],
       "covariance_difference_z": [
-        -1.042461192764442,
-        -0.6561582381028347,
-        0.10739951461942107
+        -1.042461192764454,
+        -0.656158238102844,
+        0.10739951461939552
       ],
       "ks_distance": [
         0.015869140625,
@@ -1319,23 +1318,23 @@
       ],
       "JAX_quantiles": [
         [
-          -0.7149222802121851,
-          -0.05010462262354629
+          -0.7149222802121846,
+          -0.050104622623546355
         ],
         [
-          -0.5013279368656811,
-          0.048717740554812934
+          -0.5013279368656773,
+          0.048717740554813
         ],
         [
-          -0.3078880361092553,
-          0.11881291575660871
+          -0.3078880361092542,
+          0.11881291575660874
         ],
         [
-          -0.08745853589170514,
-          0.19135407399556803
+          -0.087458535891705,
+          0.1913540739955679
         ],
         [
-          0.21728436639424464,
+          0.21728436639424525,
           0.29742476608884505
         ]
       ],
@@ -1357,18 +1356,18 @@
       ],
       "paths_per_implementation": 4096,
       "jax_seed": 672014,
-      "elapsed_jax_seconds_including_compile": 0.2215410829958273,
+      "elapsed_jax_seconds_including_compile": 1.5508007174357772,
       "R_mean": [
         -0.2909136377666977,
         0.12134937232585942
       ],
       "JAX_mean": [
-        -0.2809226994434261,
-        0.11743395054773655
+        -0.28092269944342607,
+        0.1174339505477365
       ],
       "R_covariance": [
         [
-          0.08323269651398102,
+          0.08323269651398099,
           -0.018449580890514336
         ],
         [
@@ -1379,11 +1378,11 @@
       "JAX_covariance": [
         [
           0.08403689539663381,
-          -0.019132215207230626
+          -0.01913221520723063
         ],
         [
-          -0.019132215207230626,
-          0.011102669579377215
+          -0.01913221520723063,
+          0.011102669579377214
         ]
       ],
       "mean_difference_combined_mcse": [
@@ -1391,18 +1390,18 @@
         0.002324893683045487
       ],
       "mean_difference_z": [
-        1.5634275235231323,
-        -1.6841293890883988
+        1.563427523523141,
+        -1.6841293890884168
       ],
       "covariance_difference_combined_mcse": [
         0.002370390607376375,
-        0.0007678693413801119,
-        0.0003429631456661512
+        0.0007678693413801118,
+        0.00034296314566615113
       ],
       "covariance_difference_z": [
-        0.339268507118708,
-        -0.8889980103768348,
-        0.19221910147377627
+        0.3392685071187197,
+        -0.8889980103768395,
+        0.19221910147377125
       ],
       "ks_distance": [
         0.0244140625,
@@ -1446,24 +1445,24 @@
       ],
       "JAX_quantiles": [
         [
-          -0.7161823963198115,
-          -0.05672240108871562
+          -0.7161823963198108,
+          -0.05672240108871565
         ],
         [
-          -0.5003598610645467,
-          0.04613058611137658
+          -0.5003598610645469,
+          0.04613058611137657
         ],
         [
-          -0.3008511434890092,
-          0.118886122829237
+          -0.3008511434890089,
+          0.11888612282923691
         ],
         [
-          -0.07763247638671687,
-          0.188392848428277
+          -0.07763247638671684,
+          0.18839284842827697
         ],
         [
-          0.229080815940568,
-          0.28964916829087783
+          0.2290808159405676,
+          0.2896491682908779
         ]
       ],
       "passed": true
@@ -1484,7 +1483,7 @@
       ],
       "paths_per_implementation": 4096,
       "jax_seed": 672015,
-      "elapsed_jax_seconds_including_compile": 0.2286602919921279,
+      "elapsed_jax_seconds_including_compile": 1.5048305056989193,
       "R_mean": [
         -0.2850784031245574,
         0.12085450667166091
@@ -1495,21 +1494,21 @@
       ],
       "R_covariance": [
         [
-          0.0808371436413171,
-          -0.01870770386417992
+          0.08083714364131711,
+          -0.018707703864179914
         ],
         [
-          -0.01870770386417992,
-          0.011279142595435101
+          -0.018707703864179914,
+          0.011279142595435103
         ]
       ],
       "JAX_covariance": [
         [
-          0.08626166434712448,
-          -0.018598754564905288
+          0.08626166434712447,
+          -0.01859875456490528
         ],
         [
-          -0.018598754564905288,
+          -0.01859875456490528,
           0.011049468278657458
         ]
       ],
@@ -1522,14 +1521,14 @@
         -0.23127078419272487
       ],
       "covariance_difference_combined_mcse": [
-        0.0024127630643446295,
-        0.0007719834489896124,
-        0.0003529793675438172
+        0.002412763064344629,
+        0.0007719834489896123,
+        0.00035297936754381717
       ],
       "covariance_difference_z": [
-        2.248260836702103,
-        0.14112906101449255,
-        -0.6506734894331536
+        2.2482608367020918,
+        0.14112906101449257,
+        -0.6506734894331586
       ],
       "ks_distance": [
         0.020263671875,
@@ -1574,27 +1573,28 @@
       "JAX_quantiles": [
         [
           -0.7266780096202601,
-          -0.053347624005348405
+          -0.05334762400534837
         ],
         [
           -0.5006513816089886,
-          0.04795285879457141
+          0.047952858794571424
         ],
         [
-          -0.31057872271952935,
-          0.12013143395196876
+          -0.3105787227195294,
+          0.12013143395196878
         ],
         [
-          -0.08562398887100536,
-          0.1913388321545178
+          -0.08562398887100543,
+          0.19133883215451777
         ],
         [
-          0.23947639373395654,
+          0.23947639373395652,
           0.29281763018773305
         ]
       ],
       "passed": true
     }
   ],
-  "covariance_note": "Native uses stable Van Loan moments. Author closed-form covariance has small-step cancellation; common-additive-noise tests separate that rounding from the state update. The linear-substep covariance is not the final nonlinear-step covariance."
+  "covariance_note": "Stable Van Loan linear-substep moments; shared additive noise separates state-update error from author covariance cancellation.",
+  "all_passed": true
 }

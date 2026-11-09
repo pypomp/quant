@@ -29,6 +29,7 @@ difference between the implementations rather than between the models.
 #       output: "results/gpu_cute/logs/slurm-%j.out"
 #     env:
 #       BACKEND: "cute"
+#       CUTE_RNG: "philox"
 #     run_levels:
 #       1:
 #         sbatch_args: { time: "00:08:00" }

@@ -30,7 +30,7 @@ from IPython.display import display, HTML, Markdown
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('abc')}</div>"))
 ```
 
-Tests `Pomp._abc` at each tolerance in the ladder ε = 10⁶, 4, 2.5, 1.5 against
+Tests `Pomp.abc` at each tolerance in the ladder ε = 10⁶, 4, 2.5, 1.5 against
 the exact ABC posterior from rejection sampling (`reference/run.py`) and
 against R `pomp::abc`. Data: 208 weeks simulated from `pomp::sir` at known
 parameters. Free parameters `beta1` and `rho` have a flat prior on

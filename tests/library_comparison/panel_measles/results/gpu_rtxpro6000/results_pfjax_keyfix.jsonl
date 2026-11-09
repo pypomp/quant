@@ -1,0 +1,1 @@
+{"failed": "/home/aaronabk/research/quant/tests/library_comparison/.venv-jax/bin/python bench_pfjax.py --J 5000 --nthetas 36 --nreps 36 --device gpu", "rc": 124}

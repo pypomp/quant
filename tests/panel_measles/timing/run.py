@@ -28,6 +28,7 @@ results/R/timings.csv. Both start from the same committed parameter vectors
 #       output: "results/gpu_cute/logs/slurm-%j.out"
 #     env:
 #       BACKEND: "cute"
+#       CUTE_RNG: "philox"
 #     run_levels:
 #       1:
 #         sbatch_args: { time: "00:08:00" }

@@ -30,7 +30,7 @@ from IPython.display import display, HTML, Markdown
 display(HTML(f"<div style='margin-bottom: 20px;'>{ru.nav_bar('pmcmc')}</div>"))
 ```
 
-Tests `Pomp._pmcmc` against a grid posterior (`reference/run.py`) and R
+Tests `Pomp.pmcmc` against a grid posterior (`reference/run.py`) and R
 `pomp::pmcmc`. Data: 208 weeks simulated from `pomp::sir` at known parameters.
 Free parameters `beta1` and `rho` have a flat prior on `model.PRIOR_BOX`, and
 all others are fixed at truth.

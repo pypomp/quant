@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#SBATCH --job-name="libcmp build envs"
+#SBATCH --account=aaronabk1
+#SBATCH --partition=standard
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=01:00:00
+#SBATCH --output=results/logs/build-%j.out
+# Builds the three envs of setup_envs.sh on a compute node (too heavy for the login node).
+set -eo pipefail
+cd "$SLURM_SUBMIT_DIR"
+for v in .venv-jax .venv-torch .venv-ssm; do for i in 1 2 3 4 5; do rm -rf "$v" && break; sleep 3; done; done
+[ ! -e .venv-jax ] && [ ! -e .venv-torch ] || { echo "could not remove old envs"; exit 1; }
+./setup_envs.sh
+.venv-jax/bin/python -c "import jax, pypomp, pfjax, particles, pypfilt, cutlass; print('jax', jax.__version__, 'pypomp', pypomp.__version__)"
+.venv-torch/bin/python -c "import torch, pydpf, particles; print('torch', torch.__version__, 'cuda', torch.version.cuda)"
+.venv-ssm/bin/python -c "import jax, cuthbert, cuthbertlib; print('jax', jax.__version__)"
+echo BUILD_DONE

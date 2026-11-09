@@ -9,6 +9,8 @@ The call is wrapped in jax.jit (struct closed over), so a warm call is a single 
 usage: python bench_pypomp.py --J 1000 --nthetas 36 --nreps 24 --device gpu [--layout flat]
 """
 
+import os
+
 import spx_common as C
 
 
@@ -18,18 +20,24 @@ def _extra(p):
 
 args = C.parse_args("pypomp", extra=_extra)
 
-import jax  # noqa: E402
-import jax.numpy as jnp  # noqa: E402
-import numpy as np  # noqa: E402
-import pypomp as pp  # noqa: E402
-import pypomp.functional as F  # noqa: E402
+import jax
+import jax.numpy as jnp
+import numpy as np
+import pypomp as pp
+import pypomp.functional as F
 
 C.check_jax_device(args, jax)
 inp = C.load_inputs(args.T, args.nthetas, args.theta_set)
 full = C.load_inputs()
 T = len(inp["ys"])
 
-struct = pp.models.spx().to_struct()
+BACKEND, CUTE_RNG = (
+    os.environ.get("PFB_BACKEND", "xla"),
+    os.environ.get("PFB_CUTE_RNG", "philox"),
+)
+obj = pp.models.spx()
+obj.set_backend(BACKEND, rng=CUTE_RNG)
+struct = obj.to_struct()
 # The struct must be exactly what the other libraries read from inputs.npz.
 assert list(struct.param_names) == list(full["param_names"])
 assert np.array_equal(np.asarray(struct.ys)[:, 0], full["ys"])
@@ -64,8 +72,18 @@ cold, ll = C.timed(run)
 warm, ll2 = C.timed(run)
 assert np.array_equal(ll, ll2, equal_nan=True)
 C.record(
-    args, "pypomp", T, cold, warm, ll,
+    args,
+    "pypomp",
+    T,
+    cold,
+    warm,
+    ll,
     C.versions("pypomp", "jax", "jaxlib"),
-    variant=f"functional/{args.layout}", dtype="float32", resampler="systematic",
+    variant=f"functional/{args.layout}",
+    dtype="float32",
+    resampler="systematic",
     jax_device=str(jax.devices()[0]),
+    backend=BACKEND,
+    cute_rng=None if BACKEND == "xla" else CUTE_RNG,
+    backend_report=str(obj.backend_report()),
 )

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-08T00:29:48+00:00",
+  "timestamp": "2026-11-07T13:27:37+00:00",
   "run_config": {
     "kind": "pmcmc",
     "model": "sir",
@@ -27,7 +27,7 @@
         0.8
       ]
     },
-    "execution_time": 336.2684576511383,
+    "execution_time": 284.1336121559143,
     "platform": "gpu",
     "trace_thin": 10
   },
@@ -36,26 +36,30 @@
       "method": "pmcmc",
       "kind": "trace",
       "panel": false,
-      "execution_time": 336.268084526062,
+      "execution_time": 284.13326597213745,
       "config": {
         "M": 2000,
         "J": 25
       }
     }
   ],
-  "pypomp_version": "1.0.8",
+  "pypomp_version": "1.4.0",
+  "pypomp_source": null,
   "jax_version": "0.11.2",
-  "quant_git_sha": "c6ac80ca36bf03b9bb17c9f3814a25bdae01a57a",
+  "backend": "default",
+  "cute_rng": null,
+  "backend_reports": null,
+  "quant_git_sha": "392fa7b8fa6f5d13d6be92c09284bf794ac8e52a",
   "hardware": {
     "cpu_model": "AMD EPYC 9575F 64-Core Processor",
-    "nodelist": "gl1805",
+    "nodelist": "gl1809",
     "cores": 128
   },
   "devices": [
     "cuda:0"
   ],
   "slurm": {
-    "job_id": "63438725",
+    "job_id": "65597593",
     "partition": "gpu-rtx6000",
     "gpus": "rtx_pro_6000_blackwell:1",
     "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
