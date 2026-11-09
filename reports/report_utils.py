@@ -55,6 +55,8 @@ color_palette = {
     "R": "#e74c3c",
     "pypomp": "#1abc9c",
     "pypomp (32-bit)": "#9b59b6",
+    "pypomp (CuTe philox)": "#e67e22",
+    "pypomp (32-bit, CuTe philox)": "#34495e",
     "R (36 cores)": "#e74c3c",
     "pypomp (GPU)": "#1abc9c",
     "pypomp (GPU, JAX samplers)": "#9b59b6",

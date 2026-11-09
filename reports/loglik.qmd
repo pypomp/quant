@@ -26,7 +26,16 @@ import pandas as pd
 import report_utils as ru  # puts tests/ on sys.path
 import checks
 from IPython.display import HTML, display
-from plotnine import aes, facet_wrap, geom_density, geom_vline, ggplot, labs
+from plotnine import (
+    aes,
+    facet_wrap,
+    geom_density,
+    geom_vline,
+    ggplot,
+    guide_legend,
+    guides,
+    labs,
+)
 
 ru.nav_bar("loglik")
 ```
@@ -83,6 +92,8 @@ def load_logliks(model):
             role = "R"
         elif arm in spec.get("info", []):
             role = arm
+        elif "CuTe" in arm:
+            role = "pypomp (CuTe philox)"
         else:
             role = "pypomp"
         frames.append(df[["unit", "logLik"]].assign(model=model, source=arm, role=role))
@@ -147,8 +158,8 @@ checks.save_models(records, "loglik_checks.json")
 
 ## Visual review
 
-- [Density comparison](#density-comparison): in every panel, the `pypomp` and R
-  densities should overlap heavily. For measles, the 32-bit and 64-bit runs
+- [Density comparison](#density-comparison): in every panel, the `pypomp`,
+  `pypomp` CuTe and R densities should overlap heavily. For measles, the 32-bit and 64-bit runs
   differ only in precision, so any shift of the 32-bit density away from the
   other two should be due to precision rather than the filter.
 
@@ -170,6 +181,16 @@ r_mean = (
 )
 plot_df = combined.join(r_mean, on="panel")
 plot_df["centered"] = plot_df["logLik"] - plot_df["r_mean"]
+ROLE_ORDER = [
+    "R",
+    "pypomp",
+    "pypomp (CuTe philox)",
+    "pypomp (32-bit)",
+    "pypomp (32-bit, CuTe philox)",
+]
+plot_df["role"] = pd.Categorical(
+    plot_df["role"], categories=[r for r in ROLE_ORDER if r in set(plot_df["role"])]
+)
 
 (
     ggplot(plot_df, aes(x="centered", fill="role", color="role"))
@@ -186,6 +207,7 @@ plot_df["centered"] = plot_df["logLik"] - plot_df["r_mean"]
     )
     + ru.scale_fill_premium()
     + ru.scale_color_premium()
+    + guides(fill=guide_legend(nrow=2), color=guide_legend(nrow=2))
     + ru.theme_premium
 )
 ```
