@@ -1,0 +1,43 @@
+{
+  "provenance": "Migrated from the November 7, 2026 formal robot DMOP study.",
+  "device": "NVIDIA A40",
+  "pypomp_commit": "41430ec524dabec64a847d019ec6b6ba17017f79",
+  "jax_version": "0.12.0.1",
+  "fit_array": "65601386",
+  "score_array": "65601476",
+  "seeds": [
+    0,
+    10,
+    20,
+    30,
+    40
+  ],
+  "training_particles": [
+    100,
+    500
+  ],
+  "alpha": [
+    0.0,
+    0.75,
+    0.97,
+    1.0
+  ],
+  "active_seconds_per_fit": 240,
+  "batch_size": 64,
+  "adam": {
+    "flow_lr": 0.001,
+    "state_encoder_lr": 0.005,
+    "beta1": 0.8,
+    "beta2": 0.99,
+    "epsilon": 1e-09
+  },
+  "training_trajectories": 900,
+  "scored_frames_per_trajectory": 99,
+  "scoring_particles": 2000,
+  "scoring_repeats": 8,
+  "train_features_sha256": "4183d733287f9f8fb682d2e025e7c46bff932f9bb2da58ce9aad6029c21acda8",
+  "initial_parameters_sha256": "9ea342aede7f9a35c0c8293d65021e1f8ca51ea55f54d41bb1fda616913f2b82",
+  "source_scores_sha256": "5d28e1ddde8bf9a39e4804010e15b3bd979f37170e419ded37309187ce598092",
+  "source_archive": "pypomp_robot_dmop_formal_20261107.tar.gz",
+  "source_archive_sha256": "40255a052b91222cb90bc4cf98a948fd235dd510a108ad87a342dc2851a173df"
+}
