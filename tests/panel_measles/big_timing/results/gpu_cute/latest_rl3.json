@@ -1,0 +1,103 @@
+{
+  "timestamp": "2026-11-09T17:57:36+00:00",
+  "pypomp_version": "1.4.0",
+  "pypomp_source": null,
+  "jax_version": "0.11.2",
+  "backend": "cute",
+  "cute_rng": "philox",
+  "backend_reports": [
+    "Backend 'cute', CuTe rng 'philox'.\n  rproc         CuTe\n  gradients     CuTe\n  dmeasure      CuTe\n  perturbation  CuTe\n  resampling    CuTe  XLA for float64 weights, and for fewer filters than half the GPU's multiprocessors when they have over 10,000 particles each\nCalls with float64 particles still run on XLA, as does train with an optimizer that needs Hessians."
+  ],
+  "quant_git_sha": "fab9cbfaa5035608696f2f0e49cf74f35a3bab24",
+  "hardware": {
+    "cpu_model": "AMD EPYC 9575F 64-Core Processor",
+    "nodelist": "gl1803",
+    "cores": 128
+  },
+  "devices": [
+    "cuda:0"
+  ],
+  "slurm": {
+    "job_id": "65752338",
+    "partition": "gpu-rtx6000",
+    "gpus": "rtx_pro_6000_blackwell:1",
+    "gpu_type": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+  },
+  "run_config": {
+    "kind": "timing",
+    "model": "panel_measles_001b",
+    "RUN_LEVEL": 3,
+    "MAIN_SEED": 631409,
+    "N_UNITS": 1422,
+    "NP_FITR": 10000,
+    "NFITR": 5,
+    "NREPS_FITR": 36,
+    "NP_EVAL": 5000,
+    "NREPS_EVAL": 4
+  },
+  "stage_wall_s": {
+    "build": 354.01285235211253,
+    "mif": 1398.5340443570167,
+    "pfilter_eval1": 417.7179416976869,
+    "mix_and_match_prune": 0.2973252348601818,
+    "pfilter_final": 99.79609745554626,
+    "total": 2271.087694367394
+  },
+  "gpu_peak_gb": 26.9126976,
+  "eval1_logliks": [
+    -1468043.5912338858,
+    -1472263.6350610584,
+    -1468608.6426335655,
+    -1470143.972824293,
+    -1469341.784644955,
+    -1474140.1443041798,
+    -1473983.7666461512,
+    -1467418.1664442872,
+    -1470898.6072614433,
+    -1468367.708923396,
+    -1469157.3021853631,
+    -1469499.216327122,
+    -1470051.7572300571,
+    -1470948.7573012707,
+    -1469794.424571033,
+    -1467484.3376516956,
+    -1466572.1790334315,
+    -1470983.4372772002,
+    -1470564.8257178837,
+    -1467499.7501198978,
+    -1469847.9494049926,
+    -1469603.6177649428,
+    -1470044.500607105,
+    -1467607.6661970532,
+    -1471086.7648271013,
+    -1471964.7199767672,
+    -1470439.2771143548,
+    -1470901.1195528319,
+    -1471578.5040891946,
+    -1473251.3493662348,
+    -1467543.3719939154,
+    -1471740.556548741,
+    -1467757.203632214,
+    -1468378.4355062062,
+    -1473116.9537236192,
+    -1470082.9271936722
+  ],
+  "final_loglik": -1448476.6581729117,
+  "projected_full_seconds": 60953.00097901188,
+  "reference": {
+    "source": "pyMeasles lab/model_001b/search_005_u1422_timing (2026-10-05_134449_u1422_L4_d001_reps36)",
+    "pypomp_version": "1.0.8",
+    "backend": "xla",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell (gl1805)",
+    "slurm_job_id": "63275037",
+    "gpu_peak_gb": 31.17,
+    "stage_wall_s": {
+      "build": 48.97,
+      "mif": 127866.61,
+      "pfilter_eval1": 8933.12,
+      "mix_and_match_prune": 0.32,
+      "pfilter_final": 338.17,
+      "total": 137188.32
+    }
+  }
+}
