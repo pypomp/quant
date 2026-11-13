@@ -51,6 +51,8 @@ M and reps are cut to keep the run near 20 min; see ../../scaling.py.
 #         sbatch_args: { time: "00:40:00" }
 #       4:
 #         sbatch_args: { time: "01:15:00" }
+#       5:
+#         sbatch_args: { time: "03:00:00", mem: 32GB }
 # --- END SLURM CONFIG ---
 
 import os
@@ -89,16 +91,18 @@ scaling.main(
         [500, 1000],
         [1000, 5000],
         [1000, 2000, 5000, 10000, 15000, 20000, 30000],
+        [1000, 2000, 5000, 10000, 20000, 30000, 60000, 120000, 240000],
     )[RUN_LEVEL - 1],
-    particle_fixed_chains=(2, 10, 60, 100)[RUN_LEVEL - 1],
+    particle_fixed_chains=(2, 10, 60, 100, 100)[RUN_LEVEL - 1],
     chain_grid=(
         [2, 4],
         [10, 20],
         [60, 300],
         [125, 250, 500, 1000, 1500, 2000, 3000],
+        [125, 250, 500, 1000, 2000, 3000, 6000, 12000, 24000],
     )[RUN_LEVEL - 1],
-    chain_fixed_j=(50, 500, 1000, 1000)[RUN_LEVEL - 1],
-    M=(2, 3, 3, 3)[RUN_LEVEL - 1],
-    reps=(2, 3, 3, 3)[RUN_LEVEL - 1],
+    chain_fixed_j=(50, 500, 1000, 1000, 1000)[RUN_LEVEL - 1],
+    M=(2, 3, 3, 3, 3)[RUN_LEVEL - 1],
+    reps=(2, 3, 3, 3, 3)[RUN_LEVEL - 1],
     extra_config={"UNITS": ["London", "Halesworth", "Hastings", "Cardiff"]},
 )

@@ -50,6 +50,8 @@ convergence, is the quantity of interest; see ../../scaling.py.
 #         sbatch_args: { time: "00:40:00" }
 #       4:
 #         sbatch_args: { time: "01:15:00" }
+#       5:
+#         sbatch_args: { time: "02:00:00", mem: 32GB }
 # --- END SLURM CONFIG ---
 
 import os
@@ -81,15 +83,17 @@ scaling.main(
         [500, 1000],
         [1000, 5000, 20000],
         [1000, 2500, 5000, 10000, 20000, 40000],
+        [1000, 2500, 5000, 10000, 20000, 40000, 80000, 160000, 320000],
     )[RUN_LEVEL - 1],
-    particle_fixed_chains=(2, 10, 60, 120)[RUN_LEVEL - 1],
+    particle_fixed_chains=(2, 10, 60, 120, 120)[RUN_LEVEL - 1],
     chain_grid=(
         [2, 4],
         [10, 20],
         [60, 300, 1200],
         [125, 250, 500, 1000, 2000, 4000],
+        [125, 250, 500, 1000, 2000, 4000, 8000, 16000, 32000],
     )[RUN_LEVEL - 1],
-    chain_fixed_j=(50, 500, 1000, 1000)[RUN_LEVEL - 1],
-    M=(2, 3, 5, 10)[RUN_LEVEL - 1],
-    reps=(2, 3, 5, 10)[RUN_LEVEL - 1],
+    chain_fixed_j=(50, 500, 1000, 1000, 1000)[RUN_LEVEL - 1],
+    M=(2, 3, 5, 10, 10)[RUN_LEVEL - 1],
+    reps=(2, 3, 5, 10, 10)[RUN_LEVEL - 1],
 )
