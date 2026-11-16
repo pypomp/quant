@@ -58,43 +58,6 @@ runs = {"GPU speed": latest("speed_gpu"), "CPU speed": latest("speed_cpu"), "Acc
 runs = {k: v for k, v in runs.items() if v is not None}
 ```
 
-## Runs
-
-```{python}
-#| label: versions
-#| output: asis
-def device(m):
-    if m.get("platform") == "gpu":
-        return m.get("slurm", {}).get("gpu_type") or ", ".join(m.get("devices", []))
-    return m.get("hardware", {}).get("cpu_model") or ", ".join(m.get("devices", []))
-
-
-table = pd.DataFrame(
-    [
-        {
-            "Run": name,
-            "Run level": r["meta"]["run_config"].get("RUN_LEVEL"),
-            "pypomp": r["meta"].get("pypomp_version"),
-            "JAX": r["meta"].get("jax_version"),
-            "Device": device(r["meta"]),
-            "Finished (UTC)": r["meta"].get("timestamp", "").replace("T", " ").replace("+00:00", ""),
-            "Elapsed (s)": r["meta"].get("elapsed_s"),
-            "SLURM job": r["meta"].get("slurm", {}).get("job_id", "—"),
-            "quant commit": (r["meta"].get("quant_git_sha") or "—")[:7],
-        }
-        for name, r in runs.items()
-    ]
-)
-print(table.to_html(index=False, classes="table table-sm", border=0))
-
-versions = {(r["pypomp"], r["JAX"]) for _, r in table.iterrows()}
-if len(versions) == 1:
-    pp_v, jax_v = versions.pop()
-    print(f"\n\n{checks.badge('PASS')} All runs used pypomp {pp_v} and JAX {jax_v}.")
-else:
-    print(f"\n\n{checks.badge('CHECK')} Runs used different versions, so results may not be comparable.")
-```
-
 ```{python}
 #| label: speed-data
 speed = pd.concat(
@@ -404,3 +367,40 @@ qq("nbinomial", 3, "exact (SciPy)")
 :::
 
 :::
+
+## Runs
+
+```{python}
+#| label: versions
+#| output: asis
+def device(m):
+    if m.get("platform") == "gpu":
+        return m.get("slurm", {}).get("gpu_type") or ", ".join(m.get("devices", []))
+    return m.get("hardware", {}).get("cpu_model") or ", ".join(m.get("devices", []))
+
+
+table = pd.DataFrame(
+    [
+        {
+            "Run": name,
+            "Run level": r["meta"]["run_config"].get("RUN_LEVEL"),
+            "pypomp": r["meta"].get("pypomp_version"),
+            "JAX": r["meta"].get("jax_version"),
+            "Device": device(r["meta"]),
+            "Finished (UTC)": r["meta"].get("timestamp", "").replace("T", " ").replace("+00:00", ""),
+            "Elapsed (s)": r["meta"].get("elapsed_s"),
+            "SLURM job": r["meta"].get("slurm", {}).get("job_id", "—"),
+            "quant commit": (r["meta"].get("quant_git_sha") or "—")[:7],
+        }
+        for name, r in runs.items()
+    ]
+)
+print(table.to_html(index=False, classes="table table-sm", border=0))
+
+versions = {(r["pypomp"], r["JAX"]) for _, r in table.iterrows()}
+if len(versions) == 1:
+    pp_v, jax_v = versions.pop()
+    print(f"\n\n{checks.badge('PASS')} All runs used pypomp {pp_v} and JAX {jax_v}.")
+else:
+    print(f"\n\n{checks.badge('CHECK')} Runs used different versions, so results may not be comparable.")
+```
