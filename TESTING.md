@@ -150,7 +150,7 @@ python scripts/run_tests.py run tests/spx/estimation/run.py --run-level 2 --job 
 
 ### Sequential Job Chains & Race Conditions
 
-In some cases, multiple jobs defined in the same test script may depend on each other or share/update the same output/cache files (for example, `tests/samplers/test.qmd` where jobs share `benchmark_results.json` and render to the same `test.html`). Running them concurrently will cause a race condition.
+In some cases, multiple jobs defined in the same test script may depend on each other or share/update the same output/cache files (for example, a GPU job and a CPU job that both write to one results file). Running them concurrently will cause a race condition.
 
 To handle this, you can specify `sequential: true` under the `--- SLURM CONFIG ---` block of the test file:
 ```yaml

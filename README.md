@@ -50,4 +50,4 @@ Both share one SIR problem (`tests/bayesian/model.py`, `model.R`): estimate `bet
 
 ### Random number generators
 
-* **[Fast samplers](tests/samplers/test.html)**: speed and statistical accuracy of `pypomp`'s fast approximate inverse-CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.
+* **[Fast samplers](tests/samplers/report.html)**: speed and statistical accuracy of `pypomp`'s fast approximate inverse-CDF samplers (`fast_poisson`, `fast_binomial`, `fast_gamma`, `fast_nbinomial`) against `jax.random` and `scipy.stats`.

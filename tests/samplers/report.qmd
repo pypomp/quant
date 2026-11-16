@@ -1,0 +1,406 @@
+---
+title: "Fast samplers"
+subtitle: "Speed and accuracy of `pypomp.random` against `jax.random` and `scipy.stats`"
+date: now
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: false
+    code-fold: true
+    code-summary: "Show Code"
+    code-tools: true
+    embed-resources: true
+    fig-format: png
+    fig-dpi: 110
+engine: jupyter
+---
+
+Compares `fast_poisson`, `fast_binomial`, `fast_gamma` and `fast_nbinomial`
+with `jax.random` (or SciPy for the negative binomial, which JAX lacks).
+Results come from `run.py`: one speed job each on GPU and CPU, and one
+accuracy job on CPU.
+
+```{python}
+#| label: setup
+import glob
+import json
+import os
+import re
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from IPython.display import HTML, Markdown, display
+
+sys.path.append("..")
+import checks
+
+DISTS = ["poisson", "binomial", "gamma", "nbinomial"]
+TITLES = dict(poisson="Poisson", binomial="Binomial", gamma="Gamma", nbinomial="Negative binomial")
+PP, REF = "C0", "C1"
+plt.rcParams.update({"font.size": 9, "axes.titlesize": 9, "legend.fontsize": 7})
+
+
+def latest(prefix):
+    files = glob.glob(os.path.join("results", f"{prefix}_rl*.json"))
+    if not files:
+        return None
+    path = max(files, key=lambda p: int(re.search(r"_rl(\d+)\.json$", p).group(1)))
+    with open(path) as f:
+        return json.load(f)
+
+
+runs = {"GPU speed": latest("speed_gpu"), "CPU speed": latest("speed_cpu"), "Accuracy": latest("accuracy")}
+runs = {k: v for k, v in runs.items() if v is not None}
+```
+
+## Runs
+
+```{python}
+#| label: versions
+#| output: asis
+def device(m):
+    if m.get("platform") == "gpu":
+        return m.get("slurm", {}).get("gpu_type") or ", ".join(m.get("devices", []))
+    return m.get("hardware", {}).get("cpu_model") or ", ".join(m.get("devices", []))
+
+
+table = pd.DataFrame(
+    [
+        {
+            "Run": name,
+            "Run level": r["meta"]["run_config"].get("RUN_LEVEL"),
+            "pypomp": r["meta"].get("pypomp_version"),
+            "JAX": r["meta"].get("jax_version"),
+            "Device": device(r["meta"]),
+            "Finished (UTC)": r["meta"].get("timestamp", "").replace("T", " ").replace("+00:00", ""),
+            "Elapsed (s)": r["meta"].get("elapsed_s"),
+            "SLURM job": r["meta"].get("slurm", {}).get("job_id", "—"),
+            "quant commit": (r["meta"].get("quant_git_sha") or "—")[:7],
+        }
+        for name, r in runs.items()
+    ]
+)
+print(table.to_html(index=False, classes="table table-sm", border=0))
+
+versions = {(r["pypomp"], r["JAX"]) for _, r in table.iterrows()}
+if len(versions) == 1:
+    pp_v, jax_v = versions.pop()
+    print(f"\n\n{checks.badge('PASS')} All runs used pypomp {pp_v} and JAX {jax_v}.")
+else:
+    print(f"\n\n{checks.badge('CHECK')} Runs used different versions, so results may not be comparable.")
+```
+
+```{python}
+#| label: speed-data
+speed = pd.concat(
+    [pd.DataFrame(runs[k]["rows"]).assign(platform=k.split()[0]) for k in ("GPU speed", "CPU speed") if k in runs],
+    ignore_index=True,
+)
+speed["ns_per_draw"] = speed["seconds"] / speed["n"] * 1e9
+wide = speed.pivot_table(index=["platform", "dist", "regime", "n"], columns="sampler", values="seconds").reset_index()
+wide["speedup"] = wide["jax"] / wide["pypomp"]
+ORDER = {d: list(dict.fromkeys(g["regime"])) for d, g in speed.groupby("dist", sort=False)}
+common = set.intersection(*(set(g["n"]) for _, g in speed.groupby("platform")))
+N_REF = max(n for n in common if n <= 10**6)
+PLATFORMS = [p for p in ("GPU", "CPU") if p in set(speed["platform"])]
+
+
+def n_label(n):
+    return f"10^{int(round(np.log10(n)))}" if n >= 1000 else str(n)
+```
+
+## Headline
+
+```{python}
+#| label: headline
+#| output: asis
+at_ref = wide[(wide["n"] == N_REF) & wide["speedup"].notna()]
+head = at_ref.groupby(["dist", "platform"])["speedup"].median().unstack("platform").reindex(DISTS[:3])[PLATFORMS]
+head.index = [TITLES[d] for d in head.index]
+head.columns.name = None
+print(f"Median speedup (JAX time / pypomp time) over parameter regimes at N = {n_label(N_REF)} draws.\n")
+print(head.map(lambda v: f"{v:.1f}×").to_html(classes="table table-sm", border=0))
+```
+
+::: {.panel-tabset}
+
+## Speed
+
+Each timing is the mean over a JIT-compiled `lax.scan` of batches of N
+draws; each batch is summed so that no draw can be optimized away. The
+batch count is raised until one timed call lasts at least 0.1 s, and the
+fastest of three calls (one, if a call takes over 1 s) is kept. Speedup is JAX time
+divided by pypomp time, so values above 1 mean pypomp is faster.
+
+```{python}
+#| label: fig-speedup
+#| fig-cap: "Speedup of pypomp over JAX against the number of draws N, one line per parameter regime."
+fig, axes = plt.subplots(len(PLATFORMS), 3, figsize=(15, 4.2 * len(PLATFORMS)), squeeze=False)
+for i, plat in enumerate(PLATFORMS):
+    for j, dist in enumerate(DISTS[:3]):
+        ax = axes[i, j]
+        sub = wide[(wide["platform"] == plat) & (wide["dist"] == dist)]
+        for regime in ORDER[dist]:
+            g = sub[sub["regime"] == regime]
+            ax.plot(g["n"], g["speedup"], marker="o", ms=3, label=regime)
+        ax.axhline(1, color="grey", lw=0.8, ls="--")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_title(f"{TITLES[dist]} ({plat})")
+        ax.set_xlabel("Draws per batch (N)")
+        ax.set_ylabel("Speedup (JAX / pypomp)")
+        ax.grid(True, which="both", ls=":", alpha=0.5)
+        if i == 0:
+            ax.legend()
+fig.tight_layout()
+plt.show()
+```
+
+JAX has no negative binomial sampler, so only pypomp's time per draw is shown.
+
+```{python}
+#| label: fig-nbinom-time
+#| fig-cap: "fast_nbinomial time per draw against N."
+fig, axes = plt.subplots(1, len(PLATFORMS), figsize=(5 * len(PLATFORMS), 3.6), squeeze=False)
+for ax, plat in zip(axes[0], PLATFORMS):
+    sub = speed[(speed["platform"] == plat) & (speed["dist"] == "nbinomial")]
+    for regime, g in sub.groupby("regime", sort=False):
+        ax.plot(g["n"], g["ns_per_draw"], marker="o", ms=3, label=regime)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_title(f"Negative binomial ({plat})")
+    ax.set_xlabel("Draws per batch (N)")
+    ax.set_ylabel("ns per draw")
+    ax.grid(True, which="both", ls=":", alpha=0.5)
+    ax.legend()
+fig.tight_layout()
+plt.show()
+```
+
+```{python}
+#| label: speed-tables
+#| output: asis
+print(f"### Times at N = {n_label(N_REF)}\n")
+print("::: {.panel-tabset}\n")
+for dist in DISTS:
+    sub = wide[(wide["n"] == N_REF) & (wide["dist"] == dist)]
+    cols = {}
+    for plat in PLATFORMS:
+        s = sub[sub["platform"] == plat].set_index("regime")
+        cols[(plat, "pypomp (ms)")] = (s["pypomp"] * 1e3).map("{:.3f}".format)
+        if dist != "nbinomial":
+            cols[(plat, "JAX (ms)")] = (s["jax"] * 1e3).map("{:.3f}".format)
+            cols[(plat, "Speedup")] = s["speedup"].map("{:.1f}×".format)
+    tab = pd.DataFrame(cols).reindex(ORDER[dist])
+    tab.index.name = "Regime"
+    print(f"#### {TITLES[dist]}\n")
+    print(tab.to_html(classes="table table-sm", border=0))
+    print()
+print(":::\n")
+```
+
+## Accuracy
+
+```{python}
+#| label: accuracy-intro
+#| output: asis
+acc = runs.get("Accuracy")
+N_ACC = acc["meta"]["run_config"]["N_ACC"]
+print(
+    f"W₁ is the Wasserstein-1 distance between {N_ACC:,} pypomp draws and {N_ACC:,} reference draws "
+    "(`jax.random`, or `scipy.stats.nbinom` for the negative binomial). The noise floor is W₁ between "
+    "two independent reference samples of the same size. The pypomp line should lie close to the "
+    "noise floor. The bottom row divides W₁ by the reference standard deviation."
+)
+```
+
+```{python}
+#| label: fig-wasserstein
+#| fig-cap: "Wasserstein-1 distance to the reference sampler across parameter values."
+fig, axes = plt.subplots(2, 4, figsize=(17, 7), sharex="col")
+for j, dist in enumerate(DISTS):
+    w = acc["wasserstein"][dist]
+    df = pd.DataFrame(w["rows"])
+    fixed = ", ".join(f"{k} = {v}" for k, v in w["fixed"].items())
+    for i, scale in enumerate((1.0, df["sd"])):
+        ax = axes[i, j]
+        ax.plot(df["value"], df["w_pp"] / scale, marker="o", ms=3, color=PP, label="pypomp vs reference")
+        ax.plot(df["value"], df["w_ref"] / scale, marker="s", ms=3, ls="--", color=REF, label="noise floor")
+        if dist in ("poisson", "gamma"):
+            ax.set_xscale("log")
+        ax.grid(True, ls=":", alpha=0.5)
+        ax.set_ylabel("W₁" if i == 0 else "W₁ / sd")
+        if i == 0:
+            ax.set_title(TITLES[dist] + (f" ({fixed})" if fixed else ""))
+        else:
+            ax.set_xlabel(w["param"])
+axes[0, 0].legend()
+fig.tight_layout()
+plt.show()
+```
+
+```{python}
+#| label: miss-intro
+#| output: asis
+mr = acc["miss_rates"]
+print(
+    f"Miss rate is the fraction of {mr['n_queries']:,} uniform queries u ∈ [0.0001, 0.9999] for which "
+    "`poissoninv` or `binominv` differs from SciPy's exact quantile. A rate of zero is drawn as an open "
+    "marker at half the resolution, 1 / (2 × queries)."
+)
+```
+
+```{python}
+#| label: fig-miss-rates
+#| fig-cap: "Quantile miss rates of the approximate inverse CDFs."
+floor = 0.5 / mr["n_queries"]
+
+
+def miss_line(ax, x, rate, color, label):
+    rate = np.asarray(rate)
+    ax.plot(x, np.where(rate > 0, rate, floor), color=color, lw=1.5, label=label)
+    ax.scatter(np.asarray(x)[rate > 0], rate[rate > 0], color=color, s=18, zorder=3)
+    ax.scatter(np.asarray(x)[rate == 0], np.full((rate == 0).sum(), floor), facecolors="none",
+               edgecolors=color, s=18, zorder=3)
+
+
+fig, (a1, a2) = plt.subplots(1, 2, figsize=(12, 4.2))
+pois = pd.DataFrame(mr["poisson"])
+miss_line(a1, pois["lam"], pois["rate"], PP, None)
+a1.set_xscale("log")
+a1.set_xlabel("λ")
+a1.set_title("poissoninv")
+binom = pd.DataFrame(mr["binomial"])
+for c, (n, g) in enumerate(binom.groupby("n")):
+    miss_line(a2, g["p"], g["rate"], f"C{c}", f"n = {n}")
+a2.set_xlabel("p")
+a2.set_title("binominv")
+a2.legend()
+for ax in (a1, a2):
+    ax.set_yscale("log")
+    ax.set_ylabel("Miss rate")
+    ax.axhline(floor, color="grey", lw=0.6, ls=":")
+    ax.grid(True, which="both", ls=":", alpha=0.5)
+fig.tight_layout()
+plt.show()
+```
+
+## Distributions
+
+```{python}
+#| label: dist-plot-utils
+QQ_P = np.asarray(acc["qq_probs"])
+QQ_KEEP = np.minimum(QQ_P, 1 - QQ_P) >= 0.999 * 10 / N_ACC
+QQ_TAIL = np.minimum(QQ_P, 1 - QQ_P)[QQ_KEEP].min()
+rng = np.random.default_rng(1)
+```
+
+```{python}
+#| label: dist-intro
+#| output: asis
+print(
+    f"Each panel compares {N_ACC:,} pypomp draws with {N_ACC:,} `jax.random` draws, or with the exact "
+    "SciPy distribution for the negative binomial. Densities should overlap, and Q-Q points should lie "
+    f"on y = x. Q-Q plots use {QQ_KEEP.sum()} quantiles down to tail probability {QQ_TAIL:.0e}, "
+    "where at least 10 draws are expected beyond the quantile. Discrete Q-Q points get "
+    "N(0, 0.1²) jitter so that coincident points stay visible. Gamma with α < 0.1 is shown on a log₁₀ scale."
+)
+```
+
+```{python}
+#| label: dist-plot-fns
+
+def grid(panels, ncols):
+    nrows = -(-len(panels) // ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(2.4 * ncols, 2.0 * nrows), squeeze=False)
+    for ax in axes.ravel()[len(panels):]:
+        ax.set_visible(False)
+    return fig, axes.ravel()
+
+
+def density(dist, ncols, ref_label):
+    panels = acc["distributions"][dist]
+    fig, axes = grid(panels, ncols)
+    for ax, p in zip(axes, panels):
+        if "edges" in p:
+            e = np.asarray(p["edges"])
+            ax.stairs(p["ref"], e, color=REF, lw=1.5, label=ref_label)
+            ax.stairs(p["pp"], e, color=PP, lw=1.2, ls="--", label="pypomp")
+            if p["log10"]:
+                ax.set_xlabel("log₁₀ value", fontsize=7)
+        else:
+            x, pp, ref = np.asarray(p["x"]), np.asarray(p["pp"]), np.asarray(p["ref"])
+            keep = np.flatnonzero(np.maximum(pp, ref) > 1e-5)
+            sl = slice(keep.min(), keep.max() + 1)
+            ax.step(x[sl], ref[sl], where="mid", color=REF, lw=1.5, label=ref_label)
+            ax.step(x[sl], pp[sl], where="mid", color=PP, lw=1.2, ls="--", label="pypomp")
+        ax.set_title(p["label"])
+        ax.tick_params(labelsize=7)
+    axes[0].legend()
+    fig.tight_layout()
+    plt.show()
+
+
+def qq(dist, ncols, ref_label):
+    panels = acc["distributions"][dist]
+    fig, axes = grid(panels, ncols)
+    for k, (ax, p) in enumerate(zip(axes, panels)):
+        x, y = np.asarray(p["ref_q"])[QQ_KEEP], np.asarray(p["pp_q"])[QQ_KEEP]
+        if "edges" not in p:
+            x = x + rng.normal(0, 0.1, x.size)
+            y = y + rng.normal(0, 0.1, y.size)
+        ax.scatter(x, y, s=4, alpha=0.4, color=PP)
+        lim = [min(x.min(), y.min()), max(x.max(), y.max())]
+        ax.plot(lim, lim, color="red", ls="--", lw=1)
+        ax.set_title(p["label"])
+        ax.tick_params(labelsize=7)
+        if k % ncols == 0:
+            ax.set_ylabel("pypomp quantiles", fontsize=7)
+        if k >= len(panels) - ncols:
+            ax.set_xlabel(f"{ref_label} quantiles", fontsize=7)
+    fig.tight_layout()
+    plt.show()
+```
+
+::: {.panel-tabset}
+
+### Poisson
+
+```{python}
+#| label: fig-poisson
+density("poisson", 7, "jax.random")
+qq("poisson", 7, "jax.random")
+```
+
+### Binomial
+
+```{python}
+#| label: fig-binomial
+density("binomial", 8, "jax.random")
+qq("binomial", 8, "jax.random")
+```
+
+### Gamma
+
+```{python}
+#| label: fig-gamma
+density("gamma", 5, "jax.random")
+qq("gamma", 5, "jax.random")
+```
+
+### Negative binomial
+
+```{python}
+#| label: fig-nbinomial
+density("nbinomial", 3, "exact (SciPy)")
+qq("nbinomial", 3, "exact (SciPy)")
+```
+
+:::
+
+:::
