@@ -1,0 +1,89 @@
+{
+  "timestamp": "2026-11-16T23:07:27+00:00",
+  "pypomp_version": "1.4.0",
+  "pypomp_source": null,
+  "jax_version": "0.11.2",
+  "backend": "default",
+  "cute_rng": null,
+  "backend_reports": null,
+  "quant_git_sha": "7e311e0eef64140fde12d7be03e52edf3ed4c09b",
+  "hardware": {
+    "cpu_model": "Intel(R) Xeon(R) Gold 6154 CPU @ 3.00GHz",
+    "nodelist": "gl3337",
+    "cores": 36
+  },
+  "devices": [
+    "cpu:0",
+    "cpu:1",
+    "cpu:2",
+    "cpu:3",
+    "cpu:4",
+    "cpu:5",
+    "cpu:6",
+    "cpu:7",
+    "cpu:8",
+    "cpu:9",
+    "cpu:10",
+    "cpu:11",
+    "cpu:12",
+    "cpu:13",
+    "cpu:14",
+    "cpu:15",
+    "cpu:16",
+    "cpu:17",
+    "cpu:18",
+    "cpu:19",
+    "cpu:20",
+    "cpu:21",
+    "cpu:22",
+    "cpu:23",
+    "cpu:24",
+    "cpu:25",
+    "cpu:26",
+    "cpu:27",
+    "cpu:28",
+    "cpu:29",
+    "cpu:30",
+    "cpu:31",
+    "cpu:32",
+    "cpu:33",
+    "cpu:34",
+    "cpu:35"
+  ],
+  "slurm": {
+    "job_id": "66232653",
+    "partition": "standard",
+    "cpus": "36"
+  },
+  "run_config": {
+    "kind": "timing",
+    "model": "panel_measles",
+    "RUN_LEVEL": 4,
+    "USE_CPU": true,
+    "MAIN_SEED": 594709947,
+    "UNITS": [
+      "London",
+      "Halesworth",
+      "Hastings",
+      "Cardiff"
+    ],
+    "SHARED_PARAMS": [
+      "R0",
+      "sigma",
+      "gamma",
+      "sigmaSE",
+      "cohort",
+      "amplitude"
+    ],
+    "NP_FITR": 5000,
+    "NFITR": 100,
+    "NSTARTS": 36,
+    "NP_EVAL": 5000,
+    "NREPS_EVAL": 36
+  },
+  "timings": {
+    "mif": 4372.421143531799,
+    "pfilter_cold": 1195.4605867862701,
+    "pfilter_warm": 1193.563398361206
+  }
+}
