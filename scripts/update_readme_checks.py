@@ -1,16 +1,18 @@
-"""Append each report's worst automated verdict to its README link, e.g.
-`[report](tests/spx/estimation/report.html) · PASS`. A link into a cross-model
-report, `[report](reports/loglik.html#spx)`, gets that model's verdict from
-reports/loglik_checks.json. Reports whose checks are all info get no verdict."""
+"""Write each report's worst automated verdict as an emoji after its README
+marker, e.g. `<!-- check tests/spx/estimation/report --> ✅`. A marker into a
+cross-model report, `<!-- check reports/loglik#spx -->`, gets that model's
+verdict from reports/loglik_checks.json. Reports whose checks are all info get
+no verdict."""
 
 import json
 import os
 import re
 
 README = "README.md"
-LINK = re.compile(
-    r"(\[[^\]]+\]\(((?:tests|reports)/[^)#]+)\.html(?:#([\w-]+))?\))"
-    r"(?: · (?:PASS|CHECK|FAIL|n/a))?"
+EMOJI = {"PASS": "✅", "CHECK": "⚠️", "FAIL": "❌", "n/a": "❔"}
+MARKER = re.compile(
+    r"(<!-- check ((?:tests|reports)/[^#\s]+)(?:#([\w-]+))? -->)"
+    rf"(?: (?:{'|'.join(map(re.escape, EMOJI.values()))}))?"
 )
 
 
@@ -30,13 +32,13 @@ def verdict(page, model):
 
 def annotate(match):
     v = verdict(match.group(2), match.group(3))
-    return match.group(1) if v in (None, "info") else f"{match.group(1)} · {v}"
+    return match.group(1) if v not in EMOJI else f"{match.group(1)} {EMOJI[v]}"
 
 
 def main():
     with open(README) as f:
         text = f.read()
-    new = LINK.sub(annotate, text)
+    new = MARKER.sub(annotate, text)
     if new != text:
         with open(README, "w") as f:
             f.write(new)
