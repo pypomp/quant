@@ -39,6 +39,7 @@ The table shows the worst result among each model's automated checks in each rep
 ### Method comparisons
 
 * **[IF2 vs IFAD](tests/dacca/algorithms/report.html)** (Dhaka cholera): how far iterated filtering alone and iterated filtering with gradient training get on the same likelihood for a comparable wall-clock budget.
+* **[DMOP discount factors](tests/robot_maze/algorithms/report.html)** (robot localization): training log likelihood after four minutes with 100 or 500 particles.
 
 ### Bayesian inference
 

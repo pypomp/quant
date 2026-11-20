@@ -1,0 +1,96 @@
+---
+title: "Robot localization: DMOP discount factors"
+date: 2026-11-07
+format:
+  html:
+    theme:
+      light: cosmo
+      dark: darkly
+    page-layout: full
+    toc: true
+    code-fold: true
+    code-summary: "Show code"
+    code-tools: true
+    embed-resources: true
+    html-math-method: mathml
+engine: jupyter
+---
+
+[Quantitative tests index](../../../index.html)
+
+## Training log likelihood
+
+Which discount factor gives the highest training log likelihood in four minutes on an NVIDIA A40? We fitted each setting from the same five starting points, with the batch order and training random seeds matched across settings.
+
+```{python}
+#| label: tbl-likelihood
+#| tbl-cap: "Training log likelihood per frame after four minutes. Each entry is the mean across five training seeds ± one Monte Carlo standard error from scoring the fits. Higher is better."
+import json
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from IPython.display import Markdown, display
+
+root = Path("results/gpu")
+config = json.loads((root / "latest.json").read_text())
+fits = pd.read_csv(root / "results.csv").set_index(["J", "alpha", "seed"]).sort_index()
+timings = pd.read_csv(root / "timings.csv").set_index(fits.index.names).sort_index()
+expected = pd.MultiIndex.from_product(
+    [config["training_particles"], config["alpha"], config["seeds"]], names=fits.index.names
+)
+assert fits.index.equals(expected) and timings.index.equals(expected)
+assert np.isfinite(fits.to_numpy()).all()
+loo = [f"loo_{i + 1}" for i in range(config["scoring_repeats"])]
+
+def estimate(group):
+    repeats = group[loo].to_numpy()
+    n = repeats.shape[1]
+    variance = (n - 1) / n * np.square(repeats - repeats.mean(axis=1, keepdims=True)).sum()
+    return group.loglik_per_frame.mean(), np.sqrt(variance) / len(group)
+
+def formatted(group):
+    mean, se = estimate(group)
+    return f"{mean:.4f} ± {se:.4f}"
+
+values = {j: [formatted(fits.loc[j, a]) for a in config["alpha"]]
+          for j in config["training_particles"]}
+table = pd.DataFrame({"Discount factor (α)": [f"{a:g}" for a in config["alpha"]],
+                      **{f"{j} training particles": column for j, column in values.items()}})
+display(table.style.hide(axis="index"))
+```
+
+```{python}
+#| echo: false
+statements = []
+for j in config["training_particles"]:
+    at_j = fits.xs(j, level="J")
+    best = at_j.loglik_per_frame.groupby("alpha").mean().idxmax()
+    # Align the five starts and eight omitted repeats before differencing.
+    difference, se = estimate(at_j.loc[best] - at_j.loc[1.0])
+    statements.append(f"With {j} training particles, α = {best:g} had the highest mean, "
+                      f"{difference:.4f} ± {se:.4f} per frame above α = 1 (no discounting).")
+updates = timings.updates.groupby(level="J").agg(["min", "max"])
+def update_range(j):
+    return f"{updates.loc[j, 'min']:,}–{updates.loc[j, 'max']:,}"
+
+display(Markdown(" ".join(statements) +
+                 f" The 100-particle fits completed {update_range(100)} updates in four minutes. "
+                 f"The 500-particle fits completed {update_range(500)}."))
+```
+
+## Model and scoring
+
+The robot's position and heading follow its noisy odometry from a known initial pose, with independent Gaussian motion errors (standard deviations 0.03, 0.03 and 0.10 in scaled position units and radians). We used the published *nav03* trajectories and applied 10% multiplicative noise to the controls as in the original maze experiment. [Jonschkowski et al.](https://www.roboticsproceedings.org/rss14/p01.html)
+
+We conditioned on the initial pose and used camera features as observations, following [Corenflos et al., §5.4](https://proceedings.mlr.press/v139/corenflos21a/corenflos21a.pdf).
+
+We trained an image encoder by reconstruction on the training images and froze it. Given pose $s_t$, two additive coupling blocks map the 128 camera features $z_t$ to a standard normal vector. The transformation $F_\theta(\cdot;s_t)$ has unit Jacobian determinant, giving the observation density $g_\theta(z_t\mid s_t)=(2\pi)^{-64}\exp[-\|F_\theta(z_t;s_t)\|^2/2]$. We adapted the flow from [Chen and Li, §VI-D](https://arxiv.org/html/2403.01499v2#S6.SS4) and the [PyDPF maze implementation](https://github.com/John-JoB/pydpf). We fitted the observation model by feature likelihood alone. The [DMOP discount](https://arxiv.org/html/2407.03085v2) changes the training gradient estimate. All fits were scored with an ordinary particle filter.
+
+For each of 900 training trajectories, we averaged eight independent likelihood estimates with 2,000 particles before taking the log. We summed those logs and divided by the 89,100 scored frames. The scoring draws were matched within seed and independent across seeds. We estimated scoring error by dropping one repeat at a time, dropping the same repeat from both fits for paired differences. This error excludes variation across training seeds and bias from taking the log of a Monte Carlo estimate.
+
+::: {.callout-note collapse="true"}
+### Reproducing the table
+
+Render `report.qmd` with Quarto from this directory. `results/gpu/results.csv` contains one row per fit and the eight leave-one-repeat-out scores per frame. `timings.csv` records the number of updates and active training seconds. Rerunning a fit with `run.py` requires the original training features and starting parameters. Their SHA-256 hashes and the PyPOMP revision are in `results/gpu/latest.json`.
+:::
