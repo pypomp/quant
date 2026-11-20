@@ -16,6 +16,8 @@ VIRTUAL_ENV=$PWD/.venv-torch uv pip install -q torch torchvision torchaudio --in
 VIRTUAL_ENV=$PWD/.venv-torch uv pip install -q pydpf particles
 uv venv -q --python ${PY:-3.14} .venv-ssm
 VIRTUAL_ENV=$PWD/.venv-ssm uv pip install -q "$JAX_SPEC" cuthbert==0.1.1 cuthbertlib==0.1.1 scipy pandas
+# pypomp (no cute extra) for the cuthbert adapters' --samplers pypomp
+VIRTUAL_ENV=$PWD/.venv-ssm uv pip install -q "$JAX_SPEC" ${PYPOMP_SPEC/\[cute\]/}
 # Optional: the bench-only substep-unroll toggle used by run_exp.sh (needs PYPOMP_SRC).
 [ -n "$PYPOMP_SRC" ] && git -C "$PYPOMP_SRC" apply --check "$PWD/pypomp_substep_unroll_toggle.patch" 2>/dev/null \
   && git -C "$PYPOMP_SRC" apply "$PWD/pypomp_substep_unroll_toggle.patch" || true

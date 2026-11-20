@@ -10,12 +10,16 @@ the RTX 3090 numbers. Warm time, first call (with compilation) in parentheses; `
 - **one batch**: all filters in one `vmap`, as the other GPU libraries' adapters run them.
 - **+ CuTe**: one batch with `set_backend("cute", rng="philox")`. pypomp falls back to XLA for parts
   the kernel can't run; each row's `backend_report` says what ran on CuTe.
+- **fast samplers** (measles only; cholera and the S&P 500 draw only normals): pfjax (as released) and
+  cuthbert with pypomp's inverse-CDF gamma, Poisson and binomial samplers in their per-particle
+  step (`--samplers pypomp`, `run_fast_samplers.sh`), the samplers pypomp's own measles model uses.
+  The plain pfjax and cuthbert columns use `jax.random`'s exact samplers.
 - jax 0.11.2 for pypomp, pfjax and cuthbert; pfjax, cuthbert, pydpf, particles and pypfilt as in
   TABLES.md. R and the CPU-library projections are the same numbers as in TABLES.md.
 
-| Model | Filters | J | R pomp, 36 cores | pypomp 1.4 | one batch | + CuTe | pfjax | pfjax, key fix | cuthbert | pydpf | particles, 36 cores | pypfilt, 36 cores |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Cholera, Dhaka | 1,296 | 5,000 | 380 | 4.1 (5.4) | 4.1 (5.3) | 0.80 (4.2) | 5.4 (7.9) | 5.3 (6.5) | 5.8 (6.8) | 24.1 (24.8) | 203 | 429 |
-| Measles, London | 1,296 | 5,000 | 895 | 6.1 (11.7) | 5.9 (11.7) | 2.6 (5.0) | 512 (518) | 512 (517) | 513 (516) | 56.3 (56.5) | 450 | 897 |
-| Measles, 4-town panel | 1,296 | 5,000 | 2,252 | 23.4 (30.0) | n/a | 9.3 (12.1) | > 3,600 | > 3,600 | > 3,600 | 144 (144) | 2,166 | 4,393 |
-| S&P 500 | 864 | 1,000 | 32.0 | 0.27 (1.1) | 0.27 (1.0) | 0.16 (1.1) | 0.59 (1.4) | 0.58 (1.2) | 1.2 (1.8) | 0.89 (1.0) | 16.8 | 301 |
+| Model | Filters | J | R pomp, 36 cores | pypomp 1.4 | one batch | + CuTe | pfjax | pfjax, key fix | pfjax, fast samplers | cuthbert | cuthbert, fast samplers | pydpf | particles, 36 cores | pypfilt, 36 cores |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Cholera, Dhaka | 1,296 | 5,000 | 380 | 4.1 (5.4) | 4.1 (5.3) | 0.80 (4.2) | 5.4 (7.9) | 5.3 (6.5) | n/a | 5.8 (6.8) | n/a | 24.1 (24.8) | 203 | 429 |
+| Measles, London | 1,296 | 5,000 | 895 | 6.1 (11.7) | 5.9 (11.7) | 2.6 (5.0) | 512 (518) | 512 (517) | 10.9 (19.4) | 513 (516) | 11.8 (16.2) | 56.3 (56.5) | 450 | 897 |
+| Measles, 4-town panel | 1,296 | 5,000 | 2,252 | 23.3 (30.4) | n/a | 9.6 (12.4) | > 3,600 | > 3,600 | 49.5 (59.8) | > 3,600 | 51.2 (57.0) | 144 (144) | 2,166 | 4,393 |
+| S&P 500 | 864 | 1,000 | 32.0 | 0.27 (1.1) | 0.27 (1.0) | 0.16 (1.1) | 0.59 (1.4) | 0.58 (1.2) | n/a | 1.2 (1.8) | n/a | 0.89 (1.0) | 16.8 | 301 |

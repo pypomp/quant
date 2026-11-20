@@ -97,6 +97,10 @@ def gpu_times(model):
                     if lib == "pypomp" and "pypomp_cute" in path.name
                     else lib
                 )
+                if "fastsamplers" in path.name:
+                    if "validation" in path.name or lib == "pfjax_fixed":
+                        continue
+                    lib += "_fast"
                 out.setdefault(lib, "timeout")
                 continue
             if (
@@ -118,6 +122,10 @@ def gpu_times(model):
                     continue
             elif col == "pfjax" and pfjax_fixed(r, path):
                 col = "pfjax_fixed"
+            elif col.endswith("+pypomp_samplers"):
+                if col.startswith("pfjax") and pfjax_fixed(r, path):
+                    continue
+                col = col.split("+")[0] + "_fast"
             out[col] = (r["warm_s"], r["cold_s"])
     return out
 
@@ -242,10 +250,14 @@ def entries(model):
             warm, first = g[col]
             out[col] = (first, warm, "")
         elif (
-            col in ("pypomp_flat", "pypomp_cute")
-            and model == "panel_measles"
-            or col == "pypomp_cute"
-            and model == "spx"
+            (
+                col in ("pypomp_flat", "pypomp_cute")
+                and model == "panel_measles"
+                or col == "pypomp_cute"
+                and model == "spx"
+            )
+            or col.endswith("_fast")
+            and model in ("dacca", "spx")
         ):
             out[col] = (None, None, "n/a")
         elif (model, col) in TIMED_OUT:
@@ -288,6 +300,10 @@ the RTX 3090 numbers. Warm time, first call (with compilation) in parentheses; `
 - **one batch**: all filters in one `vmap`, as the other GPU libraries' adapters run them.
 - **+ CuTe**: one batch with `set_backend("cute", rng="philox")`. pypomp falls back to XLA for parts
   the kernel can't run; each row's `backend_report` says what ran on CuTe.
+- **fast samplers** (measles only; cholera and the S&P 500 draw only normals): pfjax (as released) and
+  cuthbert with pypomp's inverse-CDF gamma, Poisson and binomial samplers in their per-particle
+  step (`--samplers pypomp`, `run_fast_samplers.sh`), the samplers pypomp's own measles model uses.
+  The plain pfjax and cuthbert columns use `jax.random`'s exact samplers.
 - jax 0.11.2 for pypomp, pfjax and cuthbert; pfjax, cuthbert, pydpf, particles and pypfilt as in
   TABLES.md. R and the CPU-library projections are the same numbers as in TABLES.md.
 """
@@ -300,6 +316,8 @@ def main():
             ("pypomp_flat", "one batch"),
             ("pypomp_cute", "+ CuTe"),
         ]
+        COLUMNS[6:6] = [("pfjax_fast", "pfjax, fast samplers")]
+        COLUMNS[8:8] = [("cuthbert_fast", "cuthbert, fast samplers")]
     print(NOTES_BLACKWELL if BLACKWELL else NOTES)
     print("| Model | Filters | J | " + " | ".join(h for _, h in COLUMNS) + " |")
     print("|---|---:|---:|" + "---:|" * len(COLUMNS))

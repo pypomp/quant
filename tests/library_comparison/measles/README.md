@@ -123,6 +123,26 @@ pypomp together:
 The medians agree as well (θ1 −4040.4 and −4038.7, θ2 −5265.8 and −5290.6, θ3 −5879.1 and
 −5891.1, cuthbert first).
 
+### pfjax and cuthbert with pypomp's fast samplers (GPU, J = 1000, 100 filters)
+
+`--samplers pypomp` puts pypomp's inverse-CDF samplers into the pfjax and cuthbert per-particle
+steps (`../run_fast_samplers.sh full`, RTX Pro 6000, rows in `results/gpu_rtxpro6000/validation_fastsamplers_*.jsonl`
+and `diag_pfjax_resampler.jsonl`). z against pypomp's 100-filter run above:
+
+| Library | resampling | seed | θ1 | θ2 | θ3 |
+|---|---|---|---|---|---|
+| cuthbert | systematic | 0 | −0.59 | 0.15 | 0.11 |
+| pfjax | multinomial | 0 | −4.87 | −0.23 | −1.40 |
+| pfjax | multinomial | 1 | −5.17 | −1.25 | −1.30 |
+| pfjax | multinomial | 2 | −4.26 | −0.40 | −1.24 |
+| pfjax | systematic (`--resampler systematic`, diagnostic) | 0 | −0.18 | 1.69 | −0.37 |
+| pfjax | systematic (diagnostic) | 1 | −0.74 | 0.65 | −0.63 |
+
+pfjax's θ1 shift (about −5) goes away with systematic resampling, so it comes from its
+multinomial resampler: θ1's sd is about 8.6 with multinomial and 7.9 with systematic, and
+E[log L̂] ≈ log L − σ²/2. The panel (100 filters against pypomp's 50) shows the same: cuthbert
+z −1.27, 0.14, 0.04; pfjax −3.09, −1.35, −6.50, with twice cuthbert's se at θ3.
+
 ## Single-filter CPU timings (J = 5000, one θ, full T, one process)
 
 Run with `nice -n 19 taskset -c 8-31` on a box other users kept at load 25-85 (32
@@ -163,8 +183,9 @@ is roughly 8-11 and 10-20 minutes of wall time.
   (`key, *subkeys = split(...)`), which grows with J. The clone has a bench-only
   `PFJAX_FIX_KEYSPLIT=1` switch that removes the unpacking; results record whether it was on.
 - `pfjax --samplers pypomp` (pypomp's inverse-CDF samplers inside pfjax's per-particle
-  vmap) did not finish compiling on CPU within 30+ minutes even at J = 8, T = 3; the single
-  Euler step compiles in 3-6 s. Untested end to end; try it on GPU with `--T 5` first.
+  vmap) did not finish compiling on CPU within 30+ minutes even at J = 8, T = 3 (jax 0.12,
+  pypomp 1.2). On the RTX Pro 6000 with jax 0.11.2 and pypomp 1.4.0 the full London filter
+  compiles in about 8 s.
 - pfjax on CPU is slow per particle step (the London validation, 30 filters at J = 1000,
   took 47 minutes); its numbers only matter on GPU.
 - CPU-only libraries run one filter per process; their workload time is the pool's wall

@@ -24,30 +24,40 @@ over vmapped chunks of C to bound memory. Note pfjax splits per-particle keys wi
 
 import os
 import sys
-import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import he10 as H  # noqa: E402
+import he10 as H
 
 
 def add_args(p):
     p.add_argument("--samplers", choices=["jax", "pypomp"], default="jax")
-    p.add_argument("--chunk", type=int, default=0, help="filters per vmapped chunk (0 = all at once)")
+    p.add_argument(
+        "--resampler",
+        choices=["multinomial", "systematic"],
+        default="multinomial",
+        help="multinomial = pfjax's own (benchmark); systematic = validation diagnostic",
+    )
+    p.add_argument(
+        "--chunk",
+        type=int,
+        default=0,
+        help="filters per vmapped chunk (0 = all at once)",
+    )
 
 
 args = H.parse_args("pfjax", add_args)
 
-import jax  # noqa: E402
-import jax.numpy as jnp  # noqa: E402
-import numpy as np  # noqa: E402
-import pfjax  # noqa: E402
-from pfjax.models.base_model import BaseModel  # noqa: E402
+import jax
+import jax.numpy as jnp
+import numpy as np
+import pfjax
+from pfjax.models.base_model import BaseModel
 
 H.check_device(args, jax.default_backend())
 
 if args.samplers == "pypomp":
-    from pypomp.models.measles import _samplers as smp  # noqa: E402  (import outside any trace)
+    from pypomp.models.measles import _samplers as smp
 
 I = H.P  # parameter index in the kernel order
 MU = H.MU
@@ -93,7 +103,9 @@ def step_jax(key, x, th, dt, pop, b, term, coh):
     n = jnp.stack([S, E, Ii])
     x0 = jax.random.binomial(kb0, n, jnp.clip(p0, 0.0, 1.0))
     prem = 1.0 - p0
-    x1 = jax.random.binomial(kb1, n - x0, jnp.clip(p1 / jnp.where(prem > 0.0, prem, 1.0), 0.0, 1.0))
+    x1 = jax.random.binomial(
+        kb1, n - x0, jnp.clip(p1 / jnp.where(prem > 0.0, prem, 1.0), 0.0, 1.0)
+    )
     return finish(x, th, pop, dt, dw, births, x0, x1)
 
 
@@ -104,7 +116,7 @@ def step_pypomp(key, x, th, dt, pop, b, term, coh):
     foi = beta * (Ii + th[I["iota"]]) / pop
     s2 = th[I["sigmaSE"]] ** 2
     u = jax.random.uniform(key, (smp.N_GAMMA_UNIFORMS + 7, 1))
-    u_gamma, u = u[: smp.N_GAMMA_UNIFORMS], u[smp.N_GAMMA_UNIFORMS:]
+    u_gamma, u = u[: smp.N_GAMMA_UNIFORMS], u[smp.N_GAMMA_UNIFORMS :]
     dw = smp.gamma(u_gamma, dt / s2) * s2
     births = smp.poisson(u[0], br * dt)
     tS0, tS1 = smp.euler_exits(u[1], u[2], S, foi * dw / dt, MU, dt)
@@ -118,7 +130,7 @@ def step_pypomp(key, x, th, dt, pop, b, term, coh):
 def dmeas(y, C, th):
     rho, psi = th[I["rho"]], th[I["psi"]]
     m = rho * C
-    v = m * (1.0 - rho + psi ** 2 * m)
+    v = m * (1.0 - rho + psi**2 * m)
     sd = jnp.sqrt(v) + TOL
     upper = jax.scipy.stats.norm.cdf(y + 0.5, m, sd)
     lower = jax.scipy.stats.norm.cdf(y - 0.5, m, sd)
@@ -134,10 +146,14 @@ class He10(BaseModel):
     def __init__(self, step, nstep_fixed=None):
         super().__init__(bootstrap=True)
         self.step = step
-        self.nstep_fixed = nstep_fixed  # static substep count when every interval has the same nstep
+        self.nstep_fixed = (
+            nstep_fixed  # static substep count when every interval has the same nstep
+        )
 
     def rinit(self, theta, pop0):
-        m = pop0 / (theta[I["S_0"]] + theta[I["E_0"]] + theta[I["I_0"]] + theta[I["R_0"]])
+        m = pop0 / (
+            theta[I["S_0"]] + theta[I["E_0"]] + theta[I["I_0"]] + theta[I["R_0"]]
+        )
         S, E, Ii, R = (jnp.round(m * theta[I[k]]) for k in ("S_0", "E_0", "I_0", "R_0"))
         return jnp.stack([S, E, Ii, R, 0.0 * S, 0.0 * S])
 
@@ -148,7 +164,16 @@ class He10(BaseModel):
         def body(j, carry):
             x, key = carry
             key, sub = jax.random.split(key)
-            x = self.step(sub, x, theta, yc["dt"][j], yc["pop"][j], yc["br"][j], yc["term"][j], yc["coh"][j])
+            x = self.step(
+                sub,
+                x,
+                theta,
+                yc["dt"][j],
+                yc["pop"][j],
+                yc["br"][j],
+                yc["term"][j],
+                yc["coh"][j],
+            )
             return x, key
 
         n = self.nstep_fixed if self.nstep_fixed is not None else yc["nstep"]
@@ -171,22 +196,48 @@ pad = inp.padded(np.float32)
 n, R, U, J = args.nthetas, args.nreps, inp.U, args.J
 Y = jnp.asarray(inp.ys, dtype=jnp.float32)  # (U, T)
 POP, BR = jnp.asarray(pad["pop"]), jnp.asarray(pad["br"])  # (U, T, M)
-shared = dict(dt=jnp.asarray(pad["dt"]), term=jnp.asarray(pad["term"]), coh=jnp.asarray(pad["coh"]),
-              nstep=jnp.asarray(inp.nstep, dtype=jnp.int32))
-model = He10(step_jax if args.samplers == "jax" else step_pypomp,
-             nstep_fixed=int(inp.nstep[0]) if np.all(inp.nstep == inp.nstep[0]) else None)
+shared = {
+    "dt": jnp.asarray(pad["dt"]),
+    "term": jnp.asarray(pad["term"]),
+    "coh": jnp.asarray(pad["coh"]),
+    "nstep": jnp.asarray(inp.nstep, dtype=jnp.int32),
+}
+model = He10(
+    step_jax if args.samplers == "jax" else step_pypomp,
+    nstep_fixed=int(inp.nstep[0]) if np.all(inp.nstep == inp.nstep[0]) else None,
+)
+
+
+def resample_systematic(key, x_particles_prev, logw):
+    """Diagnostic only: systematic resampling, as in ../spx/bench_pfjax.py."""
+    n = logw.size
+    prob = jnp.exp(logw - jax.scipy.special.logsumexp(logw))
+    pos = prob > 0
+    cum = jax.lax.cummax(jnp.where(pos, jnp.cumsum(prob), -jnp.inf))
+    u = (jax.random.uniform(key, dtype=logw.dtype) + jnp.arange(n)) / n * cum[-1]
+    last = n - 1 - jnp.argmax(pos[::-1])
+    anc = jnp.minimum(jnp.searchsorted(cum, u), last)
+    return {"x_particles": x_particles_prev[anc], "ancestors": anc}
+
+
+RESAMPLER = (
+    pfjax.particle_resamplers.resample_multinomial
+    if args.resampler == "multinomial"
+    else resample_systematic
+)
 
 
 def pf1(key, theta, u):
     y_meas = dict(y=Y[u], pop=POP[u], br=BR[u], **shared)
-    out = pfjax.particle_filter(model, key, y_meas, theta, J,
-                                resampler=pfjax.particle_resamplers.resample_multinomial)
+    out = pfjax.particle_filter(model, key, y_meas, theta, J, resampler=RESAMPLER)
     return out["loglik"]
 
 
 tasks = H.task_list(n, R, U)
 N = len(tasks)
-thetas = jnp.asarray(np.stack([inp.thetas(n)[i, u] for i, r, u in tasks]), dtype=jnp.float32)
+thetas = jnp.asarray(
+    np.stack([inp.thetas(n)[i, u] for i, r, u in tasks]), dtype=jnp.float32
+)
 units = jnp.asarray([u for i, r, u in tasks], dtype=jnp.int32)
 keys = jax.random.split(jax.random.key(args.seed), N)
 C = args.chunk if 0 < args.chunk < N else N
@@ -216,12 +267,28 @@ ll, tm = H.timed_calls(run, args.calls)
 cold, warm = tm.pop("cold_s"), tm.pop("warm_s", None)
 
 H.record(
-    args, "pfjax" if args.samplers == "jax" else "pfjax+pypomp_samplers", inp, ll, cold, warm, **tm,
-    samplers=("jax.random.gamma/poisson/binomial (exact)" if args.samplers == "jax"
-              else "pypomp.random inverse-CDF (binominv/poissoninv/gammainv) on per-particle uniforms"),
+    args,
+    "pfjax" if args.samplers == "jax" else "pfjax+pypomp_samplers",
+    inp,
+    ll,
+    cold,
+    warm,
+    **tm,
+    samplers=(
+        "jax.random.gamma/poisson/binomial (exact)"
+        if args.samplers == "jax"
+        else "pypomp.random inverse-CDF (binominv/poissoninv/gammainv) on per-particle uniforms"
+    ),
     dtype="float32",
-    versions=dict(H.versions("pfjax", "jax", "jaxlib", "pypomp"), jax_backend=jax.default_backend(),
-                  pfjax_keysplit_fix=bool(os.environ.get("PFJAX_FIX_KEYSPLIT"))),
-    resampling="multinomial every observation (pfjax.particle_resamplers.resample_multinomial)",
+    versions=dict(
+        H.versions("pfjax", "jax", "jaxlib", "pypomp"),
+        jax_backend=jax.default_backend(),
+        pfjax_keysplit_fix=bool(os.environ.get("PFJAX_FIX_KEYSPLIT")),
+    ),
+    resampling=(
+        "multinomial every observation (pfjax.particle_resamplers.resample_multinomial)"
+        if args.resampler == "multinomial"
+        else "systematic every observation (diagnostic)"
+    ),
     chunk=C,
 )

@@ -141,6 +141,15 @@ packages?" ... "if dynamax doesn't support PF then let's just skip it."
 - **Correctness**: every library agrees with pypomp within Monte Carlo error on every model
   (per-model READMEs). pypomp's float32 measles dmeas underflowed at poorly fitting parameters;
   fixed on the branch.
+- **Fast samplers in pfjax and cuthbert** (2026-11-20, RTX Pro 6000, `run_fast_samplers.sh`):
+  `--samplers pypomp` in both measles adapters (cuthbert's is new; `.venv-ssm` now has pypomp 1.4.0).
+  Warm (first call): London pfjax 10.9 (19.4) s, cuthbert 11.8 (16.2) s, against 512-513 s with
+  `jax.random`'s samplers and pypomp's 6.1 s; panel pfjax 49.5 (59.8) s, cuthbert 51.2 (57.0) s,
+  against > 3,600 s and pypomp's 23.3 s. Columns "pfjax, fast samplers" and "cuthbert, fast
+  samplers" in TABLES_rtxpro6000.md. pypomp 1.4 with stock `jax.random` samplers takes 322 s on the
+  same London workload (quant `tests/measles/timing/results/gpu_jax`, at IF2 endpoints), so most of
+  the old gap was the samplers. Validation in measles/README.md: cuthbert agrees; pfjax is low at
+  θ1 (z about −5, three seeds) only with its multinomial resampler (systematic diagnostic: z −0.2, −0.7).
 
 ## Layout
 - `common.py`, `bench_{pypomp,pfjax,cuthbert,particles,pypfilt,pydpf}.py`: toy models (`lg`, `sde`) in each library.
